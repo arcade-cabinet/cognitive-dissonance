@@ -161,7 +161,9 @@ export default function Game() {
               break;
             case 'GAME_OVER':
               dispatch({ type: 'GAME_OVER', score: event.score, win: event.win });
-              saveScore(event.score);
+              saveScore(event.score).catch((err) => {
+                console.error('Failed to save score:', err);
+              });
               break;
             case 'WAVE_START':
               dispatch({ type: 'WAVE_START', title: event.title, sub: event.sub });
