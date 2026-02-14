@@ -17,10 +17,12 @@ export default defineConfig({
         background_color: '#0a0a18',
         display: 'standalone',
         orientation: 'landscape',
+        start_url: '/psyduck-panic/',
+        scope: '/psyduck-panic/',
         icons: [
           {
             src: 'icon.svg',
-            sizes: '192x192 512x512',
+            sizes: 'any',
             type: 'image/svg+xml',
           },
         ],

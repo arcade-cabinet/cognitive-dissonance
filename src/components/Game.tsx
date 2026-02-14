@@ -285,6 +285,8 @@ export default function Game() {
           height={GAME_HEIGHT}
           onPointerDown={handleCanvasPointerDown}
           style={{ touchAction: 'none' }}
+          tabIndex={0}
+          aria-label="Game Area: Tap enemies to counter them"
         ></canvas>
 
         {/* HUD Layer */}
@@ -375,6 +377,9 @@ export default function Game() {
               className="btn reality"
               id="btn-reality"
               onClick={() => handleAbility('reality')}
+              aria-label="Counter Reality (Shortcut: 1)"
+              aria-keyshortcuts="1"
+              style={{ touchAction: 'manipulation' }}
             >
               <div className="key-hint">1</div>REALITY<span>🦠 HYPE</span>
               <div
@@ -388,6 +393,9 @@ export default function Game() {
               className="btn history"
               id="btn-history"
               onClick={() => handleAbility('history')}
+              aria-label="Counter History (Shortcut: 2)"
+              aria-keyshortcuts="2"
+              style={{ touchAction: 'manipulation' }}
             >
               <div className="key-hint">2</div>HISTORY<span>📈 GROWTH</span>
               <div
@@ -401,6 +409,9 @@ export default function Game() {
               className="btn logic"
               id="btn-logic"
               onClick={() => handleAbility('logic')}
+              aria-label="Counter Logic (Shortcut: 3)"
+              aria-keyshortcuts="3"
+              style={{ touchAction: 'manipulation' }}
             >
               <div className="key-hint">3</div>LOGIC<span>🤖 DEMOS</span>
               <div
@@ -409,7 +420,15 @@ export default function Game() {
                 style={{ width: `${(ui.abilityCd.logic / ui.abilityMax.logic) * 100}%` }}
               ></div>
             </button>
-            <button type="button" className="btn special" id="btn-special" onClick={handleNuke}>
+            <button
+              type="button"
+              className="btn special"
+              id="btn-special"
+              onClick={handleNuke}
+              aria-label="Trigger Nuke (Shortcut: Q)"
+              aria-keyshortcuts="q"
+              style={{ touchAction: 'manipulation' }}
+            >
               <div className="key-hint">Q</div>NUKE<span>💥 ALL</span>
               <div
                 className="cooldown-bar"
@@ -479,7 +498,19 @@ export default function Game() {
             </div>
           )}
 
-          <button type="button" className="start-btn" id="start-btn" onClick={handleStartButton}>
+          <button
+            type="button"
+            className="start-btn"
+            id="start-btn"
+            onClick={handleStartButton}
+            aria-label={
+              ui.screen === 'start'
+                ? 'Start Debate'
+                : ui.win
+                  ? 'Continue to Endless Mode'
+                  : 'Retry Game'
+            }
+          >
             {ui.screen === 'start' ? 'START DEBATE' : ui.win ? 'CONTINUE ENDLESS' : 'RETRY'}
           </button>
         </div>
