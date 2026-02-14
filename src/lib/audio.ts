@@ -1,6 +1,6 @@
 export class SFX {
   public ctx: AudioContext | null = null;
-  private musicInterval: number | null = null;
+  public musicInterval: number | null = null;
 
   init(): void {
     this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();

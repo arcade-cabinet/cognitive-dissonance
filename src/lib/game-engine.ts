@@ -1,7 +1,7 @@
 // Complete game logic extracted and converted to TypeScript
 import { SFX } from './audio';
 import { FEED, GAME_HEIGHT, GAME_WIDTH, POWERUPS, TYPES, WAVES } from './constants';
-import type { Boss, Enemy } from './types';
+import type { Boss, BossConfig, Confetti, Enemy, MomentumPerks, Particle, PowerUpInstance, Star, Trail } from './types';
 
 const W = GAME_WIDTH;
 const H = GAME_HEIGHT;
@@ -10,17 +10,17 @@ export class GameEngine {
   canvas: HTMLCanvasElement;
   c: CanvasRenderingContext2D;
   sfx: SFX;
-  stars: any[];
+  stars: Star[];
   feedTimer: number;
   feedIdx: number;
   _lastBossX: number;
 
   // Game state
   enemies: Enemy[];
-  particles: any[];
-  powerups: any[];
-  trails: any[];
-  confetti: any[];
+  particles: Particle[];
+  powerups: PowerUpInstance[];
+  trails: Trail[];
+  confetti: Confetti[];
   score: number;
   panic: number;
   combo: number;
@@ -46,9 +46,9 @@ export class GameEngine {
   endless: boolean;
   endlessLevel: number;
   panicInvuln: number;
-  wT: any;
+  wT: ReturnType<typeof setInterval> | null;
   lastFrame: number;
-  momPerks: { spawnDelay: number; scoreBonus: number; cdReduction: number };
+  momPerks: MomentumPerks;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -59,6 +59,7 @@ export class GameEngine {
       this.stars.push({
         x: Math.random() * W,
         y: Math.random() * 320,
+        z: 0,
         sz: Math.random() * 2.5 + 0.5,
         sp: Math.random() * 0.3 + 0.1,
         a: Math.random() * 0.8 + 0.2,
@@ -107,6 +108,12 @@ export class GameEngine {
   }
 
   reset(): void {
+    // Clear any running wave timer
+    if (this.wT) {
+      clearInterval(this.wT as unknown as number);
+      this.wT = null;
+    }
+
     this.enemies = [];
     this.particles = [];
     this.powerups = [];
@@ -191,11 +198,11 @@ export class GameEngine {
     this.sfx.waveStart();
     this.sfx.startMusic(Math.min(idx, 4));
     this.updateUI();
-    if (this.wT) clearInterval(this.wT);
+    if (this.wT) clearInterval(this.wT as unknown as number);
     this.wT = setInterval(() => {
       this.waveTime--;
       if (this.waveTime <= 0) {
-        clearInterval(this.wT);
+        if (this.wT) clearInterval(this.wT as unknown as number);
         const cfg = WAVES[Math.min(this.wave, WAVES.length - 1)];
         if (!this.endless && cfg.boss && !this.bossPhase) {
           this.startBoss(cfg.boss);
@@ -209,7 +216,7 @@ export class GameEngine {
     }, 1000);
   }
 
-  startBoss(cfg: any): void {
+  startBoss(cfg: BossConfig): void {
     this.bossPhase = true;
     this.enemies = [];
     this.boss = {
@@ -297,7 +304,7 @@ export class GameEngine {
     const word = type.words[Math.floor(Math.random() * type.words.length)];
     const cfg = WAVES[Math.min(this.wave, WAVES.length - 1)];
     const side = Math.random() < 0.5 ? 0 : 1;
-    const enemy: any = {
+    const enemy: Enemy = {
       id: Date.now() + Math.random(),
       x: side === 0 ? -40 : W + 40,
       y: 100 + Math.random() * 180,
@@ -390,7 +397,7 @@ export class GameEngine {
     this.updateUI();
   }
 
-  counterEnemy(e: any): void {
+  counterEnemy(e: Enemy): void {
     this.combo++;
     if (this.combo > this.maxCombo) this.maxCombo = this.combo;
     this.totalC++;
@@ -442,7 +449,7 @@ export class GameEngine {
     this.updateUI();
   }
 
-  findEnemyAt(x: number, y: number): any {
+  findEnemyAt(x: number, y: number): Enemy | null {
     for (const e of this.enemies) {
       const dx = e.x - x;
       const dy = e.y - y;

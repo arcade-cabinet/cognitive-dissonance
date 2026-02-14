@@ -2,10 +2,8 @@ import { useEffect, useRef } from 'react';
 import { GameEngine } from '../lib/game-engine';
 import '../styles/game.css';
 
-let gameInstance: GameEngine | null = null;
-
 /**
- * Mounts the game's React UI and initializes the singleton GameEngine for the canvas-based game.
+ * Mounts the game's React UI and initializes the GameEngine for the canvas-based game.
  *
  * Sets up responsive scaling and input bindings (keyboard, control buttons, pointer, and touch)
  * for the game canvas and renders the HUD, controls, and overlay UI.
@@ -14,6 +12,7 @@ let gameInstance: GameEngine | null = null;
  */
 export default function Game() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const gameInstanceRef = useRef<GameEngine | null>(null);
 
   useEffect(() => {
     // Initialize game resize handler
@@ -32,8 +31,9 @@ export default function Game() {
     resizeGame();
 
     // Initialize game engine
-    if (canvasRef.current && !gameInstance) {
-      gameInstance = new GameEngine(canvasRef.current);
+    if (canvasRef.current && !gameInstanceRef.current) {
+      gameInstanceRef.current = new GameEngine(canvasRef.current);
+      const gameInstance = gameInstanceRef.current;
 
       // Setup event handlers
       const startBtn = document.getElementById('start-btn');
@@ -97,17 +97,16 @@ export default function Game() {
       }
 
       // Prevent multi-touch
-      document.addEventListener(
-        'touchstart',
-        (e) => {
-          if (e.touches.length > 1) e.preventDefault();
-        },
-        { passive: false }
-      );
+      const preventMultiTouch = (e: TouchEvent) => {
+        if (e.touches.length > 1) e.preventDefault();
+      };
+      
+      document.addEventListener('touchstart', preventMultiTouch, { passive: false });
 
       return () => {
         window.removeEventListener('resize', resizeGame);
         window.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('touchstart', preventMultiTouch);
       };
     }
 

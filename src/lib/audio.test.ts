@@ -62,4 +62,27 @@ describe('SFX Audio System', () => {
     expect(() => sfx.miss()).not.toThrow();
     expect(() => sfx.nuke()).not.toThrow();
   });
+
+  it('should start and stop music correctly', () => {
+    sfx.init();
+    
+    // Start music
+    sfx.startMusic(1);
+    expect(sfx.musicInterval).toBeDefined();
+    
+    // Stop music
+    sfx.stopMusic();
+    expect(sfx.musicInterval).toBeNull();
+  });
+
+  it('should clear music interval when stopMusic is called', () => {
+    sfx.init();
+    sfx.startMusic(1);
+    
+    const interval = sfx.musicInterval;
+    expect(interval).not.toBeNull();
+    
+    sfx.stopMusic();
+    expect(sfx.musicInterval).toBeNull();
+  });
 });

@@ -69,3 +69,53 @@ export interface GameState {
   enemies: Enemy[];
   boss?: Boss;
 }
+
+export interface Star {
+  x: number;
+  y: number;
+  z?: number;
+  sz: number;
+  sp: number;
+  a: number;
+}
+
+export interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  col: string;
+}
+
+export interface PowerUpInstance {
+  id: string;
+  x: number;
+  y: number;
+  vy: number;
+  icon: string;
+  color: string;
+  dur: number;
+}
+
+export interface Trail {
+  x: number;
+  y: number;
+  life: number;
+  col: string;
+}
+
+export interface Confetti {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  col: string;
+}
+
+export interface MomentumPerks {
+  spawnDelay: number;
+  scoreBonus: number;
+  cdReduction: number;
+}

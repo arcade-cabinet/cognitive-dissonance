@@ -133,7 +133,7 @@ psyduck-panic/
 | **Web Audio API** | Sound effects and music |
 | **Biome 2.3** | Linting and formatting |
 | **Vitest 4** | Unit testing |
-| **Playwright 1.50** | E2E testing |
+| **Playwright 1.58.2** | E2E testing |
 
 ## 🎨 Features
 

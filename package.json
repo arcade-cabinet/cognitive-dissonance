@@ -27,7 +27,7 @@
     "game",
     "astro",
     "react",
-    "three.js"
+    "typescript"
   ],
   "author": "",
   "license": "ISC",
@@ -37,14 +37,11 @@
   "homepage": "https://github.com/arcade-cabinet/psyduck-panic#readme",
   "dependencies": {
     "@astrojs/react": "^4.4.2",
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "astro": "^5.17.2",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "three": "^0.182.0"
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
