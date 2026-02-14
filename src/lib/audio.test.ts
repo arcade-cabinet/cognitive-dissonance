@@ -28,7 +28,8 @@ class MockAudioContext {
   destination = {};
 }
 
-global.AudioContext = MockAudioContext as any;
+// Mock AudioContext for testing - cast through unknown for type safety
+global.AudioContext = MockAudioContext as unknown as typeof AudioContext;
 
 describe('SFX Audio System', () => {
   let sfx: SFX;
@@ -65,11 +66,11 @@ describe('SFX Audio System', () => {
 
   it('should start and stop music correctly', () => {
     sfx.init();
-    
+
     // Start music
     sfx.startMusic(1);
     expect(sfx.musicInterval).toBeDefined();
-    
+
     // Stop music
     sfx.stopMusic();
     expect(sfx.musicInterval).toBeNull();
@@ -78,10 +79,10 @@ describe('SFX Audio System', () => {
   it('should clear music interval when stopMusic is called', () => {
     sfx.init();
     sfx.startMusic(1);
-    
+
     const interval = sfx.musicInterval;
     expect(interval).not.toBeNull();
-    
+
     sfx.stopMusic();
     expect(sfx.musicInterval).toBeNull();
   });

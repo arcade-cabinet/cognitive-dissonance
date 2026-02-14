@@ -21,6 +21,9 @@
       "recommended": true,
       "suspicious": {
         "noExplicitAny": "warn"
+      },
+      "style": {
+        "noNonNullAssertion": "warn"
       }
     }
   },
@@ -30,5 +33,17 @@
       "trailingCommas": "es5",
       "semicolons": "always"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.astro"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off"
+          }
+        }
+      }
+    }
+  ]
 }

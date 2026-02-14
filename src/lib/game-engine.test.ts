@@ -6,6 +6,41 @@ const createMockCanvas = () => {
   const canvas = document.createElement('canvas');
   canvas.width = 800;
   canvas.height = 600;
+  // Mock getContext for testing environment
+  if (!canvas.getContext('2d')) {
+    canvas.getContext = vi.fn().mockReturnValue({
+      fillStyle: '',
+      strokeStyle: '',
+      lineWidth: 1,
+      globalAlpha: 1,
+      font: '',
+      textAlign: 'left',
+      textBaseline: 'alphabetic',
+      fillRect: vi.fn(),
+      clearRect: vi.fn(),
+      strokeRect: vi.fn(),
+      fillText: vi.fn(),
+      strokeText: vi.fn(),
+      beginPath: vi.fn(),
+      closePath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      arc: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+      save: vi.fn(),
+      restore: vi.fn(),
+      translate: vi.fn(),
+      rotate: vi.fn(),
+      scale: vi.fn(),
+      setTransform: vi.fn(),
+      drawImage: vi.fn(),
+      createLinearGradient: vi.fn(),
+      createRadialGradient: vi.fn(),
+      createPattern: vi.fn(),
+      measureText: vi.fn().mockReturnValue({ width: 0 }),
+    });
+  }
   return canvas;
 };
 
@@ -36,7 +71,8 @@ class MockAudioContext {
   destination = {};
 }
 
-global.AudioContext = MockAudioContext as any;
+// Mock AudioContext for testing - cast through unknown for type safety
+global.AudioContext = MockAudioContext as unknown as typeof AudioContext;
 
 describe('GameEngine', () => {
   let canvas: HTMLCanvasElement;

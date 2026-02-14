@@ -4,17 +4,17 @@
 
 ```bash
 # Install dependencies
-npm ci
+pnpm install
 
 # Start development server
-npm run dev
+pnpm dev
 # Open http://localhost:4321/psyduck-panic/
 
 # Build for production
-npm run build
+pnpm build
 
 # Preview production build
-npm run preview
+pnpm preview
 ```
 
 ## Testing
@@ -23,32 +23,32 @@ npm run preview
 
 ```bash
 # Run tests once
-npm test
+pnpm test
 
 # Watch mode for development
-npm run test:watch
+pnpm test:watch
 
 # With UI
-npm run test:ui
+pnpm test:ui
 
 # With coverage
-npm run test:coverage
+pnpm test:coverage
 ```
 
 ### E2E Tests (Playwright)
 
 ```bash
 # Install browsers (first time only)
-npx playwright install
+pnpm exec playwright install
 
 # Run E2E tests
-npm run test:e2e
+pnpm test:e2e
 
 # With UI
-npm run test:e2e:ui
+pnpm test:e2e:ui
 
 # Headed mode (see browser)
-npm run test:e2e:headed
+pnpm test:e2e:headed
 ```
 
 ## Code Quality
@@ -57,13 +57,13 @@ npm run test:e2e:headed
 
 ```bash
 # Check code
-npm run lint
+pnpm lint
 
 # Auto-fix issues
-npm run lint:fix
+pnpm lint:fix
 
 # Format code
-npm run format
+pnpm format
 ```
 
 ## Project Structure
@@ -103,17 +103,17 @@ npm run format
 ### Test Debugging
 ```bash
 # Run single test file
-npx vitest src/lib/game-engine.test.ts
+pnpm exec vitest src/lib/game-engine.test.ts
 
 # Debug specific test
-npx vitest -t "should spawn enemies"
+pnpm exec vitest -t "should spawn enemies"
 ```
 
 ## Performance Optimization
 
 ### Build Analysis
 ```bash
-npm run build
+pnpm build
 # Check dist/ folder size
 ls -lh dist/assets/
 ```
@@ -131,7 +131,7 @@ Pushes to `main` branch trigger automatic deployment via `.github/workflows/cd.y
 
 ### Manual Deployment
 ```bash
-npm run build
+pnpm build
 # Upload dist/ folder to your hosting service
 ```
 
@@ -139,11 +139,11 @@ npm run build
 
 ### Tests Failing
 - Check Node version (20+ required)
-- Clear node_modules and reinstall: `rm -rf node_modules && npm ci`
+- Clear node_modules and reinstall: `rm -rf node_modules && pnpm install`
 - Check for port conflicts (4321, 4322, 4323)
 
 ### Build Errors
-- Run `npm run astro check` for TypeScript errors
+- Run `pnpm astro check` for TypeScript errors
 - Check import paths are correct
 - Verify all dependencies are installed
 

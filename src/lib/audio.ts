@@ -3,7 +3,11 @@ export class SFX {
   public musicInterval: number | null = null;
 
   init(): void {
-    this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    // Support both standard and webkit-prefixed AudioContext for browser compatibility
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    this.ctx = new AudioContextClass();
   }
 
   resume(): void {

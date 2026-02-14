@@ -1,7 +1,17 @@
 // Complete game logic extracted and converted to TypeScript
 import { SFX } from './audio';
 import { FEED, GAME_HEIGHT, GAME_WIDTH, POWERUPS, TYPES, WAVES } from './constants';
-import type { Boss, BossConfig, Confetti, Enemy, MomentumPerks, Particle, PowerUpInstance, Star, Trail } from './types';
+import type {
+  Boss,
+  BossConfig,
+  Confetti,
+  Enemy,
+  MomentumPerks,
+  Particle,
+  PowerUpInstance,
+  Star,
+  Trail,
+} from './types';
 
 const W = GAME_WIDTH;
 const H = GAME_HEIGHT;
@@ -52,7 +62,12 @@ export class GameEngine {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.c = canvas.getContext('2d')!;
+    // Get 2D rendering context - required for canvas operations
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('Unable to get 2D rendering context from canvas');
+    }
+    this.c = context;
     this.sfx = new SFX();
     this.stars = [];
     for (let i = 0; i < 80; i++) {

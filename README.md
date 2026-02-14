@@ -42,54 +42,54 @@ Your brother is stuck doomscrolling AI hype on Twitter. Counter the thought bubb
 ### Prerequisites
 
 - Node.js 20+
-- npm or pnpm
+- pnpm
 
 ### Setup
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Run development server
-npm run dev
+pnpm dev
 
 # Build for production
-npm run build
+pnpm build
 
 # Preview production build
-npm run preview
+pnpm preview
 ```
 
 ### Testing
 
 ```bash
 # Run unit tests
-npm test
+pnpm test
 
 # Watch mode
-npm run test:watch
+pnpm test:watch
 
 # Test with UI
-npm run test:ui
+pnpm test:ui
 
 # Run E2E tests
-npm run test:e2e
+pnpm test:e2e
 
 # E2E with UI
-npm run test:e2e:ui
+pnpm test:e2e:ui
 ```
 
 ### Code Quality
 
 ```bash
 # Lint code
-npm run lint
+pnpm lint
 
 # Auto-fix linting issues
-npm run lint:fix
+pnpm lint:fix
 
 # Format code
-npm run format
+pnpm format
 ```
 
 ## 🏗️ Architecture
