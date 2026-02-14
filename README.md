@@ -1,175 +1,109 @@
 # 🎮 Psyduck Panic: Evolution Deluxe
 
-A retro-style browser game where you must counter AI hype thought bubbles before your brother's brain melts from doomscrolling! Built with **Astro**, **React**, and **TypeScript**.
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
+[![Built with Astro](https://img.shields.io/badge/Built%20with-Astro-FF5D01?logo=astro)](https://astro.build)
+[![Play Now](https://img.shields.io/badge/Play-Now-success?style=for-the-badge)](https://arcade-cabinet.github.io/psyduck-panic/)
+
+> **Save your brother from AI hype doomscrolling before his brain melts!** 🧠💥
+
+A fast-paced retro arcade game where you counter AI hype thought bubbles to save your brother's sanity. Battle through 5 increasingly difficult waves, face off against epic bosses, and survive the endless mode!
 
 ![Game Screenshot](https://github.com/user-attachments/assets/c087a654-20b1-4249-be62-50dde0eecd02)
 
-## 🕹️ Game Overview
+## 🚀 Play Now
 
-Your brother is stuck doomscrolling AI hype on Twitter. Counter the thought bubbles before his PANIC meter hits 100%! Survive 5 increasingly difficult waves plus boss battles to save his sanity.
+**[🎯 Click here to play in your browser](https://arcade-cabinet.github.io/psyduck-panic/)** - No installation required!
+
+Works on desktop and mobile browsers. Best experienced with audio enabled.
+
+## 🎯 What Makes It Awesome
+
+- 🕹️ **Classic Arcade Action** - Retro pixel-art aesthetic with modern gameplay
+- 🎵 **Dynamic Soundtrack** - Music speeds up as the action intensifies
+- 💥 **Epic Boss Battles** - Face The Hype Train and The Singularity
+- 🏆 **Combo System** - Chain counters for massive score multipliers
+- ⚡ **Power-Ups** - Time Warp, Clarity Shield, and Score Boosters
+- 📱 **Mobile Friendly** - Touch controls optimized for smartphones
+- ♾️ **Endless Mode** - Keep playing after beating the game
+- 🎭 **Satirical Fun** - Poke fun at AI hype culture
+
+## 🎮 How to Play
+
+### The Story
+
+Your brother is trapped doomscrolling AI hype on Twitter. Counter his thought bubbles before his PANIC meter reaches 100%! Each bubble type requires a specific counter-argument to defeat.
 
 ### Controls
 
-- **Keyboard:**
-  - `1` - Counter REALITY bubbles (🦠 Hype)
-  - `2` - Counter HISTORY bubbles (📈 Growth)
-  - `3` - Counter LOGIC bubbles (🤖 Demos)
-  - `Q` - Nuke (clears all bubbles)
-  - `Space` - Start game / Continue to endless mode
+#### Desktop
+- **Number Keys** `1` `2` `3` - Counter different bubble types
+- **Q** - Activate Nuke (clears all bubbles)
+- **Space** - Start game / Continue
+- **Mouse** - Click enemies to auto-counter
 
-- **Mouse/Touch:**
-  - Click/tap enemies to auto-counter them
-  - Click ability buttons to use them
+#### Mobile
+- **Tap** enemies directly to counter them
+- **Tap** ability buttons to use powers
+- **Tap** screen to start
 
-### Game Mechanics
+### Enemy Types
 
-- **Enemy Types:**
-  - 🦠 **REALITY** (Orange): Hype Train, Vaporware, Trust Me
-  - 📈 **HISTORY** (Green): Exponential, Singularity, Hockey Stick
-  - 🤖 **LOGIC** (Purple): Snake Demo, Agents, Wrapper
+| Type | Icon | Examples | Counter |
+|------|------|----------|---------|
+| **REALITY** | 🦠 | Hype Train, Vaporware, Trust Me | Press `1` |
+| **HISTORY** | 📈 | Exponential, Singularity, Hockey Stick | Press `2` |
+| **LOGIC** | 🤖 | Snake Demo, Agents, Wrapper | Press `3` |
 
-- **Powerups:**
-  - ⏳ **Time Warp**: Slows down enemies
-  - 🛡️ **Clarity**: Shields from panic damage
-  - ⭐ **2X Score**: Doubles your score
+### Power-Ups
 
-- **Combo System**: Chain successful counters for higher scores
-- **Boss Battles**: Face off against The Hype Train and The Singularity
-- **Endless Mode**: Continue after Wave 5 for infinite challenge
+- **⏳ Time Warp** - Slows down all enemies
+- **🛡️ Clarity** - Protects from panic damage
+- **⭐ 2X Score** - Doubles your score for a limited time
 
-## 🚀 Development
+## 🏆 Pro Tips
 
-### Prerequisites
+1. **Master Combos** - Chain 5+ counters for massive bonuses
+2. **Save Your Nuke** - Use it strategically during panic moments
+3. **Pattern Recognition** - Learn boss attack patterns to anticipate moves
+4. **Mobile Power** - On mobile, tap enemies directly for faster counters
+5. **Watch the Feed** - The Twitter feed shows what's coming next
 
-- Node.js 20+
-- pnpm
+## 🎯 Game Modes
 
-### Setup
+- **Campaign** - Beat 5 waves and 2 boss battles
+- **Endless Mode** - Unlocked after completing campaign
+- **High Score Challenge** - Compete with your personal best
 
-```bash
-# Install dependencies
-pnpm install
+## 🛠️ For Developers
 
-# Run development server
-pnpm dev
+Want to contribute or run locally? Check out our development guides:
 
-# Build for production
-pnpm build
-
-# Preview production build
-pnpm preview
-```
-
-### Testing
-
-```bash
-# Run unit tests
-pnpm test
-
-# Watch mode
-pnpm test:watch
-
-# Test with UI
-pnpm test:ui
-
-# Run E2E tests
-pnpm test:e2e
-
-# E2E with UI
-pnpm test:e2e:ui
-```
-
-### Code Quality
-
-```bash
-# Lint code
-pnpm lint
-
-# Auto-fix linting issues
-pnpm lint:fix
-
-# Format code
-pnpm format
-```
-
-## 🏗️ Architecture
-
-### Project Structure
-
-```
-psyduck-panic/
-├── .github/workflows/     # CI/CD pipelines
-│   ├── ci.yml            # Continuous integration
-│   └── cd.yml            # Deployment to GitHub Pages
-├── e2e/                  # Playwright E2E tests
-├── src/
-│   ├── components/
-│   │   ├── Game.tsx      # Main React game component
-│   │   └── Layout.astro  # Page layout wrapper
-│   ├── lib/
-│   │   ├── audio.ts      # Web Audio API sound system
-│   │   ├── constants.ts  # Game data (types, waves, powerups)
-│   │   ├── types.ts      # TypeScript interfaces
-│   │   └── game-engine.ts # Core game loop and logic
-│   ├── pages/
-│   │   └── index.astro   # Entry point
-│   ├── styles/
-│   │   └── game.css      # Game styles
-│   └── test/             # Unit tests
-├── astro.config.mjs      # Astro configuration
-├── biome.json            # Biome linting config
-├── playwright.config.ts  # E2E test config
-└── vitest.config.ts      # Unit test config
-```
-
-### Tech Stack
-
-| Technology | Purpose |
-|------------|---------|
-| **Astro 5.17** | Static site generation |
-| **React 19** | UI components |
-| **TypeScript 5** | Type safety |
-| **Canvas API** | 2D game rendering |
-| **Web Audio API** | Sound effects and music |
-| **Biome 2.3** | Linting and formatting |
-| **Vitest 4** | Unit testing |
-| **Playwright 1.58.2** | E2E testing |
-
-## 🎨 Features
-
-- ✅ Retro pixel-art aesthetic with CRT effects
-- ✅ Dynamic music that speeds up with wave progression
-- ✅ Combo system with momentum perks
-- ✅ Multiple enemy types and boss battles
-- ✅ Powerup system
-- ✅ Endless mode after completion
-- ✅ Touch-friendly mobile controls
-- ✅ Keyboard shortcuts for desktop
-- ✅ Real-time Twitter-style feed
-
-## 📦 Build Output
-
-Production build is optimized and deployed to GitHub Pages:
-- **Bundle Size**: ~226 KB (gzipped: ~72 KB)
-- **Build Time**: ~1.5 seconds
-- **Deployment**: Automatic via GitHub Actions
+- **[DEVELOPING.md](DEVELOPING.md)** - Setup, testing, and architecture
+- **[SECURITY.md](SECURITY.md)** - Security policies and reporting
+- **[docs/](docs/)** - Additional documentation
 
 ## 🤝 Contributing
 
-This is an educational project demonstrating modern web game development with Astro and React.
+We welcome contributions! Whether it's bug fixes, new features, or documentation improvements, we'd love your help.
+
+1. Check out [DEVELOPING.md](DEVELOPING.md) for setup instructions
+2. Read our [Code of Conduct](docs/CODE_OF_CONDUCT.md)
+3. Submit a Pull Request
 
 ## 📄 License
 
-ISC
+This project is licensed under the ISC License - see the [LICENSE](LICENSE) file for details.
 
-## 🎯 Game Tips
+## 🌟 Show Your Support
 
-1. **Master the Combos**: Chain counters for massive score multipliers
-2. **Use Powerups Wisely**: Save shields for panic emergencies
-3. **Boss Patterns**: Learn attack patterns to anticipate boss moves
-4. **Click to Counter**: On mobile, tap enemies directly for quick counters
-5. **Watch the Feed**: The Twitter feed shows what's coming next
+If you enjoy Psyduck Panic, please ⭐ star this repository and share it with friends!
+
+## 🎪 Part of Arcade Cabinet
+
+This game is part of the [Arcade Cabinet](https://github.com/arcade-cabinet) collection of retro browser games.
 
 ---
 
-Built with ❤️ using Astro + React + TypeScript
+**Built with** ❤️ **using** [Astro](https://astro.build) + [React](https://react.dev) + [TypeScript](https://www.typescriptlang.org/)
+
+**[Play Now →](https://arcade-cabinet.github.io/psyduck-panic/)**
