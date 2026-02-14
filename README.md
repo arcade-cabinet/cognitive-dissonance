@@ -160,7 +160,7 @@ This is an educational project demonstrating modern web game development with As
 
 ## 📄 License
 
-ISC
+MIT
 
 ## 🎯 Game Tips
 
