@@ -220,6 +220,7 @@ export class GameLogic {
     const pu = POWERUPS[Math.floor(Math.random() * POWERUPS.length)];
     this.powerups.push({
       ...pu,
+      instanceId: Date.now() + Math.random(), // Add a unique ID for each instance
       x: 100 + Math.random() * (W - 200),
       y: -30,
       vy: 0.6 + Math.random() * 0.4,
