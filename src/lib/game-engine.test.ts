@@ -122,6 +122,9 @@ describe('GameEngine', () => {
 
       expect(game.running).toBe(true);
       expect(game.wave).toBe(0);
+
+      // Stop the game to prevent runaway animation frames
+      game.running = false;
     });
   });
 
