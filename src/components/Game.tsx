@@ -162,34 +162,37 @@ export default function Game() {
             </div>
           </div>
           <div id="controls">
-            <div
+            <button
+              type="button"
               className="btn reality"
               id="btn-reality"
               onClick={() => handleAbility('reality')}
             >
               <div className="key-hint">1</div>REALITY<span>🦠 HYPE</span>
               <div className="cooldown-bar" id="cd-reality"></div>
-            </div>
-            <div
+            </button>
+            <button
+              type="button"
               className="btn history"
               id="btn-history"
               onClick={() => handleAbility('history')}
             >
               <div className="key-hint">2</div>HISTORY<span>📈 GROWTH</span>
               <div className="cooldown-bar" id="cd-history"></div>
-            </div>
-            <div
+            </button>
+            <button
+              type="button"
               className="btn logic"
               id="btn-logic"
               onClick={() => handleAbility('logic')}
             >
               <div className="key-hint">3</div>LOGIC<span>🤖 DEMOS</span>
               <div className="cooldown-bar" id="cd-logic"></div>
-            </div>
-            <div className="btn special" id="btn-special" onClick={handleNuke}>
+            </button>
+            <button type="button" className="btn special" id="btn-special" onClick={handleNuke}>
               <div className="key-hint">Q</div>NUKE<span>💥 ALL</span>
               <div className="cooldown-bar" id="cd-special"></div>
-            </div>
+            </button>
           </div>
         </div>
         <div id="overlay">
@@ -213,12 +216,7 @@ export default function Game() {
             <b style={{ color: '#e74c3c' }}>Q</b> Nuke
           </p>
           <div id="end-stats" className="hidden"></div>
-          <button
-            type="button"
-            className="start-btn"
-            id="start-btn"
-            onClick={handleStart}
-          >
+          <button type="button" className="start-btn" id="start-btn" onClick={handleStart}>
             START DEBATE
           </button>
         </div>
