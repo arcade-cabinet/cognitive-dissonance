@@ -227,28 +227,6 @@ export class PixiRenderer {
       }
     }
 
-    // Boss
-    if (state.boss) {
-      if (!this.bossGraphics) {
-        this.bossGraphics = new Graphics();
-        this.gameContainer.addChild(this.bossGraphics);
-      }
-      this.bossGraphics.clear();
-
-      // Draw boss
-      // Use text for boss to match original style: 👾
-      // Actually, I can't easily draw text with Graphics.
-      // I should manage a boss text sprite.
-      // For now, I'll draw a red box placeholder if I can't do text easily here,
-      // but wait, I can just add a Text to this.bossGraphics if it was a Container.
-      // Let's change bossGraphics to bossContainer later if needed.
-      // For now, let's just use a simple red square as fallback if text is hard,
-      // BUT I can use Text.
-
-      // Better: let's just make a boss text instance on the fly if needed or cache it.
-      // Since boss is unique, I'll add a member `bossText`.
-    }
-
     // Simplified Boss Rendering
     if (state.boss) {
        // Ideally would render the 👾 emoji here
@@ -258,7 +236,6 @@ export class PixiRenderer {
        if (!bossText) {
          bossText = new Text({ text: '👾', style: { fontSize: 48, fill: '#e74c3c' } });
          bossText.label = 'bossText';
-         (bossText as any).name = 'bossText';
          bossText.anchor.set(0.5);
          this.gameContainer.addChild(bossText);
        }
