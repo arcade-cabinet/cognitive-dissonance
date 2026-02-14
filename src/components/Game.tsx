@@ -81,7 +81,22 @@ export default function Game() {
   }, []);
 
   const handleStart = () => {
-    gameInstanceRef.current?.start();
+    const gameInstance = gameInstanceRef.current;
+    if (!gameInstance) return;
+    const title = document.getElementById('overlay-title')?.textContent;
+    if (title === 'CRISIS AVERTED') {
+      gameInstance.endless = true;
+      const overlay = document.getElementById('overlay');
+      if (overlay) overlay.classList.add('hidden');
+      gameInstance.running = true;
+      if (!gameInstance.sfx.ctx) gameInstance.sfx.init();
+      gameInstance.sfx.resume();
+      gameInstance.startWave(gameInstance.wave + 1);
+      gameInstance.lastFrame = performance.now();
+      requestAnimationFrame(gameInstance.loop.bind(gameInstance));
+    } else {
+      gameInstance.start();
+    }
   };
 
   const handleAbility = (type: 'reality' | 'history' | 'logic') => {
