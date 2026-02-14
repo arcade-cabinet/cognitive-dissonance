@@ -31,7 +31,7 @@
     "typescript"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/arcade-cabinet/psyduck-panic/issues"
   },
@@ -40,9 +40,13 @@
     "@astrojs/react": "^4.4.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vite-pwa/astro": "^1.2.0",
     "astro": "^5.17.2",
+    "idb": "^8.0.3",
+    "pixi.js": "^8.16.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "workbox-window": "^7.4.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.6",
