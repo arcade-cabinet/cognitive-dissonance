@@ -165,7 +165,7 @@ export class PixiRenderer {
         const entry = this.powerupMap.get(key);
         if (entry) {
           this.uiContainer.removeChild(entry.container);
-          entry.container.destroy();
+          entry.container.destroy({ children: true });
           this.powerupMap.delete(key);
         }
       }
