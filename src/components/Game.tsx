@@ -224,8 +224,7 @@ export default function Game() {
     };
   }, []);
 
-  // Handler using passed state from ref
-  const handleStartRef = (currentState: UIState) => {
+  const handleStart = (currentState: UIState) => {
     sfxRef.current?.resume();
     if (currentState.win && currentState.screen === 'gameover') {
         // Continue to endless
@@ -238,18 +237,8 @@ export default function Game() {
     }
   };
 
-  // Wrapper for button click which has closure access to latest state (unlike event listener)
-  // Actually button click handler in render will use latest closure, so direct handleStart is fine if defined in render scope.
-  const handleStartButton = () => {
-    sfxRef.current?.resume();
-    if (ui.win && ui.screen === 'gameover') {
-        dispatch({ type: 'START_ENDLESS' });
-        workerRef.current?.postMessage({ type: 'START', endless: true });
-    } else {
-        dispatch({ type: 'START_GAME' });
-        workerRef.current?.postMessage({ type: 'START', endless: false });
-    }
-  };
+  // You can now use `handleStart(uiRef.current)` in your keydown listener
+  // and `onClick={() => handleStart(ui)}` on your button.
 
   const handleAbility = (type: 'reality' | 'history' | 'logic') => {
     workerRef.current?.postMessage({ type: 'ABILITY', ability: type });
