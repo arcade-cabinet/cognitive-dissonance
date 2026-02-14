@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Psyduck Panic: Evolution Deluxe - A browser-based game",
   "type": "module",
+  "packageManager": "pnpm@10.13.0",
   "scripts": {
     "dev": "astro dev",
     "build": "astro check && astro build",
