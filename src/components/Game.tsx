@@ -4,6 +4,14 @@ import '../styles/game.css';
 
 let gameInstance: GameEngine | null = null;
 
+/**
+ * Mounts the game's React UI and initializes the singleton GameEngine for the canvas-based game.
+ *
+ * Sets up responsive scaling and input bindings (keyboard, control buttons, pointer, and touch)
+ * for the game canvas and renders the HUD, controls, and overlay UI.
+ *
+ * @returns The React element tree for the game interface, including the canvas, HUD, controls, and overlay.
+ */
 export default function Game() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
