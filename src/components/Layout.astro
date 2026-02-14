@@ -12,6 +12,21 @@ const { title } = Astro.props;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="generator" content={Astro.generator} />
+    <meta name="description" content="Psyduck Panic: Evolution Deluxe - A retro browser game where you counter AI hype thought bubbles before your brother's brain melts from doomscrolling!" />
+    <meta name="keywords" content="game, browser game, retro game, astro, react, typescript" />
+    <meta name="author" content="Psyduck Panic" />
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content="Counter AI hype thought bubbles in this retro browser game!" />
+    <meta property="og:site_name" content="Psyduck Panic" />
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content="Counter AI hype thought bubbles in this retro browser game!" />
+    
     <title>{title}</title>
   </head>
   <body>
