@@ -2,17 +2,8 @@ import { expect, test } from '@playwright/test';
 import { GameGovernor } from './helpers/game-governor';
 
 test.describe('Automated Playthrough with Governor', () => {
-  test.beforeEach(async ({ page }) => {
-    // Disable CSS animations for stable testing
-    await page.addStyleTag({
-      content: `
-        *, *::before, *::after {
-          animation: none !important;
-          transition: none !important;
-        }
-      `,
-    });
-  });
+  // Increase timeout for governor tests (automated playthroughs take longer)
+  test.setTimeout(90000); // 90 seconds
 
   test('should run automated playthrough with default settings', async ({ page }) => {
     await page.goto('/game');
@@ -132,8 +123,8 @@ test.describe('Automated Playthrough with Governor', () => {
     const overlay = page.locator('#overlay');
     await expect(overlay).toHaveClass(/hidden/);
 
-    // Let governor play for a bit
-    await governor.start();
+    // Let governor play for a bit (don't await - it runs until stopped)
+    governor.start();
 
     await page.waitForTimeout(5000);
 

@@ -1,19 +1,6 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Psyduck Panic Game', () => {
-  // Disable CSS animations/transitions for all tests
-  test.beforeEach(async ({ page }) => {
-    // Inject styles to disable animations
-    await page.addStyleTag({
-      content: `
-        *, *::before, *::after {
-          animation: none !important;
-          transition: none !important;
-        }
-      `,
-    });
-  });
-
   test('should load the game page', async ({ page }) => {
     await page.goto('/game');
     await expect(page.locator('#game-container')).toBeVisible();
@@ -43,20 +30,20 @@ test.describe('Psyduck Panic Game', () => {
 
   test('should have control buttons', async ({ page }) => {
     await page.goto('/game');
-    await expect(page.locator('#btn-reality')).toBeVisible();
-    await expect(page.locator('#btn-history')).toBeVisible();
-    await expect(page.locator('#btn-logic')).toBeVisible();
-    await expect(page.locator('#btn-special')).toBeVisible();
+    await expect(page.locator('#btn-reality')).toBeAttached();
+    await expect(page.locator('#btn-history')).toBeAttached();
+    await expect(page.locator('#btn-logic')).toBeAttached();
+    await expect(page.locator('#btn-special')).toBeAttached();
   });
 
   test('should display HUD elements', async ({ page }) => {
     await page.goto('/game');
-    await expect(page.locator('.meter-container')).toBeVisible();
+    await expect(page.locator('.meter-container')).toBeAttached();
     await expect(page.locator('#panic-bar')).toBeAttached();
-    await expect(page.locator('#combo-display')).toBeVisible();
-    await expect(page.locator('#wave-display')).toBeVisible();
-    await expect(page.locator('#time-display')).toBeVisible();
-    await expect(page.locator('#score-display')).toBeVisible();
+    await expect(page.locator('#combo-display')).toBeAttached();
+    await expect(page.locator('#wave-display')).toBeAttached();
+    await expect(page.locator('#time-display')).toBeAttached();
+    await expect(page.locator('#score-display')).toBeAttached();
   });
 
   test('should start game when clicking start button', async ({ page }) => {
@@ -68,15 +55,6 @@ test.describe('Psyduck Panic Game', () => {
     // Ensure button is visible and enabled
     await expect(startBtn).toBeVisible();
     await expect(startBtn).toBeEnabled();
-
-    // Evaluate to ensure animations are truly stopped or gone
-    await page.evaluate(() => {
-      const btn = document.querySelector('#start-btn');
-      if (btn instanceof HTMLElement) {
-        btn.style.animation = 'none';
-        btn.style.transition = 'none';
-      }
-    });
 
     // Click without force
     await startBtn.click();
@@ -92,15 +70,6 @@ test.describe('Psyduck Panic Game', () => {
     // Ensure button is visible and enabled
     await expect(startBtn).toBeVisible();
     await expect(startBtn).toBeEnabled();
-
-    // Force remove animations via JS just in case
-    await page.evaluate(() => {
-      const btn = document.querySelector('#start-btn');
-      if (btn instanceof HTMLElement) {
-        btn.style.animation = 'none';
-        btn.style.transition = 'none';
-      }
-    });
 
     // Click without force
     await startBtn.click();

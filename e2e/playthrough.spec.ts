@@ -1,18 +1,6 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Complete Game Playthrough', () => {
-  test.beforeEach(async ({ page }) => {
-    // Disable CSS animations/transitions for stable testing
-    await page.addStyleTag({
-      content: `
-        *, *::before, *::after {
-          animation: none !important;
-          transition: none !important;
-        }
-      `,
-    });
-  });
-
   test('should complete a full game playthrough from start to wave 1', async ({ page }) => {
     // Navigate to game
     await page.goto('/game');

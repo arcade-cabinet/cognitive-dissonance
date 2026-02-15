@@ -96,6 +96,9 @@ canvas {
   justify-content: space-between;
   z-index: 60;
 }
+#ui-layer.hidden {
+  display: none;
+}
 
 .hud-top {
   display: flex;
@@ -142,6 +145,7 @@ canvas {
 }
 #panic-bar {
   width: 0%;
+  min-width: 1px;
   height: 100%;
   background: linear-gradient(90deg, #2ecc71, #f1c40f 50%, #e74c3c);
   transition: width 0.15s ease-out;
@@ -364,6 +368,9 @@ canvas {
   z-index: 100;
   color: white;
 }
+#overlay.hidden {
+  display: none;
+}
 #overlay h1 {
   color: #f1c40f;
   margin-bottom: 6px;
@@ -409,8 +416,14 @@ canvas {
     0 6px 0 #7b241c,
     0 0 30px rgba(231, 76, 60, 0.3);
   transition: all 0.1s;
-  animation: pulse 1.5s infinite;
   border-radius: 4px;
+}
+
+/* Only animate when user hasn't requested reduced motion */
+@media (prefers-reduced-motion: no-preference) {
+  .start-btn {
+    animation: pulse 1.5s infinite;
+  }
 }
 .start-btn:active {
   transform: translateY(6px);
