@@ -55,7 +55,8 @@ export default defineConfig({
         ...devices['Pixel 5'], // Use Pixel 5 as base (similar Android specs)
         viewport: { width: 360, height: 800 },
         deviceScaleFactor: 3,
-        userAgent: 'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
+        userAgent:
+          'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
       },
     },
 

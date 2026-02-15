@@ -5,7 +5,7 @@
  * Provides adaptive layout calculations and viewport management.
  */
 
-import { GAME_WIDTH, GAME_HEIGHT } from './constants';
+import { GAME_HEIGHT, GAME_WIDTH } from './constants';
 
 export type DeviceType = 'phone' | 'tablet' | 'foldable' | 'desktop';
 export type Orientation = 'portrait' | 'landscape';
@@ -48,7 +48,7 @@ export function detectDevice(): DeviceInfo {
   const isTouchDevice =
     'ontouchstart' in window ||
     navigator.maxTouchPoints > 0 ||
-    // @ts-ignore - some browsers
+    // @ts-expect-error - some browsers
     navigator.msMaxTouchPoints > 0;
 
   // Platform detection
@@ -110,9 +110,9 @@ export function detectDevice(): DeviceInfo {
  */
 function detectFoldable(): boolean {
   // Check for Window Segments API (foldable devices)
-  // @ts-ignore - experimental API
+  // @ts-expect-error - experimental API
   if ('getWindowSegments' in window.visualViewport) {
-    // @ts-ignore
+    // @ts-expect-error
     const segments = window.visualViewport.getWindowSegments();
     return segments && segments.length > 1;
   }
@@ -134,9 +134,9 @@ function detectFoldable(): boolean {
  */
 function detectFoldState(): 'folded' | 'unfolded' | 'tent' | 'book' {
   // Try to use Device Posture API if available
-  // @ts-ignore experimental API
+  // @ts-expect-error experimental API
   if ('devicePosture' in navigator) {
-    // @ts-ignore experimental API
+    // @ts-expect-error experimental API
     const posture = navigator.devicePosture.type;
     if (posture === 'folded') return 'folded';
     if (posture === 'continuous') return 'unfolded';
@@ -296,7 +296,7 @@ export function createResizeObserver(
   callback: (viewport: ViewportDimensions, deviceInfo: DeviceInfo) => void
 ): () => void {
   let resizeTimeout: number;
-  
+
   const handleResize = () => {
     // Debounce rapid resize events
     clearTimeout(resizeTimeout);
@@ -354,9 +354,9 @@ export function createResizeObserver(
   }
 
   // Foldable-specific events
-  // @ts-ignore experimental API
+  // @ts-expect-error experimental API
   if (window.screen?.orientation) {
-    // @ts-ignore experimental API
+    // @ts-expect-error experimental API
     window.screen.orientation.addEventListener('change', handleOrientationChange);
   }
 
@@ -373,9 +373,9 @@ export function createResizeObserver(
       window.visualViewport.removeEventListener('resize', handleResize);
     }
 
-    // @ts-ignore experimental API
+    // @ts-expect-error experimental API
     if (window.screen?.orientation) {
-      // @ts-ignore experimental API
+      // @ts-expect-error experimental API
       window.screen.orientation.removeEventListener('change', handleOrientationChange);
     }
   };
