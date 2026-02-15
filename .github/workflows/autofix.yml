@@ -54,17 +54,19 @@ jobs:
         run: |
           echo "$USER_PROMPT" > prompt.txt
 
-- name: Save last commit content
+      - name: Save last commit content
         run: |
-          printf '\n\nContent of the latest commit (in the format of `git show`):\n' >> prompt.txt
-          echo '
+          printf '\n\nContent of the latest commit (metadata and truncated diff):\n' >> prompt.txt
+          echo '```' >> prompt.txt
+          git show --stat >> prompt.txt
+          printf '\nDiff preview (first 100 lines):\n' >> prompt.txt
+          git show --pretty=format:"" | head -n 100 >> prompt.txt
+          printf '\n[Diff truncated for brevity]\n' >> prompt.txt
+          echo '```' >> prompt.txt
 
       - name: Assemble Jules payload
-        env:
-          STARTING_BRANCH: ${{ github.event.workflow_run.head_branch }}
-          REPO_FULL_NAME: ${{ github.repository }}
         run: |
-          jq -n --arg jules_prompt "$(cat prompt.txt)" --arg starting_branch "$STARTING_BRANCH" --arg repo_full_name "$REPO_FULL_NAME" '{
+          jq -n --arg jules_prompt "$(cat prompt.txt)" --arg starting_branch "${{ github.event.workflow_run.head_branch }}" --arg repo_full_name "${{ github.repository }}" '{
               "prompt": $jules_prompt,
               "sourceContext": {
                 "source": "sources/github/\($repo_full_name)",
@@ -83,5 +85,5 @@ jobs:
           curl -f 'https://jules.googleapis.com/v1alpha/sessions' \
             -X POST \
             -H "Content-Type: application/json" \
-            -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
-            -d `@jules_payload.json`
+            -H "X-Goog-Api-Key: $JULES_API_KEY" \
+            -d @jules_payload.json
