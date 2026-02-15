@@ -57,7 +57,7 @@
     "@capacitor/keyboard": "^8.0.0",
     "@capacitor/screen-orientation": "^8.0.1",
     "@capacitor/status-bar": "^8.0.1",
-    "animejs": "3.2.2",
+    "animejs": "4.3.6",
     "idb": "^8.0.3",
     "pixi.js": "^8.16.0",
     "react": "^19.2.4",

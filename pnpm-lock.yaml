@@ -36,8 +36,8 @@ importers:
         specifier: ^8.0.1
         version: 8.0.1(@capacitor/core@8.1.0)
       animejs:
-        specifier: 3.2.2
-        version: 3.2.2
+        specifier: 4.3.6
+        version: 4.3.6
       idb:
         specifier: ^8.0.3
         version: 8.0.3
@@ -990,8 +990,8 @@ packages:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
 
-  animejs@3.2.2:
-    resolution: {integrity: sha512-Ao95qWLpDPXXM+WrmwcKbl6uNlC5tjnowlaRYtuVDHHoygjtIPfDUoK9NthrlZsQSKjZXlmji2TrBUAVbiH0LQ==}
+  animejs@4.3.6:
+    resolution: {integrity: sha512-rzZ4bDc8JAtyx6hYwxj7s5M/yWfnM5qqY4hZDnhy1cWFvMb6H5/necHS2sbCY3WQTDbRLuZL10dPXSxSCFOr/w==}
 
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
@@ -2660,7 +2660,7 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  animejs@3.2.2: {}
+  animejs@4.3.6: {}
 
   ansi-regex@5.0.1: {}
 
