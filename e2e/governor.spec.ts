@@ -2,6 +2,9 @@ import { expect, test } from '@playwright/test';
 import { GameGovernor } from './helpers/game-governor';
 
 test.describe('Automated Playthrough with Governor', () => {
+  // Increase timeout for governor tests (automated playthroughs take longer)
+  test.setTimeout(90000); // 90 seconds
+
   test('should run automated playthrough with default settings', async ({ page }) => {
     await page.goto('/game');
 
