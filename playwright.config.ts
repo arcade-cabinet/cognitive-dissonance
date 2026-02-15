@@ -55,16 +55,16 @@ export default defineConfig({
       testMatch: /.*\.(spec|test)\.ts/, // Run all tests
     },
 
-    // Comprehensive device testing (only for device-responsive.spec.ts)
+    // Comprehensive device testing - representative devices from each category run all tests
     {
       name: 'Desktop Firefox',
       use: { ...devices['Desktop Firefox'] },
-      testMatch: /device-responsive\.spec\.ts/,
+      testMatch: /.*\.(spec|test)\.ts/, // Run all tests
     },
     {
       name: 'Desktop Safari',
       use: { ...devices['Desktop Safari'] },
-      testMatch: /device-responsive\.spec\.ts/,
+      testMatch: /.*\.(spec|test)\.ts/, // Run all tests
     },
     {
       name: 'iPhone 12 Pro Portrait',
@@ -84,7 +84,7 @@ export default defineConfig({
     {
       name: 'Pixel 5 Portrait',
       use: { ...devices['Pixel 5'] },
-      testMatch: /device-responsive\.spec\.ts/,
+      testMatch: /.*\.(spec|test)\.ts/, // Run all tests
     },
     {
       name: 'Galaxy S21 Portrait',
@@ -102,14 +102,14 @@ export default defineConfig({
       use: {
         ...devices['iPhone 12 landscape'],
       },
-      testMatch: /device-responsive\.spec\.ts/,
+      testMatch: /.*\.(spec|test)\.ts/, // Run all tests
     },
     {
       name: 'Pixel 5 Landscape',
       use: {
         ...devices['Pixel 5 landscape'],
       },
-      testMatch: /device-responsive\.spec\.ts/,
+      testMatch: /.*\.(spec|test)\.ts/, // Run all tests
     },
     {
       name: 'iPad Pro 12.9 Portrait',
@@ -133,10 +133,10 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
-      testMatch: /device-responsive\.spec\.ts/,
+      testMatch: /.*\.(spec|test)\.ts/, // Run all tests
     },
     {
-      name: 'Samsung Galaxy Fold Folded',
+      name: 'Samsung Galaxy Fold Folded Portrait',
       use: {
         viewport: { width: 280, height: 653 },
         userAgent:
@@ -145,10 +145,34 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
-      testMatch: /device-responsive\.spec\.ts/,
+      testMatch: /.*\.(spec|test)\.ts/, // Run all tests
     },
     {
-      name: 'Samsung Galaxy Fold Unfolded',
+      name: 'Samsung Galaxy Fold Folded Landscape',
+      use: {
+        viewport: { width: 653, height: 280 },
+        userAgent:
+          'Mozilla/5.0 (Linux; Android 11; SM-F916U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      },
+      testMatch: /.*\.(spec|test)\.ts/, // Run all tests
+    },
+    {
+      name: 'Samsung Galaxy Fold Unfolded Portrait',
+      use: {
+        viewport: { width: 512, height: 717 },
+        userAgent:
+          'Mozilla/5.0 (Linux; Android 11; SM-F916U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      },
+      testMatch: /.*\.(spec|test)\.ts/, // Run all tests
+    },
+    {
+      name: 'Samsung Galaxy Fold Unfolded Landscape',
       use: {
         viewport: { width: 717, height: 512 },
         userAgent:
@@ -157,7 +181,7 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
-      testMatch: /device-responsive\.spec\.ts/,
+      testMatch: /.*\.(spec|test)\.ts/, // Run all tests
     },
     {
       name: 'Surface Duo Portrait',
