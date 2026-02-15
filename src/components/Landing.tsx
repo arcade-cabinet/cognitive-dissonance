@@ -1,4 +1,4 @@
-import anime from 'animejs';
+import { animate } from 'animejs';
 import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/landing.css';
@@ -35,36 +35,28 @@ export default function Landing() {
     bubbles.forEach((bubble, index) => {
       const data = bubbleData[index];
 
-      // Set initial position
-      anime.set(bubble, {
+      // Set initial position using animate with duration 0
+      animate(bubble as HTMLElement, {
         left: `${data.initialLeft}%`,
         bottom: '-5%',
         opacity: 0,
+        duration: 0,
       });
 
       // Create floating animation with anime.js
-      anime({
-        targets: bubble,
-        translateY: [{ value: -window.innerHeight - 100, duration: data.duration }],
+      animate(bubble as HTMLElement, {
+        translateY: -window.innerHeight - 100,
         translateX: [
-          { value: () => (Math.random() - 0.5) * 200, duration: 3000, easing: 'easeInOutQuad' },
-          { value: () => (Math.random() - 0.5) * 200, duration: 3000, easing: 'easeInOutQuad' },
-          { value: () => (Math.random() - 0.5) * 200, duration: 3000, easing: 'easeInOutQuad' },
+          () => (Math.random() - 0.5) * 200,
+          () => (Math.random() - 0.5) * 200,
+          () => (Math.random() - 0.5) * 200,
         ],
-        rotate: [{ value: 360, duration: data.rotationDuration }],
-        opacity: [
-          { value: 0.4, duration: 1000, easing: 'easeInQuad' },
-          { value: 0.4, duration: 12000 },
-          { value: 0, duration: 2000, easing: 'easeOutQuad' },
-        ],
-        scale: [
-          { value: 1, duration: 0 },
-          { value: 1.2, duration: 7000, easing: 'easeInOutSine' },
-          { value: 0.8, duration: 7000, easing: 'easeInOutSine' },
-        ],
+        rotate: 360,
+        opacity: [0.4, 0.4, 0],
+        scale: [1, 1.2, 0.8],
         loop: true,
         delay: data.delay,
-        easing: 'linear',
+        duration: data.duration,
       });
     });
   }, [bubbleData]);

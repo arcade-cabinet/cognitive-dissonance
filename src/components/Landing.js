@@ -1,489 +1,54 @@
-import anime from 'animejs';
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { animate } from 'animejs';
 import { useEffect, useMemo, useRef } from 'react';
-import { jsx as _jsx, jsxs as _jsxs } from 'react/jsx-runtime';
 import { useNavigate } from 'react-router-dom';
 import '../styles/landing.css';
 export default function Landing() {
-  const navigate = useNavigate();
-  const bubblesRef = useRef(null);
-  // Stabilize random bubble values using useMemo
-  const bubbleData = useMemo(
-    () =>
-      Array.from({ length: 20 }, (_, i) => ({
+    const navigate = useNavigate();
+    const bubblesRef = useRef(null);
+    // Stabilize random bubble values using useMemo
+    const bubbleData = useMemo(() => Array.from({ length: 20 }, (_, i) => ({
         id: `bubble-${i}`,
         emoji: ['🦠', '📈', '🤖', '💭', '⚡'][Math.floor(Math.random() * 5)],
         initialLeft: Math.random() * 100,
         duration: 15000 + Math.random() * 10000,
         rotationDuration: 8000 + Math.random() * 4000,
         delay: i * 800 + Math.random() * 2000,
-      })),
-    []
-  );
-  const startGame = () => {
-    navigate('/game');
-  };
-  // Animate bubbles with anime.js
-  useEffect(() => {
-    if (!bubblesRef.current) return;
-    const bubbles = bubblesRef.current.querySelectorAll('.bubble');
-    // Animate each bubble independently using stable data
-    bubbles.forEach((bubble, index) => {
-      const data = bubbleData[index];
-      // Set initial position
-      anime.set(bubble, {
-        left: `${data.initialLeft}%`,
-        bottom: '-5%',
-        opacity: 0,
-      });
-      // Create floating animation with anime.js
-      anime({
-        targets: bubble,
-        translateY: [{ value: -window.innerHeight - 100, duration: data.duration }],
-        translateX: [
-          { value: () => (Math.random() - 0.5) * 200, duration: 3000, easing: 'easeInOutQuad' },
-          { value: () => (Math.random() - 0.5) * 200, duration: 3000, easing: 'easeInOutQuad' },
-          { value: () => (Math.random() - 0.5) * 200, duration: 3000, easing: 'easeInOutQuad' },
-        ],
-        rotate: [{ value: 360, duration: data.rotationDuration }],
-        opacity: [
-          { value: 0.4, duration: 1000, easing: 'easeInQuad' },
-          { value: 0.4, duration: 12000 },
-          { value: 0, duration: 2000, easing: 'easeOutQuad' },
-        ],
-        scale: [
-          { value: 1, duration: 0 },
-          { value: 1.2, duration: 7000, easing: 'easeInOutSine' },
-          { value: 0.8, duration: 7000, easing: 'easeInOutSine' },
-        ],
-        loop: true,
-        delay: data.delay,
-        easing: 'linear',
-      });
-    });
-  }, [bubbleData]);
-  return _jsxs('div', {
-    className: 'landing-container',
-    children: [
-      _jsxs('div', {
-        className: 'animated-bg',
-        children: [
-          _jsx('div', {
-            className: 'floating-bubbles',
-            ref: bubblesRef,
-            children: bubbleData.map((data) =>
-              _jsx('div', { className: 'bubble', children: data.emoji }, data.id)
-            ),
-          }),
-          _jsx('div', { className: 'grid-overlay' }),
-        ],
-      }),
-      _jsxs('section', {
-        className: 'hero',
-        children: [
-          _jsxs('div', {
-            className: 'hero-content',
-            children: [
-              _jsxs('div', {
-                className: 'glitch-wrapper',
-                children: [
-                  _jsx('h1', {
-                    className: 'title glitch',
-                    'data-text': 'PSYDUCK PANIC',
-                    children: 'PSYDUCK PANIC',
-                  }),
-                  _jsxs('div', {
-                    className: 'subtitle-wrapper',
-                    children: [
-                      _jsx('p', { className: 'subtitle', children: 'EVOLUTION DELUXE' }),
-                      _jsxs('div', {
-                        className: 'version-tag',
-                        children: ['v1.0 ', '//', ' NOW PLAYING'],
-                      }),
-                    ],
-                  }),
+    })), []);
+    const startGame = () => {
+        navigate('/game');
+    };
+    // Animate bubbles with anime.js
+    useEffect(() => {
+        if (!bubblesRef.current)
+            return;
+        const bubbles = bubblesRef.current.querySelectorAll('.bubble');
+        // Animate each bubble independently using stable data
+        bubbles.forEach((bubble, index) => {
+            const data = bubbleData[index];
+            // Set initial position using animate with duration 0
+            animate(bubble, {
+                left: `${data.initialLeft}%`,
+                bottom: '-5%',
+                opacity: 0,
+                duration: 0,
+            });
+            // Create floating animation with anime.js
+            animate(bubble, {
+                translateY: -window.innerHeight - 100,
+                translateX: [
+                    () => (Math.random() - 0.5) * 200,
+                    () => (Math.random() - 0.5) * 200,
+                    () => (Math.random() - 0.5) * 200,
                 ],
-              }),
-              _jsx('div', {
-                className: 'tagline',
-                children: _jsxs('p', {
-                  className: 'tagline-text',
-                  children: [
-                    _jsx('span', { className: 'accent', children: 'Counter AI hype' }),
-                    " thought bubbles before your brother's brain",
-                    _jsx('span', { className: 'highlight', children: ' transforms into Psyduck' }),
-                  ],
-                }),
-              }),
-              _jsxs('div', {
-                className: 'cta-container',
-                children: [
-                  _jsx('button', {
-                    type: 'button',
-                    onClick: startGame,
-                    className: 'cta-button primary',
-                    children: _jsxs('span', {
-                      className: 'button-inner',
-                      children: [
-                        _jsx('span', { className: 'button-icon', children: '\uD83C\uDFAE' }),
-                        _jsx('span', { className: 'button-text', children: 'START GAME' }),
-                        _jsx('span', { className: 'button-shine' }),
-                      ],
-                    }),
-                  }),
-                  _jsx('a', {
-                    href: '#story',
-                    className: 'cta-button secondary',
-                    children: _jsx('span', { className: 'button-text', children: 'LEARN MORE' }),
-                  }),
-                ],
-              }),
-              _jsxs('div', {
-                className: 'features-quick',
-                children: [
-                  _jsxs('div', {
-                    className: 'feature-badge',
-                    children: [
-                      _jsx('span', { className: 'badge-icon', children: '\u26A1' }),
-                      _jsx('span', { className: 'badge-text', children: '60 FPS WebGL' }),
-                    ],
-                  }),
-                  _jsxs('div', {
-                    className: 'feature-badge',
-                    children: [
-                      _jsx('span', { className: 'badge-icon', children: '\uD83D\uDCF1' }),
-                      _jsx('span', { className: 'badge-text', children: 'Cross-Platform' }),
-                    ],
-                  }),
-                  _jsxs('div', {
-                    className: 'feature-badge',
-                    children: [
-                      _jsx('span', { className: 'badge-icon', children: '\uD83C\uDFAF' }),
-                      _jsx('span', { className: 'badge-text', children: '3 Game Modes' }),
-                    ],
-                  }),
-                ],
-              }),
-            ],
-          }),
-          _jsx('div', {
-            className: 'character-showcase',
-            children: _jsxs('div', {
-              className: 'character-frame',
-              children: [
-                _jsxs('div', {
-                  className: 'character normal',
-                  children: [
-                    _jsx('div', { className: 'character-label', children: 'NORMAL' }),
-                    _jsx('div', {
-                      className: 'emoji-character',
-                      children: '\uD83E\uDDD1\u200D\uD83D\uDCBB',
-                    }),
-                    _jsx('div', {
-                      className: 'panic-indicator',
-                      children: _jsx('div', { className: 'panic-bar', style: { width: '20%' } }),
-                    }),
-                  ],
-                }),
-                _jsx('div', { className: 'arrow', 'aria-hidden': 'true', children: '\u2192' }),
-                _jsxs('div', {
-                  className: 'character panic',
-                  children: [
-                    _jsx('div', { className: 'character-label', children: 'PANIC' }),
-                    _jsx('div', {
-                      className: 'emoji-character stressed',
-                      children: '\uD83D\uDE30',
-                    }),
-                    _jsx('div', {
-                      className: 'panic-indicator',
-                      children: _jsx('div', {
-                        className: 'panic-bar warning',
-                        style: { width: '60%' },
-                      }),
-                    }),
-                  ],
-                }),
-                _jsx('div', { className: 'arrow', 'aria-hidden': 'true', children: '\u2192' }),
-                _jsxs('div', {
-                  className: 'character psyduck',
-                  children: [
-                    _jsx('div', { className: 'character-label', children: 'PSYDUCK' }),
-                    _jsx('div', { className: 'emoji-character evolved', children: '\uD83E\uDD86' }),
-                    _jsx('div', {
-                      className: 'panic-indicator',
-                      children: _jsx('div', {
-                        className: 'panic-bar danger',
-                        style: { width: '100%' },
-                      }),
-                    }),
-                  ],
-                }),
-              ],
-            }),
-          }),
-        ],
-      }),
-      _jsxs('section', {
-        className: 'story',
-        id: 'story',
-        children: [
-          _jsxs('div', {
-            className: 'section-header',
-            children: [
-              _jsx('h2', { className: 'section-title', children: 'THE CRISIS' }),
-              _jsx('div', {
-                className: 'section-subtitle',
-                children: 'A Tale of Tech Hype Gone Wrong',
-              }),
-            ],
-          }),
-          _jsxs('div', {
-            className: 'story-content',
-            children: [
-              _jsxs('div', {
-                className: 'story-card',
-                children: [
-                  _jsx('div', { className: 'card-icon', children: '\uD83C\uDF10' }),
-                  _jsx('h3', { children: 'The Setup' }),
-                  _jsx('p', {
-                    children:
-                      'Your brother is doom-scrolling tech Twitter. Every post is more hyped than the last. "AGI next week!" "This changes everything!" "We\'re all gonna make it!"',
-                  }),
-                ],
-              }),
-              _jsxs('div', {
-                className: 'story-card',
-                children: [
-                  _jsx('div', { className: 'card-icon', children: '\uD83E\uDDE0' }),
-                  _jsx('h3', { children: 'The Problem' }),
-                  _jsx('p', {
-                    children:
-                      "His brain can't handle it. The panic meter rises. Reality distorts. Logic crumbles. He's transforming... into a Psyduck.",
-                  }),
-                ],
-              }),
-              _jsxs('div', {
-                className: 'story-card',
-                children: [
-                  _jsx('div', { className: 'card-icon', children: '\u2694\uFE0F' }),
-                  _jsx('h3', { children: 'Your Mission' }),
-                  _jsx('p', {
-                    children:
-                      "Counter the AI hype thought bubbles before it's too late. Use REALITY, HISTORY, and LOGIC to restore sanity. Fight the Hype Train. Face The Singularity itself.",
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-      _jsxs('section', {
-        className: 'features',
-        children: [
-          _jsxs('div', {
-            className: 'section-header',
-            children: [
-              _jsx('h2', { className: 'section-title', children: 'GAME FEATURES' }),
-              _jsx('div', { className: 'section-subtitle', children: 'Peak Retro-Modern Gaming' }),
-            ],
-          }),
-          _jsxs('div', {
-            className: 'features-grid',
-            children: [
-              _jsxs('div', {
-                className: 'feature-card',
-                children: [
-                  _jsx('div', { className: 'feature-icon', children: '\uD83C\uDFAE' }),
-                  _jsx('h3', { children: 'Arcade Action' }),
-                  _jsx('p', {
-                    children:
-                      'Fast-paced gameplay with increasing difficulty. Master the three counter abilities.',
-                  }),
-                ],
-              }),
-              _jsxs('div', {
-                className: 'feature-card',
-                children: [
-                  _jsx('div', { className: 'feature-icon', children: '\uD83D\uDC7E' }),
-                  _jsx('h3', { children: 'Epic Boss Battles' }),
-                  _jsx('p', {
-                    children:
-                      'Face THE HYPE TRAIN and THE SINGULARITY in challenging multi-phase encounters.',
-                  }),
-                ],
-              }),
-              _jsxs('div', {
-                className: 'feature-card',
-                children: [
-                  _jsx('div', { className: 'feature-icon', children: '\uD83D\uDD04' }),
-                  _jsx('h3', { children: 'Endless Mode' }),
-                  _jsx('p', {
-                    children:
-                      'Beat Wave 5 to unlock endless mode. How long can you hold back the hype?',
-                  }),
-                ],
-              }),
-              _jsxs('div', {
-                className: 'feature-card',
-                children: [
-                  _jsx('div', { className: 'feature-icon', children: '\u26A1' }),
-                  _jsx('h3', { children: 'Power-Ups' }),
-                  _jsx('p', {
-                    children:
-                      'Time Warp, Clarity Shield, and 2X Score multipliers to turn the tide.',
-                  }),
-                ],
-              }),
-              _jsxs('div', {
-                className: 'feature-card',
-                children: [
-                  _jsx('div', { className: 'feature-icon', children: '\uD83C\uDFAF' }),
-                  _jsx('h3', { children: 'Combo System' }),
-                  _jsx('p', {
-                    children: 'Chain counters for massive score multipliers and momentum perks.',
-                  }),
-                ],
-              }),
-              _jsxs('div', {
-                className: 'feature-card',
-                children: [
-                  _jsx('div', { className: 'feature-icon', children: '\uD83D\uDCF1' }),
-                  _jsx('h3', { children: 'Play Anywhere' }),
-                  _jsx('p', {
-                    children:
-                      'Web, iOS, Android. Phone, tablet, desktop. Fully responsive and touch-optimized.',
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-      _jsxs('section', {
-        className: 'tech',
-        children: [
-          _jsxs('div', {
-            className: 'section-header',
-            children: [
-              _jsx('h2', { className: 'section-title', children: 'BUILT WITH' }),
-              _jsx('div', {
-                className: 'section-subtitle',
-                children: 'Modern Web Technology Stack',
-              }),
-            ],
-          }),
-          _jsxs('div', {
-            className: 'tech-stack',
-            children: [
-              _jsxs('div', {
-                className: 'tech-item',
-                children: [
-                  _jsx('span', { className: 'tech-name', children: 'PixiJS 8' }),
-                  _jsx('span', { className: 'tech-desc', children: 'WebGL Rendering' }),
-                ],
-              }),
-              _jsxs('div', {
-                className: 'tech-item',
-                children: [
-                  _jsx('span', { className: 'tech-name', children: 'React 19' }),
-                  _jsx('span', { className: 'tech-desc', children: 'UI Framework' }),
-                ],
-              }),
-              _jsxs('div', {
-                className: 'tech-item',
-                children: [
-                  _jsx('span', { className: 'tech-name', children: 'TypeScript 5' }),
-                  _jsx('span', { className: 'tech-desc', children: 'Type Safety' }),
-                ],
-              }),
-              _jsxs('div', {
-                className: 'tech-item',
-                children: [
-                  _jsx('span', { className: 'tech-name', children: 'Capacitor 8' }),
-                  _jsx('span', { className: 'tech-desc', children: 'Native Mobile' }),
-                ],
-              }),
-              _jsxs('div', {
-                className: 'tech-item',
-                children: [
-                  _jsx('span', { className: 'tech-name', children: 'Web Workers' }),
-                  _jsx('span', { className: 'tech-desc', children: '60 FPS Game Loop' }),
-                ],
-              }),
-              _jsxs('div', {
-                className: 'tech-item',
-                children: [
-                  _jsx('span', { className: 'tech-name', children: 'Vite 5' }),
-                  _jsx('span', { className: 'tech-desc', children: 'Lightning Build' }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-      _jsx('section', {
-        className: 'final-cta',
-        children: _jsxs('div', {
-          className: 'cta-content',
-          children: [
-            _jsx('h2', { className: 'cta-title', children: 'Ready to Save Your Brother?' }),
-            _jsx('p', {
-              className: 'cta-text',
-              children: 'The panic meter is rising. Every second counts.',
-            }),
-            _jsx('button', {
-              type: 'button',
-              onClick: startGame,
-              className: 'cta-button mega',
-              children: _jsxs('span', {
-                className: 'button-inner',
-                children: [
-                  _jsx('span', { className: 'button-icon pulse', children: '\uD83C\uDFAE' }),
-                  _jsx('span', { className: 'button-text', children: 'PLAY NOW' }),
-                  _jsx('span', { className: 'button-shine' }),
-                ],
-              }),
-            }),
-            _jsx('p', {
-              className: 'cta-subtext',
-              children: 'Free \u2022 No Download \u2022 All Devices',
-            }),
-          ],
-        }),
-      }),
-      _jsx('footer', {
-        className: 'footer',
-        children: _jsxs('div', {
-          className: 'footer-content',
-          children: [
-            _jsxs('div', {
-              className: 'footer-brand',
-              children: [
-                _jsx('h3', { children: 'PSYDUCK PANIC' }),
-                _jsx('p', { children: 'Evolution Deluxe Edition' }),
-              ],
-            }),
-            _jsxs('div', {
-              className: 'footer-links',
-              children: [
-                _jsx('a', {
-                  href: 'https://github.com/arcade-cabinet/psyduck-panic',
-                  target: '_blank',
-                  rel: 'noopener noreferrer',
-                  children: 'GitHub',
-                }),
-                _jsx('a', { href: '#story', children: 'About' }),
-              ],
-            }),
-            _jsxs('div', {
-              className: 'footer-credits',
-              children: [
-                _jsx('p', { children: 'Built with \u2764\uFE0F by Arcade Cabinet' }),
-                _jsx('p', { className: 'version', children: 'v1.0.0' }),
-              ],
-            }),
-          ],
-        }),
-      }),
-    ],
-  });
+                rotate: 360,
+                opacity: [0.4, 0.4, 0],
+                scale: [1, 1.2, 0.8],
+                loop: true,
+                delay: data.delay,
+                duration: data.duration,
+            });
+        });
+    }, [bubbleData]);
+    return (_jsxs("div", { className: "landing-container", children: [_jsxs("div", { className: "animated-bg", children: [_jsx("div", { className: "floating-bubbles", ref: bubblesRef, children: bubbleData.map((data) => (_jsx("div", { className: "bubble", children: data.emoji }, data.id))) }), _jsx("div", { className: "grid-overlay" })] }), _jsxs("section", { className: "hero", children: [_jsxs("div", { className: "hero-content", children: [_jsxs("div", { className: "glitch-wrapper", children: [_jsx("h1", { className: "title glitch", "data-text": "PSYDUCK PANIC", children: "PSYDUCK PANIC" }), _jsxs("div", { className: "subtitle-wrapper", children: [_jsx("p", { className: "subtitle", children: "EVOLUTION DELUXE" }), _jsxs("div", { className: "version-tag", children: ["v1.0 ", '//', " NOW PLAYING"] })] })] }), _jsx("div", { className: "tagline", children: _jsxs("p", { className: "tagline-text", children: [_jsx("span", { className: "accent", children: "Counter AI hype" }), " thought bubbles before your brother's brain", _jsx("span", { className: "highlight", children: " transforms into Psyduck" })] }) }), _jsxs("div", { className: "cta-container", children: [_jsx("button", { type: "button", onClick: startGame, className: "cta-button primary", children: _jsxs("span", { className: "button-inner", children: [_jsx("span", { className: "button-icon", children: "\uD83C\uDFAE" }), _jsx("span", { className: "button-text", children: "START GAME" }), _jsx("span", { className: "button-shine" })] }) }), _jsx("a", { href: "#story", className: "cta-button secondary", children: _jsx("span", { className: "button-text", children: "LEARN MORE" }) })] }), _jsxs("div", { className: "features-quick", children: [_jsxs("div", { className: "feature-badge", children: [_jsx("span", { className: "badge-icon", children: "\u26A1" }), _jsx("span", { className: "badge-text", children: "60 FPS WebGL" })] }), _jsxs("div", { className: "feature-badge", children: [_jsx("span", { className: "badge-icon", children: "\uD83D\uDCF1" }), _jsx("span", { className: "badge-text", children: "Cross-Platform" })] }), _jsxs("div", { className: "feature-badge", children: [_jsx("span", { className: "badge-icon", children: "\uD83C\uDFAF" }), _jsx("span", { className: "badge-text", children: "3 Game Modes" })] })] })] }), _jsx("div", { className: "character-showcase", children: _jsxs("div", { className: "character-frame", children: [_jsxs("div", { className: "character normal", children: [_jsx("div", { className: "character-label", children: "NORMAL" }), _jsx("div", { className: "emoji-character", children: "\uD83E\uDDD1\u200D\uD83D\uDCBB" }), _jsx("div", { className: "panic-indicator", children: _jsx("div", { className: "panic-bar", style: { width: '20%' } }) })] }), _jsx("div", { className: "arrow", "aria-hidden": "true", children: "\u2192" }), _jsxs("div", { className: "character panic", children: [_jsx("div", { className: "character-label", children: "PANIC" }), _jsx("div", { className: "emoji-character stressed", children: "\uD83D\uDE30" }), _jsx("div", { className: "panic-indicator", children: _jsx("div", { className: "panic-bar warning", style: { width: '60%' } }) })] }), _jsx("div", { className: "arrow", "aria-hidden": "true", children: "\u2192" }), _jsxs("div", { className: "character psyduck", children: [_jsx("div", { className: "character-label", children: "PSYDUCK" }), _jsx("div", { className: "emoji-character evolved", children: "\uD83E\uDD86" }), _jsx("div", { className: "panic-indicator", children: _jsx("div", { className: "panic-bar danger", style: { width: '100%' } }) })] })] }) })] }), _jsxs("section", { className: "story", id: "story", children: [_jsxs("div", { className: "section-header", children: [_jsx("h2", { className: "section-title", children: "THE CRISIS" }), _jsx("div", { className: "section-subtitle", children: "A Tale of Tech Hype Gone Wrong" })] }), _jsxs("div", { className: "story-content", children: [_jsxs("div", { className: "story-card", children: [_jsx("div", { className: "card-icon", children: "\uD83C\uDF10" }), _jsx("h3", { children: "The Setup" }), _jsx("p", { children: "Your brother is doom-scrolling tech Twitter. Every post is more hyped than the last. \"AGI next week!\" \"This changes everything!\" \"We're all gonna make it!\"" })] }), _jsxs("div", { className: "story-card", children: [_jsx("div", { className: "card-icon", children: "\uD83E\uDDE0" }), _jsx("h3", { children: "The Problem" }), _jsx("p", { children: "His brain can't handle it. The panic meter rises. Reality distorts. Logic crumbles. He's transforming... into a Psyduck." })] }), _jsxs("div", { className: "story-card", children: [_jsx("div", { className: "card-icon", children: "\u2694\uFE0F" }), _jsx("h3", { children: "Your Mission" }), _jsx("p", { children: "Counter the AI hype thought bubbles before it's too late. Use REALITY, HISTORY, and LOGIC to restore sanity. Fight the Hype Train. Face The Singularity itself." })] })] })] }), _jsxs("section", { className: "features", children: [_jsxs("div", { className: "section-header", children: [_jsx("h2", { className: "section-title", children: "GAME FEATURES" }), _jsx("div", { className: "section-subtitle", children: "Peak Retro-Modern Gaming" })] }), _jsxs("div", { className: "features-grid", children: [_jsxs("div", { className: "feature-card", children: [_jsx("div", { className: "feature-icon", children: "\uD83C\uDFAE" }), _jsx("h3", { children: "Arcade Action" }), _jsx("p", { children: "Fast-paced gameplay with increasing difficulty. Master the three counter abilities." })] }), _jsxs("div", { className: "feature-card", children: [_jsx("div", { className: "feature-icon", children: "\uD83D\uDC7E" }), _jsx("h3", { children: "Epic Boss Battles" }), _jsx("p", { children: "Face THE HYPE TRAIN and THE SINGULARITY in challenging multi-phase encounters." })] }), _jsxs("div", { className: "feature-card", children: [_jsx("div", { className: "feature-icon", children: "\uD83D\uDD04" }), _jsx("h3", { children: "Endless Mode" }), _jsx("p", { children: "Beat Wave 5 to unlock endless mode. How long can you hold back the hype?" })] }), _jsxs("div", { className: "feature-card", children: [_jsx("div", { className: "feature-icon", children: "\u26A1" }), _jsx("h3", { children: "Power-Ups" }), _jsx("p", { children: "Time Warp, Clarity Shield, and 2X Score multipliers to turn the tide." })] }), _jsxs("div", { className: "feature-card", children: [_jsx("div", { className: "feature-icon", children: "\uD83C\uDFAF" }), _jsx("h3", { children: "Combo System" }), _jsx("p", { children: "Chain counters for massive score multipliers and momentum perks." })] }), _jsxs("div", { className: "feature-card", children: [_jsx("div", { className: "feature-icon", children: "\uD83D\uDCF1" }), _jsx("h3", { children: "Play Anywhere" }), _jsx("p", { children: "Web, iOS, Android. Phone, tablet, desktop. Fully responsive and touch-optimized." })] })] })] }), _jsxs("section", { className: "tech", children: [_jsxs("div", { className: "section-header", children: [_jsx("h2", { className: "section-title", children: "BUILT WITH" }), _jsx("div", { className: "section-subtitle", children: "Modern Web Technology Stack" })] }), _jsxs("div", { className: "tech-stack", children: [_jsxs("div", { className: "tech-item", children: [_jsx("span", { className: "tech-name", children: "PixiJS 8" }), _jsx("span", { className: "tech-desc", children: "WebGL Rendering" })] }), _jsxs("div", { className: "tech-item", children: [_jsx("span", { className: "tech-name", children: "React 19" }), _jsx("span", { className: "tech-desc", children: "UI Framework" })] }), _jsxs("div", { className: "tech-item", children: [_jsx("span", { className: "tech-name", children: "TypeScript 5" }), _jsx("span", { className: "tech-desc", children: "Type Safety" })] }), _jsxs("div", { className: "tech-item", children: [_jsx("span", { className: "tech-name", children: "Capacitor 8" }), _jsx("span", { className: "tech-desc", children: "Native Mobile" })] }), _jsxs("div", { className: "tech-item", children: [_jsx("span", { className: "tech-name", children: "Web Workers" }), _jsx("span", { className: "tech-desc", children: "60 FPS Game Loop" })] }), _jsxs("div", { className: "tech-item", children: [_jsx("span", { className: "tech-name", children: "Vite 5" }), _jsx("span", { className: "tech-desc", children: "Lightning Build" })] })] })] }), _jsx("section", { className: "final-cta", children: _jsxs("div", { className: "cta-content", children: [_jsx("h2", { className: "cta-title", children: "Ready to Save Your Brother?" }), _jsx("p", { className: "cta-text", children: "The panic meter is rising. Every second counts." }), _jsx("button", { type: "button", onClick: startGame, className: "cta-button mega", children: _jsxs("span", { className: "button-inner", children: [_jsx("span", { className: "button-icon pulse", children: "\uD83C\uDFAE" }), _jsx("span", { className: "button-text", children: "PLAY NOW" }), _jsx("span", { className: "button-shine" })] }) }), _jsx("p", { className: "cta-subtext", children: "Free \u2022 No Download \u2022 All Devices" })] }) }), _jsx("footer", { className: "footer", children: _jsxs("div", { className: "footer-content", children: [_jsxs("div", { className: "footer-brand", children: [_jsx("h3", { children: "PSYDUCK PANIC" }), _jsx("p", { children: "Evolution Deluxe Edition" })] }), _jsxs("div", { className: "footer-links", children: [_jsx("a", { href: "https://github.com/arcade-cabinet/psyduck-panic", target: "_blank", rel: "noopener noreferrer", children: "GitHub" }), _jsx("a", { href: "#story", children: "About" })] }), _jsxs("div", { className: "footer-credits", children: [_jsx("p", { children: "Built with \u2764\uFE0F by Arcade Cabinet" }), _jsx("p", { className: "version", children: "v1.0.0" })] })] }) })] }));
 }
