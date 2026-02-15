@@ -58,7 +58,7 @@ jobs:
         run: |
           printf '\n\nContent of the latest commit (in the format of `git show`):\n' >> prompt.txt
           echo '```' >> prompt.txt
-          git show   >> prompt.txt
+          git show >> prompt.txt
           echo '```' >> prompt.txt
 
       - name: Assemble Jules payload
