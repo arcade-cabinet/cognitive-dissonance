@@ -46,7 +46,7 @@ export function detectDevice(): DeviceInfo {
   const isTouchDevice =
     'ontouchstart' in window ||
     navigator.maxTouchPoints > 0 ||
-    // @ts-expect-error - some browsers
+    // @ts-ignore - some browsers
     navigator.msMaxTouchPoints > 0;
 
   // Platform detection
@@ -109,9 +109,9 @@ export function detectDevice(): DeviceInfo {
  */
 function detectFoldable(): boolean {
   // Check for Window Segments API (foldable devices)
-  // @ts-expect-error - experimental API
+  // @ts-ignore - experimental API
   if ('getWindowSegments' in window.visualViewport) {
-    // @ts-expect-error
+    // @ts-ignore
     const segments = window.visualViewport.getWindowSegments();
     return segments && segments.length > 1;
   }
