@@ -1,6 +1,6 @@
 /**
  * Device Detection and Responsive Utilities
- * 
+ *
  * Smart detection for tablets, phones (portrait/landscape), foldables, and desktops.
  * Provides adaptive layout calculations and viewport management.
  */
@@ -38,39 +38,39 @@ export function detectDevice(): DeviceInfo {
   const width = window.innerWidth;
   const height = window.innerHeight;
   const pixelRatio = window.devicePixelRatio || 1;
-  
+
   // Orientation
   const orientation: Orientation = width > height ? 'landscape' : 'portrait';
-  
+
   // Touch detection
-  const isTouchDevice = 
-    'ontouchstart' in window || 
+  const isTouchDevice =
+    'ontouchstart' in window ||
     navigator.maxTouchPoints > 0 ||
-    // @ts-ignore - some browsers
+    // @ts-expect-error - some browsers
     navigator.msMaxTouchPoints > 0;
-  
+
   // Platform detection
   const userAgent = navigator.userAgent.toLowerCase();
   const isIOS = /iphone|ipad|ipod/.test(userAgent);
   const isAndroid = /android/.test(userAgent);
-  
+
   // Notch detection (approximate)
-  const hasNotch = 
-    isIOS && 
-    pixelRatio >= 3 && 
-    (width === 375 && height === 812 || // iPhone X/XS/11 Pro
-     width === 414 && height === 896 || // iPhone XR/XS Max/11/11 Pro Max
-     width === 390 && height === 844 || // iPhone 12/13/14
-     width === 393 && height === 852 || // iPhone 14 Pro
-     width === 428 && height === 926);  // iPhone 12/13/14 Pro Max
-  
+  const hasNotch =
+    isIOS &&
+    pixelRatio >= 3 &&
+    ((width === 375 && height === 812) || // iPhone X/XS/11 Pro
+      (width === 414 && height === 896) || // iPhone XR/XS Max/11/11 Pro Max
+      (width === 390 && height === 844) || // iPhone 12/13/14
+      (width === 393 && height === 852) || // iPhone 14 Pro
+      (width === 428 && height === 926)); // iPhone 12/13/14 Pro Max
+
   // Foldable detection
   const isFoldable = detectFoldable();
   const foldState = isFoldable ? detectFoldState() : undefined;
-  
+
   // Device type classification
   let type: DeviceType;
-  
+
   if (isFoldable) {
     type = 'foldable';
   } else if (!isTouchDevice) {
@@ -79,7 +79,7 @@ export function detectDevice(): DeviceInfo {
     // Distinguish between phone and tablet
     const minDimension = Math.min(width, height);
     const maxDimension = Math.max(width, height);
-    
+
     // Tablets generally have larger screens
     // Using 600px as breakpoint (common Android tablet size)
     if (minDimension >= 600 || maxDimension >= 900) {
@@ -88,7 +88,7 @@ export function detectDevice(): DeviceInfo {
       type = 'phone';
     }
   }
-  
+
   return {
     type,
     orientation,
@@ -109,23 +109,22 @@ export function detectDevice(): DeviceInfo {
  */
 function detectFoldable(): boolean {
   // Check for Window Segments API (foldable devices)
-  // @ts-ignore - experimental API
+  // @ts-expect-error - experimental API
   if ('getWindowSegments' in window.visualViewport) {
-    // @ts-ignore
+    // @ts-expect-error
     const segments = window.visualViewport.getWindowSegments();
     return segments && segments.length > 1;
   }
-  
+
   // Check for specific foldable user agents
   const userAgent = navigator.userAgent.toLowerCase();
-  const isFoldableUA = 
-    /fold|flip|duo/.test(userAgent) ||
-    /sm-f\d{3}/.test(userAgent); // Samsung Fold pattern
-  
+  const isFoldableUA = /fold|flip|duo/.test(userAgent) || /sm-f\d{3}/.test(userAgent); // Samsung Fold pattern
+
   // Check for dual-screen via media query
-  const hasDualScreen = window.matchMedia('(horizontal-viewport-segments: 2)').matches ||
-                        window.matchMedia('(vertical-viewport-segments: 2)').matches;
-  
+  const hasDualScreen =
+    window.matchMedia('(horizontal-viewport-segments: 2)').matches ||
+    window.matchMedia('(vertical-viewport-segments: 2)').matches;
+
   return isFoldableUA || hasDualScreen;
 }
 
@@ -134,21 +133,21 @@ function detectFoldable(): boolean {
  */
 function detectFoldState(): 'folded' | 'unfolded' | 'tent' | 'book' {
   // Try to use Device Posture API if available
-  // @ts-ignore - experimental API
+  // @ts-expect-error - experimental API
   if ('devicePosture' in navigator) {
-    // @ts-ignore
+    // @ts-expect-error
     const posture = navigator.devicePosture.type;
     if (posture === 'folded') return 'folded';
     if (posture === 'continuous') return 'unfolded';
   }
-  
+
   // Fallback: guess based on aspect ratio and screen size
   const aspectRatio = window.innerWidth / window.innerHeight;
-  
+
   if (aspectRatio < 0.6 || aspectRatio > 1.7) {
     return 'folded'; // Very narrow or very wide suggests folded
   }
-  
+
   return 'unfolded';
 }
 
@@ -161,23 +160,23 @@ export function calculateViewport(
   baseHeight: number,
   deviceInfo: DeviceInfo
 ): ViewportDimensions {
-  const { screenWidth, screenHeight, type, orientation, hasNotch, foldState } = deviceInfo;
-  
+  const { screenWidth, screenHeight, type, orientation, foldState } = deviceInfo;
+
   // Base aspect ratio (4:3 for 800x600)
   const baseAspectRatio = baseWidth / baseHeight;
   const screenAspectRatio = screenWidth / screenHeight;
-  
+
   // Calculate safe area insets
   const safeInsets = calculateSafeInsets(deviceInfo);
-  
+
   // Available space after safe insets
   const availableWidth = screenWidth - safeInsets.left - safeInsets.right;
   const availableHeight = screenHeight - safeInsets.top - safeInsets.bottom;
-  
+
   let width: number;
   let height: number;
   let scale: number;
-  
+
   // Special handling for foldables in folded state
   if (type === 'foldable' && foldState === 'folded') {
     // Use smaller dimension to fit within one screen
@@ -195,13 +194,13 @@ export function calculateViewport(
   else if (type === 'phone' && orientation === 'portrait') {
     width = availableWidth * 0.95;
     height = width / baseAspectRatio;
-    
+
     // If height exceeds available, constrain by height
     if (height > availableHeight * 0.85) {
       height = availableHeight * 0.85;
       width = height * baseAspectRatio;
     }
-    
+
     scale = width / baseWidth;
   }
   // Phone landscape - maximize screen usage
@@ -209,13 +208,13 @@ export function calculateViewport(
     // Try to use full width
     width = availableWidth * 0.98;
     height = width / baseAspectRatio;
-    
+
     // Constrain by height if needed
     if (height > availableHeight * 0.95) {
       height = availableHeight * 0.95;
       width = height * baseAspectRatio;
     }
-    
+
     scale = width / baseWidth;
   }
   // Tablet - use scale that fits well
@@ -229,14 +228,14 @@ export function calculateViewport(
       width = availableWidth * 0.9;
       height = width / baseAspectRatio;
     }
-    
+
     scale = width / baseWidth;
   }
   // Desktop - use comfortable size with max constraints
   else {
     const maxWidth = Math.min(availableWidth * 0.85, baseWidth * 1.5);
     const maxHeight = Math.min(availableHeight * 0.85, baseHeight * 1.5);
-    
+
     if (screenAspectRatio > baseAspectRatio) {
       height = maxHeight;
       width = height * baseAspectRatio;
@@ -244,14 +243,14 @@ export function calculateViewport(
       width = maxWidth;
       height = width / baseAspectRatio;
     }
-    
+
     scale = width / baseWidth;
   }
-  
+
   // Calculate centering offsets
   const offsetX = safeInsets.left + (availableWidth - width) / 2;
   const offsetY = safeInsets.top + (availableHeight - height) / 2;
-  
+
   return {
     width: Math.round(width),
     height: Math.round(height),
@@ -273,17 +272,19 @@ function calculateSafeInsets(deviceInfo: DeviceInfo): {
 } {
   // Try to use CSS env() values for safe areas
   const computedStyle = getComputedStyle(document.documentElement);
-  
-  const top = parseInt(computedStyle.getPropertyValue('--safe-area-inset-top') || '0') || 
-              (deviceInfo.hasNotch && deviceInfo.orientation === 'portrait' ? 44 : 0);
-  
-  const right = parseInt(computedStyle.getPropertyValue('--safe-area-inset-right') || '0') || 0;
-  
-  const bottom = parseInt(computedStyle.getPropertyValue('--safe-area-inset-bottom') || '0') ||
-                 (deviceInfo.isIOS ? 34 : 0); // iOS home indicator
-  
-  const left = parseInt(computedStyle.getPropertyValue('--safe-area-inset-left') || '0') || 0;
-  
+
+  const top =
+    parseInt(computedStyle.getPropertyValue('--safe-area-inset-top') || '0', 10) ||
+    (deviceInfo.hasNotch && deviceInfo.orientation === 'portrait' ? 44 : 0);
+
+  const right = parseInt(computedStyle.getPropertyValue('--safe-area-inset-right') || '0', 10) || 0;
+
+  const bottom =
+    parseInt(computedStyle.getPropertyValue('--safe-area-inset-bottom') || '0', 10) ||
+    (deviceInfo.isIOS ? 34 : 0); // iOS home indicator
+
+  const left = parseInt(computedStyle.getPropertyValue('--safe-area-inset-left') || '0', 10) || 0;
+
   return { top, right, bottom, left };
 }
 
@@ -294,8 +295,8 @@ export function createResizeObserver(
   callback: (viewport: ViewportDimensions, deviceInfo: DeviceInfo) => void
 ): () => void {
   let resizeTimeout: number;
-  let lastOrientation = window.orientation;
-  
+  let _lastOrientation = window.orientation;
+
   const handleResize = () => {
     // Debounce rapid resize events
     clearTimeout(resizeTimeout);
@@ -305,49 +306,49 @@ export function createResizeObserver(
       callback(viewport, deviceInfo);
     }, 150);
   };
-  
+
   const handleOrientationChange = () => {
     // Orientation change often needs a slight delay to get correct dimensions
     setTimeout(() => {
       const deviceInfo = detectDevice();
       const viewport = calculateViewport(800, 600, deviceInfo);
       callback(viewport, deviceInfo);
-      lastOrientation = window.orientation;
+      _lastOrientation = window.orientation;
     }, 100);
   };
-  
+
   // Listen for various resize events
   window.addEventListener('resize', handleResize);
   window.addEventListener('orientationchange', handleOrientationChange);
-  
+
   // Also listen for visual viewport changes (important for mobile browsers)
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', handleResize);
   }
-  
+
   // Foldable-specific events
-  // @ts-ignore - experimental API
+  // @ts-expect-error - experimental API
   if (window.screen?.orientation) {
-    // @ts-ignore
+    // @ts-expect-error
     window.screen.orientation.addEventListener('change', handleOrientationChange);
   }
-  
+
   // Initial call
   handleResize();
-  
+
   // Return cleanup function
   return () => {
     clearTimeout(resizeTimeout);
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('orientationchange', handleOrientationChange);
-    
+
     if (window.visualViewport) {
       window.visualViewport.removeEventListener('resize', handleResize);
     }
-    
-    // @ts-ignore
+
+    // @ts-expect-error
     if (window.screen?.orientation) {
-      // @ts-ignore
+      // @ts-expect-error
       window.screen.orientation.removeEventListener('change', handleOrientationChange);
     }
   };
@@ -358,10 +359,10 @@ export function createResizeObserver(
  */
 export function getUIScale(deviceInfo: DeviceInfo): number {
   const { type, screenWidth, pixelRatio } = deviceInfo;
-  
+
   // Base scale on physical screen density
   const physicalWidth = screenWidth * pixelRatio;
-  
+
   if (type === 'phone') {
     // Smaller UI for phones
     return physicalWidth < 1000 ? 0.8 : 0.9;

@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro check && astro build",
+    "build:mobile": "astro check && astro build && pnpm cap sync",
     "preview": "astro preview",
     "astro": "astro",
     "lint": "biome check .",
@@ -18,7 +19,14 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "cap:add:ios": "pnpm cap add ios",
+    "cap:add:android": "pnpm cap add android",
+    "cap:sync": "pnpm cap sync",
+    "cap:open:ios": "pnpm cap open ios",
+    "cap:open:android": "pnpm cap open android",
+    "ios": "pnpm build:mobile && pnpm cap:open:ios",
+    "android": "pnpm build:mobile && pnpm cap:open:android"
   },
   "repository": {
     "type": "git",
@@ -38,6 +46,16 @@
   "homepage": "https://github.com/arcade-cabinet/psyduck-panic#readme",
   "dependencies": {
     "@astrojs/react": "^4.4.2",
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/app": "^8.0.1",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/device": "^8.0.1",
+    "@capacitor/haptics": "^8.0.0",
+    "@capacitor/ios": "^8.1.0",
+    "@capacitor/keyboard": "^8.0.0",
+    "@capacitor/screen-orientation": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vite-pwa/astro": "^1.2.0",
