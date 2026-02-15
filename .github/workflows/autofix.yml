@@ -77,9 +77,11 @@ jobs:
             }' > jules_payload.json
 
       - name: Invoke Jules API
+        env:
+          JULES_API_KEY: ${{ secrets.GOOGLE_JULES_API_KEY }}
         run: |
           curl -f 'https://jules.googleapis.com/v1alpha/sessions' \
             -X POST \
             -H "Content-Type: application/json" \
-            -H "X-Goog-Api-Key: ${{ secrets.GOOGLE_JULES_API_KEY }}" \
-            -d @jules_payload.json
+            -H "X-Goog-Api-Key: ${JULES_API_KEY}" \
+            -d `@jules_payload.json`
