@@ -133,9 +133,9 @@ function detectFoldable(): boolean {
  */
 function detectFoldState(): 'folded' | 'unfolded' | 'tent' | 'book' {
   // Try to use Device Posture API if available
-  // @ts-expect-error - experimental API
+  // @ts-ignore - experimental API
   if ('devicePosture' in navigator) {
-    // @ts-expect-error
+    // @ts-ignore - experimental API
     const posture = navigator.devicePosture.type;
     if (posture === 'folded') return 'folded';
     if (posture === 'continuous') return 'unfolded';
@@ -295,7 +295,6 @@ export function createResizeObserver(
   callback: (viewport: ViewportDimensions, deviceInfo: DeviceInfo) => void
 ): () => void {
   let resizeTimeout: number;
-  let _lastOrientation = window.orientation;
 
   const handleResize = () => {
     // Debounce rapid resize events
@@ -313,7 +312,6 @@ export function createResizeObserver(
       const deviceInfo = detectDevice();
       const viewport = calculateViewport(800, 600, deviceInfo);
       callback(viewport, deviceInfo);
-      _lastOrientation = window.orientation;
     }, 100);
   };
 
@@ -327,9 +325,9 @@ export function createResizeObserver(
   }
 
   // Foldable-specific events
-  // @ts-expect-error - experimental API
+  // @ts-ignore - experimental API
   if (window.screen?.orientation) {
-    // @ts-expect-error
+    // @ts-ignore - experimental API
     window.screen.orientation.addEventListener('change', handleOrientationChange);
   }
 
@@ -346,9 +344,9 @@ export function createResizeObserver(
       window.visualViewport.removeEventListener('resize', handleResize);
     }
 
-    // @ts-expect-error
+    // @ts-ignore - experimental API
     if (window.screen?.orientation) {
-      // @ts-expect-error
+      // @ts-ignore - experimental API
       window.screen.orientation.removeEventListener('change', handleOrientationChange);
     }
   };

@@ -9,7 +9,7 @@ import { Capacitor } from '@capacitor/core';
 import { type DeviceInfo as CapDeviceInfo, Device } from '@capacitor/device';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Keyboard } from '@capacitor/keyboard';
-import { type OrientationType, ScreenOrientation } from '@capacitor/screen-orientation';
+import { type OrientationLockType, ScreenOrientation } from '@capacitor/screen-orientation';
 import { StatusBar, Style } from '@capacitor/status-bar';
 
 export interface EnhancedDeviceInfo {
@@ -117,7 +117,6 @@ function detectIsTablet(
   if (deviceInfo?.isVirtual !== undefined) {
     // Use native API if available
     const minDimension = Math.min(screenWidth, screenHeight);
-    const _maxDimension = Math.max(screenWidth, screenHeight);
 
     // iPad detection
     if (deviceInfo.platform === 'ios' && deviceInfo.model?.includes('iPad')) {
@@ -302,7 +301,7 @@ export async function lockOrientation(
   }
 
   try {
-    const orientationType: OrientationType =
+    const orientationType: OrientationLockType =
       orientation === 'any' ? 'any' : orientation === 'portrait' ? 'portrait' : 'landscape';
 
     await ScreenOrientation.lock({ orientation: orientationType });
@@ -384,13 +383,19 @@ export function addOrientationListener(
   }
 
   // Native orientation listener
-  const listener = ScreenOrientation.addListener('screenOrientationChange', (result) => {
+  let listenerHandle: any = null;
+
+  ScreenOrientation.addListener('screenOrientationChange', (result) => {
     const orientation = result.type.includes('portrait') ? 'portrait' : 'landscape';
     callback(orientation);
+  }).then((handle) => {
+    listenerHandle = handle;
   });
 
   return () => {
-    listener.remove();
+    if (listenerHandle) {
+      listenerHandle.remove();
+    }
   };
 }
 

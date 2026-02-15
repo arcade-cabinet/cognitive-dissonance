@@ -334,11 +334,11 @@ export class CharacterRenderer {
     g.stroke({ color: 0xd68910, width: 2 });
 
     // Wings/arms
-    g.ellipse(shake - 44, 10, 12, 28, -0.4);
+    g.ellipse(shake - 44, 10, 12, 28);
     g.fill(colors.character.psyduck.body);
     g.stroke({ color: colors.character.psyduck.outline, width: 2 });
 
-    g.ellipse(shake + 44, 10, 12, 28, 0.4);
+    g.ellipse(shake + 44, 10, 12, 28);
     g.fill(colors.character.psyduck.body);
     g.stroke({ color: colors.character.psyduck.outline, width: 2 });
 
