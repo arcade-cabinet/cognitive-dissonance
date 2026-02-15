@@ -74,6 +74,19 @@ jobs:
           path: dist/
           retention-days: 1
 
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+      - name: SonarCloud Scan
+        uses: sonarsource/sonarqube-scan-action@884b79409bbd464b2a59edc326a4b77dc56b2195 # v3.0.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   e2e-smoke:
     name: E2E Smoke Tests - Desktop Chrome
     if: github.event_name == 'pull_request'
@@ -209,7 +222,7 @@ jobs:
     name: CI Success
     runs-on: ubuntu-latest
     if: always()
-    needs: [lint, typecheck, unit, build, e2e-smoke, e2e-comprehensive-collector]
+    needs: [lint, typecheck, unit, build, sonarcloud, e2e-smoke, e2e-comprehensive-collector]
     steps:
       - name: Check CI status
         run: |
@@ -227,6 +240,11 @@ jobs:
           fi
           if [[ "${{ needs.build.result }}" != "success" ]]; then
             echo "❌ Build failed"
+            exit 1
+          fi
+          # SonarCloud runs on PRs only, allow skipped or success
+          if [[ "${{ needs.sonarcloud.result }}" != "success" && "${{ needs.sonarcloud.result }}" != "skipped" ]]; then
+            echo "❌ SonarCloud analysis failed"
             exit 1
           fi
           # E2E smoke runs on PRs, comprehensive runs on main pushes
@@ -351,236 +369,3 @@ jobs:
               console.log('Created new PR comment');
             }
 
-  # Wait for SonarCloud and post detailed results
-  sonarcloud-report:
-    name: SonarCloud Analysis Report
-    runs-on: ubuntu-latest
-    if: always() && github.event_name == 'pull_request'
-    needs: [ci-success]
-    permissions:
-      pull-requests: write
-    steps:
-      - name: Wait for SonarCloud Analysis
-        id: wait-sonar
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          script: |
-            const maxAttempts = 30;
-            const delayMs = 10000; // 10 seconds
-            
-            async function sleep(ms) {
-              return new Promise(resolve => setTimeout(resolve, ms));
-            }
-            
-            // Wait for SonarCloud to complete analysis
-            console.log('Waiting for SonarCloud analysis to complete...');
-            await sleep(30000); // Initial wait of 30 seconds
-            
-            const sonarToken = process.env.SONAR_TOKEN;
-            if (!sonarToken) {
-              console.log('⚠️ SONAR_TOKEN not available, skipping SonarCloud report');
-              return { skipped: true };
-            }
-            
-            const projectKey = 'arcade-cabinet_psyduck-panic';
-            const baseUrl = 'https://sonarcloud.io/api';
-            
-            // Get the PR key for SonarCloud
-            const prKey = context.payload.pull_request.number;
-            
-            // Try to get analysis results
-            let analysisFound = false;
-            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-              try {
-                const response = await fetch(
-                  `${baseUrl}/measures/component?component=${projectKey}&pullRequest=${prKey}&metricKeys=bugs,vulnerabilities,code_smells,coverage,duplicated_lines_density,security_hotspots`,
-                  {
-                    headers: {
-                      'Authorization': `Bearer ${sonarToken}`
-                    }
-                  }
-                );
-                
-                if (response.ok) {
-                  const data = await response.json();
-                  analysisFound = true;
-                  console.log('✅ SonarCloud analysis found');
-                  return { found: true, data: data };
-                }
-                
-                console.log(`Attempt ${attempt}/${maxAttempts}: Analysis not ready yet...`);
-                await sleep(delayMs);
-              } catch (error) {
-                console.log(`Attempt ${attempt}/${maxAttempts}: Error checking SonarCloud: ${error.message}`);
-                await sleep(delayMs);
-              }
-            }
-            
-            console.log('⚠️ SonarCloud analysis not found after waiting');
-            return { found: false };
-
-      - name: Get SonarCloud Issues
-        id: get-issues
-        if: fromJSON(steps.wait-sonar.outputs.result).found == true
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          script: |
-            const sonarToken = process.env.SONAR_TOKEN;
-            const projectKey = 'arcade-cabinet_psyduck-panic';
-            const baseUrl = 'https://sonarcloud.io/api';
-            const prKey = context.payload.pull_request.number;
-            
-            // Get issues for this PR
-            try {
-              const issuesResponse = await fetch(
-                `${baseUrl}/issues/search?componentKeys=${projectKey}&pullRequest=${prKey}&resolved=false&ps=100`,
-                {
-                  headers: {
-                    'Authorization': `Bearer ${sonarToken}`
-                  }
-                }
-              );
-              
-              if (!issuesResponse.ok) {
-                console.log('Failed to fetch issues from SonarCloud');
-                return { issues: [] };
-              }
-              
-              const issuesData = await issuesResponse.json();
-              return { issues: issuesData.issues || [] };
-            } catch (error) {
-              console.log(`Error fetching issues: ${error.message}`);
-              return { issues: [] };
-            }
-
-      - name: Post SonarCloud Report to PR
-        if: fromJSON(steps.wait-sonar.outputs.result).found == true
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        with:
-          script: |
-            const waitResult = ${{ steps.wait-sonar.outputs.result }};
-            const issuesResult = ${{ steps.get-issues.outputs.result }};
-            
-            if (waitResult.skipped) {
-              console.log('Skipped due to missing SONAR_TOKEN');
-              return;
-            }
-            
-            if (!waitResult.found) {
-              console.log('SonarCloud analysis not found');
-              return;
-            }
-            
-            const measures = waitResult.data?.component?.measures || [];
-            const issues = issuesResult.issues || [];
-            
-            // Parse measures
-            const metricsMap = {};
-            measures.forEach(m => {
-              metricsMap[m.metric] = m.value;
-            });
-            
-            const bugs = metricsMap.bugs || '0';
-            const vulnerabilities = metricsMap.vulnerabilities || '0';
-            const codeSmells = metricsMap.code_smells || '0';
-            const coverage = metricsMap.coverage || 'N/A';
-            const duplications = metricsMap.duplicated_lines_density || 'N/A';
-            const hotspots = metricsMap.security_hotspots || '0';
-            
-            // Build report
-            const projectKey = 'arcade-cabinet_psyduck-panic';
-            const prKey = context.payload.pull_request.number;
-            const sonarUrl = `https://sonarcloud.io/summary/overall?id=${projectKey}&pullRequest=${prKey}`;
-            
-            let report = `<!-- sonarcloud-report-comment -->\n`;
-            report += `## 🔍 SonarCloud Analysis Results\n\n`;
-            report += `### Summary\n`;
-            report += `| Metric | Value |\n`;
-            report += `|--------|-------|\n`;
-            report += `| 🐛 Bugs | ${bugs} |\n`;
-            report += `| 🔒 Vulnerabilities | ${vulnerabilities} |\n`;
-            report += `| 🔥 Security Hotspots | ${hotspots} |\n`;
-            report += `| 💩 Code Smells | ${codeSmells} |\n`;
-            report += `| 📊 Coverage | ${coverage}${coverage !== 'N/A' ? '%' : ''} |\n`;
-            report += `| 📋 Duplications | ${duplications}${duplications !== 'N/A' ? '%' : ''} |\n\n`;
-            
-            // Add issues if any
-            if (issues.length > 0) {
-              report += `### 🚨 Issues Found (${issues.length})\n\n`;
-              
-              const criticalIssues = issues.filter(i => i.severity === 'CRITICAL' || i.severity === 'BLOCKER');
-              const majorIssues = issues.filter(i => i.severity === 'MAJOR');
-              const minorIssues = issues.filter(i => i.severity === 'MINOR' || i.severity === 'INFO');
-              
-              if (criticalIssues.length > 0) {
-                report += `#### 🔴 Critical/Blocker Issues (${criticalIssues.length})\n`;
-                criticalIssues.slice(0, 10).forEach(issue => {
-                  report += `- **${issue.message}** (${issue.type})\n`;
-                  report += `  - File: \`${issue.component.split(':')[1] || issue.component}\``;
-                  if (issue.line) report += ` Line ${issue.line}`;
-                  report += `\n`;
-                });
-                if (criticalIssues.length > 10) {
-                  report += `_...and ${criticalIssues.length - 10} more critical issues_\n`;
-                }
-                report += `\n`;
-              }
-              
-              if (majorIssues.length > 0) {
-                report += `#### 🟡 Major Issues (${majorIssues.length})\n`;
-                majorIssues.slice(0, 5).forEach(issue => {
-                  report += `- ${issue.message} (${issue.type})\n`;
-                  report += `  - File: \`${issue.component.split(':')[1] || issue.component}\``;
-                  if (issue.line) report += ` Line ${issue.line}`;
-                  report += `\n`;
-                });
-                if (majorIssues.length > 5) {
-                  report += `_...and ${majorIssues.length - 5} more major issues_\n`;
-                }
-                report += `\n`;
-              }
-              
-              if (minorIssues.length > 0) {
-                report += `#### ℹ️ Minor/Info Issues (${minorIssues.length})\n`;
-                report += `_View all minor issues in the [SonarCloud dashboard](${sonarUrl})_\n\n`;
-              }
-            } else {
-              report += `### ✅ No Issues Found\n\n`;
-              report += `Great job! SonarCloud didn't find any issues in this PR.\n\n`;
-            }
-            
-            report += `---\n`;
-            report += `[📊 View Full Analysis on SonarCloud](${sonarUrl})\n`;
-            
-            // Find existing SonarCloud comment
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            
-            const sonarComment = comments.find(comment => 
-              comment.body && comment.body.includes('<!-- sonarcloud-report-comment -->')
-            );
-            
-            if (sonarComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: sonarComment.id,
-                body: report
-              });
-              console.log('Updated existing SonarCloud comment');
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: report
-              });
-              console.log('Created new SonarCloud comment');
-            }
