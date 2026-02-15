@@ -4,6 +4,7 @@
  * Smart detection for tablets, phones (portrait/landscape), foldables, and desktops.
  * Provides adaptive layout calculations and viewport management.
  */
+import { GAME_WIDTH, GAME_HEIGHT } from './constants';
 /**
  * Detect current device type and capabilities
  */
@@ -226,7 +227,7 @@ export function createResizeObserver(callback) {
         clearTimeout(resizeTimeout);
         resizeTimeout = window.setTimeout(() => {
             const deviceInfo = detectDevice();
-            const viewport = calculateViewport(800, 600, deviceInfo);
+            const viewport = calculateViewport(GAME_WIDTH, GAME_HEIGHT, deviceInfo);
             callback(viewport, deviceInfo);
         }, 150);
     };
@@ -234,24 +235,18 @@ export function createResizeObserver(callback) {
         // Orientation change often needs a slight delay to get correct dimensions
         setTimeout(() => {
             const deviceInfo = detectDevice();
-            const viewport = calculateViewport(800, 600, deviceInfo);
+            const viewport = calculateViewport(GAME_WIDTH, GAME_HEIGHT, deviceInfo);
             callback(viewport, deviceInfo);
-        }, 100);
+        }, 200);
     };
-    // Listen for various resize events
+    // Add event listeners
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleOrientationChange);
-    // Also listen for visual viewport changes (important for mobile browsers)
+    // Visual viewport API for better mobile browser support (address bar showing/hiding)
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', handleResize);
     }
-    // Foldable-specific events
-    // @ts-ignore experimental API
-    if (window.screen?.orientation) {
-        // @ts-ignore experimental API
-        window.screen.orientation.addEventListener('change', handleOrientationChange);
-    }
-    // Initial call
+    // Call once immediately
     handleResize();
     // Return cleanup function
     return () => {
@@ -261,13 +256,50 @@ export function createResizeObserver(callback) {
         if (window.visualViewport) {
             window.visualViewport.removeEventListener('resize', handleResize);
         }
-        // @ts-ignore experimental API
-        if (window.screen?.orientation) {
-            // @ts-ignore experimental API
-            window.screen.orientation.removeEventListener('change', handleOrientationChange);
-        }
     };
 }
+/**
+      callback(viewport, deviceInfo);
+    }, 100);
+  };
+
+  // Listen for various resize events
+  window.addEventListener('resize', handleResize);
+  window.addEventListener('orientationchange', handleOrientationChange);
+
+  // Also listen for visual viewport changes (important for mobile browsers)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', handleResize);
+  }
+
+  // Foldable-specific events
+  // @ts-ignore experimental API
+  if (window.screen?.orientation) {
+    // @ts-ignore experimental API
+    window.screen.orientation.addEventListener('change', handleOrientationChange);
+  }
+
+  // Initial call
+  handleResize();
+
+  // Return cleanup function
+  return () => {
+    clearTimeout(resizeTimeout);
+    window.removeEventListener('resize', handleResize);
+    window.removeEventListener('orientationchange', handleOrientationChange);
+
+    if (window.visualViewport) {
+      window.visualViewport.removeEventListener('resize', handleResize);
+    }
+
+    // @ts-ignore experimental API
+    if (window.screen?.orientation) {
+      // @ts-ignore experimental API
+      window.screen.orientation.removeEventListener('change', handleOrientationChange);
+    }
+  };
+}
+
 /**
  * Get recommended UI scale for different device types
  */

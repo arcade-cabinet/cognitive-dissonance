@@ -5,6 +5,8 @@
  * Provides adaptive layout calculations and viewport management.
  */
 
+import { GAME_WIDTH, GAME_HEIGHT } from './constants';
+
 export type DeviceType = 'phone' | 'tablet' | 'foldable' | 'desktop';
 export type Orientation = 'portrait' | 'landscape';
 
@@ -294,12 +296,6 @@ export function createResizeObserver(
   callback: (viewport: ViewportDimensions, deviceInfo: DeviceInfo) => void
 ): () => void {
   let resizeTimeout: number;
-import { GAME_WIDTH, GAME_HEIGHT } from './constants';
-
-export function createResizeObserver(
-  callback: (viewport: ViewportDimensions, deviceInfo: DeviceInfo) => void
-): () => void {
-  // ...existing code...
   
   const handleResize = () => {
     // Debounce rapid resize events
@@ -309,14 +305,41 @@ export function createResizeObserver(
       const viewport = calculateViewport(GAME_WIDTH, GAME_HEIGHT, deviceInfo);
       callback(viewport, deviceInfo);
     }, 150);
-  // ...rest of function...
   };
 
   const handleOrientationChange = () => {
     // Orientation change often needs a slight delay to get correct dimensions
     setTimeout(() => {
       const deviceInfo = detectDevice();
-      const viewport = calculateViewport(800, 600, deviceInfo);
+      const viewport = calculateViewport(GAME_WIDTH, GAME_HEIGHT, deviceInfo);
+      callback(viewport, deviceInfo);
+    }, 200);
+  };
+
+  // Add event listeners
+  window.addEventListener('resize', handleResize);
+  window.addEventListener('orientationchange', handleOrientationChange);
+
+  // Visual viewport API for better mobile browser support (address bar showing/hiding)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', handleResize);
+  }
+
+  // Call once immediately
+  handleResize();
+
+  // Return cleanup function
+  return () => {
+    clearTimeout(resizeTimeout);
+    window.removeEventListener('resize', handleResize);
+    window.removeEventListener('orientationchange', handleOrientationChange);
+    if (window.visualViewport) {
+      window.visualViewport.removeEventListener('resize', handleResize);
+    }
+  };
+}
+
+/**
       callback(viewport, deviceInfo);
     }, 100);
   };
