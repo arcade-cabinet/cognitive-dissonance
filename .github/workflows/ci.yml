@@ -321,9 +321,13 @@ jobs:
               issue_number: context.issue.number,
             });
             
+            // Add a hidden marker to the summary for identification
+            const marker = '<!-- ci-results-bot-comment -->';
+            const markedSummary = marker + '\n' + summary;
+            
             const botComment = comments.find(comment => 
               comment.user.type === 'Bot' && 
-              comment.body.includes('CI Results for PR')
+              comment.body.includes('<!-- ci-results-bot-comment -->')
             );
             
             if (botComment) {
@@ -332,7 +336,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: botComment.id,
-                body: summary
+                body: markedSummary
               });
               console.log('Updated existing PR comment');
             } else {
@@ -341,7 +345,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: summary
+                body: markedSummary
               });
               console.log('Created new PR comment');
             }
