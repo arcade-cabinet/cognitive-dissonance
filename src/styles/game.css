@@ -145,6 +145,7 @@ canvas {
 }
 #panic-bar {
   width: 0%;
+  min-width: 1px;
   height: 100%;
   background: linear-gradient(90deg, #2ecc71, #f1c40f 50%, #e74c3c);
   transition: width 0.15s ease-out;
