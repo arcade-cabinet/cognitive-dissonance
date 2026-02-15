@@ -31,6 +31,7 @@ You can skip E2E smoke tests in several ways:
    - This will skip E2E tests in all CI runs
 
 3. **Via Workflow Call** (when called from CD):
+
    ```yaml
    ci:
      uses: ./.github/workflows/ci.yml
@@ -39,6 +40,7 @@ You can skip E2E smoke tests in several ways:
    ```
 
 **When to Skip E2E Tests**:
+
 - During documentation-only changes
 - When iterating quickly on code that doesn't affect UI
 - To get faster feedback on lint/typecheck/unit test issues

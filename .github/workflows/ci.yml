@@ -16,11 +16,6 @@ on:
         type: boolean
         default: false
 
-env:
-  # Environment variable to control E2E tests (can be set in repository settings)
-  # Set DISABLE_E2E_SMOKE=true in Actions secrets/variables to skip E2E tests globally
-  SKIP_E2E_TESTS: ${{ inputs.skip-e2e || vars.DISABLE_E2E_SMOKE == 'true' }}
-
 permissions:
   contents: read
 
@@ -43,7 +38,7 @@ jobs:
       
       # Setup Node.js environment with pnpm
       - name: Setup pnpm
-        uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
@@ -71,13 +66,13 @@ jobs:
           esac
 
   # Quick smoke test: Only 3 core devices for fast feedback on PRs
-  # Skipped if SKIP_E2E_TESTS is true or skip-e2e input is provided
+  # Skipped if skip-e2e input is true or DISABLE_E2E_SMOKE variable is set
   e2e-smoke:
     name: E2E Smoke - ${{ matrix.device }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     needs: [quality-checks]
-    if: ${{ !fromJSON(env.SKIP_E2E_TESTS || 'false') }}
+    if: ${{ !(inputs.skip-e2e == true || vars.DISABLE_E2E_SMOKE == 'true') }}
     strategy:
       fail-fast: false
       matrix:
@@ -89,7 +84,7 @@ jobs:
       
       # Setup Node.js environment with pnpm and caching
       - name: Setup pnpm
-        uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       
       - name: Setup Node.js with cache
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
@@ -138,7 +133,7 @@ jobs:
       
       # Setup Node.js environment with pnpm and caching
       - name: Setup pnpm
-        uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
       
       - name: Setup Node.js with cache
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0

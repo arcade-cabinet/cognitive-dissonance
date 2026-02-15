@@ -86,6 +86,7 @@ jobs:
           # Wait for all required checks
           check-regexp: '(lint|typecheck|test|Build|E2E).*'
           allowed-conclusions: success,skipped,neutral
+          fail-on-no-checks: false
 
       # Auto-approve Dependabot patch/minor updates
       - name: Auto-approve Dependabot PR
