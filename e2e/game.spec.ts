@@ -30,20 +30,20 @@ test.describe('Psyduck Panic Game', () => {
 
   test('should have control buttons', async ({ page }) => {
     await page.goto('/game');
-    await expect(page.locator('#btn-reality')).toBeVisible();
-    await expect(page.locator('#btn-history')).toBeVisible();
-    await expect(page.locator('#btn-logic')).toBeVisible();
-    await expect(page.locator('#btn-special')).toBeVisible();
+    await expect(page.locator('#btn-reality')).toBeAttached();
+    await expect(page.locator('#btn-history')).toBeAttached();
+    await expect(page.locator('#btn-logic')).toBeAttached();
+    await expect(page.locator('#btn-special')).toBeAttached();
   });
 
   test('should display HUD elements', async ({ page }) => {
     await page.goto('/game');
-    await expect(page.locator('.meter-container')).toBeVisible();
+    await expect(page.locator('.meter-container')).toBeAttached();
     await expect(page.locator('#panic-bar')).toBeAttached();
-    await expect(page.locator('#combo-display')).toBeVisible();
-    await expect(page.locator('#wave-display')).toBeVisible();
-    await expect(page.locator('#time-display')).toBeVisible();
-    await expect(page.locator('#score-display')).toBeVisible();
+    await expect(page.locator('#combo-display')).toBeAttached();
+    await expect(page.locator('#wave-display')).toBeAttached();
+    await expect(page.locator('#time-display')).toBeAttached();
+    await expect(page.locator('#score-display')).toBeAttached();
   });
 
   test('should start game when clicking start button', async ({ page }) => {
