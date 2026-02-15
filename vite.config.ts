@@ -57,7 +57,8 @@ export default defineConfig({
     host: true,
   },
   preview: {
-    port: 4321,
+    port: 4173,
+    strictPort: true,
   },
   worker: {
     format: 'es',

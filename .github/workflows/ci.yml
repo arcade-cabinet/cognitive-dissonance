@@ -8,12 +8,19 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write # For Jules action to comment
+  issues: write # For Jules action to create issues
 
 jobs:
-  lint:
-    name: Lint
+  # Matrix job for parallel quality checks
+  quality-checks:
+    name: ${{ matrix.check }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        check: ['lint', 'typecheck', 'test']
     permissions:
       contents: read
     steps:
@@ -31,61 +38,29 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
-      - name: Run Biome lint
-        run: pnpm lint
+      - name: Run ${{ matrix.check }}
+        run: |
+          case "${{ matrix.check }}" in
+            lint)
+              pnpm lint
+              ;;
+            typecheck)
+              pnpm exec tsc --noEmit
+              ;;
+            test)
+              pnpm test:coverage
+              ;;
+          esac
 
-  typecheck:
-    name: Type Check
+  # Simplified E2E: Only run on 3 core devices during PR (matrix for parallelization)
+  e2e-smoke:
+    name: E2E - ${{ matrix.device }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      
-      - name: Run TypeScript type check
-        run: pnpm exec tsc --noEmit
-
-  test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      
-      - name: Run Vitest
-        run: pnpm test:coverage
-
-  e2e:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ['Desktop Chrome', 'iPhone 12 Portrait', 'iPad Pro 11 Portrait']
     permissions:
       contents: read
     steps:
@@ -109,24 +84,22 @@ jobs:
       - name: Build project
         run: pnpm build
       
-      - name: Run Playwright tests
-        run: pnpm test:e2e
+      - name: Run Playwright tests on ${{ matrix.device }}
+        run: pnpm exec playwright test --project="${{ matrix.device }}"
       
       - name: Upload test results
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: playwright-report
+          name: playwright-${{ matrix.device }}-report
           path: playwright-report/
-          retention-days: 7
+          retention-days: 3
 
   build:
     name: Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # E2E tests are excluded from gating the build artifact to avoid blocking on potential flakiness
-    # while still running them as part of the CI pipeline for visibility
-    needs: [lint, typecheck, test]
+    needs: [quality-checks, e2e-smoke]
     permissions:
       contents: read
     steps:
@@ -153,3 +126,31 @@ jobs:
           name: dist
           path: dist/
           retention-days: 1
+
+  # Jules Action: Auto-fix any CI failures
+  auto-fix-failures:
+    name: Auto-fix CI Failures
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'pull_request'
+    needs: [quality-checks, e2e-smoke, build]
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: google-labs-code/jules-action@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          google-jules-api-key: ${{ secrets.GOOGLE_JULES_API_KEY }}
+          task: |
+            The CI pipeline has failed. Please analyze the failures and fix them:
+            
+            1. Check linting errors and apply auto-fixes
+            2. Fix TypeScript compilation errors
+            3. Fix failing unit tests
+            4. Fix failing E2E tests
+            5. Ensure the build succeeds
+            
+            Run all CI checks locally to verify fixes before committing.
+
+

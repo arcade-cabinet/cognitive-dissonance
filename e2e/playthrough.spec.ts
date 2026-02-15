@@ -15,7 +15,7 @@ test.describe('Complete Game Playthrough', () => {
 
   test('should complete a full game playthrough from start to wave 1', async ({ page }) => {
     // Navigate to game
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
 
     // Take screenshot of start screen
     await expect(page.locator('#game-container')).toBeVisible();
@@ -81,7 +81,7 @@ test.describe('Complete Game Playthrough', () => {
   });
 
   test('should handle keyboard controls during gameplay', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
 
     // Start game
     const startBtn = page.locator('#start-btn');
@@ -108,7 +108,7 @@ test.describe('Complete Game Playthrough', () => {
   });
 
   test('should display wave announcement correctly', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
 
     const startBtn = page.locator('#start-btn');
     await startBtn.click();
@@ -131,7 +131,7 @@ test.describe('Complete Game Playthrough', () => {
   });
 
   test('should handle game over scenario', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
 
     const startBtn = page.locator('#start-btn');
     await startBtn.click();
@@ -169,7 +169,7 @@ test.describe('Complete Game Playthrough', () => {
   });
 
   test('should update score and combo correctly', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
 
     const startBtn = page.locator('#start-btn');
     await startBtn.click();
@@ -201,7 +201,7 @@ test.describe('Complete Game Playthrough', () => {
   });
 
   test('should show HUD elements during gameplay', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
 
     const startBtn = page.locator('#start-btn');
     await startBtn.click();
@@ -224,7 +224,7 @@ test.describe('Complete Game Playthrough', () => {
   });
 
   test('should properly transition from start to playing screen', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
 
     // Verify start screen
     const overlay = page.locator('#overlay');
@@ -251,7 +251,7 @@ test.describe('Complete Game Playthrough', () => {
   });
 
   test('should handle spacebar to start game', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
 
     const overlay = page.locator('#overlay');
     await expect(overlay).toBeVisible();

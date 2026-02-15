@@ -15,26 +15,26 @@ test.describe('Psyduck Panic Game', () => {
   });
 
   test('should load the game page', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
     await expect(page.locator('#game-container')).toBeVisible();
   });
 
   test('should display game title on overlay', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
     const title = page.locator('#overlay-title');
     await expect(title).toBeVisible();
     await expect(title).toContainText('PSYDUCK PANIC');
   });
 
   test('should have start button', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
     const startBtn = page.locator('#start-btn');
     await expect(startBtn).toBeVisible();
     await expect(startBtn).toContainText('START DEBATE');
   });
 
   test('should have game canvas', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
     const canvas = page.locator('#gameCanvas');
     await expect(canvas).toBeVisible();
     await expect(canvas).toHaveAttribute('width', '800');
@@ -42,7 +42,7 @@ test.describe('Psyduck Panic Game', () => {
   });
 
   test('should have control buttons', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
     await expect(page.locator('#btn-reality')).toBeVisible();
     await expect(page.locator('#btn-history')).toBeVisible();
     await expect(page.locator('#btn-logic')).toBeVisible();
@@ -50,7 +50,7 @@ test.describe('Psyduck Panic Game', () => {
   });
 
   test('should display HUD elements', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
     await expect(page.locator('.meter-container')).toBeVisible();
     await expect(page.locator('#panic-bar')).toBeAttached();
     await expect(page.locator('#combo-display')).toBeVisible();
@@ -60,7 +60,7 @@ test.describe('Psyduck Panic Game', () => {
   });
 
   test('should start game when clicking start button', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
     const overlay = page.locator('#overlay');
     await expect(overlay).toBeVisible();
 
@@ -86,7 +86,7 @@ test.describe('Psyduck Panic Game', () => {
   });
 
   test('should respond to keyboard controls', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
     const startBtn = page.locator('#start-btn');
 
     // Ensure button is visible and enabled

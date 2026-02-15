@@ -45,10 +45,9 @@ export function detectDevice() {
   } else {
     // Distinguish between phone and tablet
     const minDimension = Math.min(width, height);
-    const maxDimension = Math.max(width, height);
     // Tablets generally have larger screens
     // Using 600px as breakpoint (common Android tablet size)
-    if (minDimension >= 600 || maxDimension >= 900) {
+    if (minDimension >= 600) {
       type = 'tablet';
     } else {
       type = 'phone';
@@ -93,7 +92,6 @@ function detectFoldable() {
  */
 function detectFoldState() {
   // Try to use Device Posture API if available
-  // @ts-expect-error experimental API
   if ('devicePosture' in navigator) {
     // @ts-expect-error experimental API
     const posture = navigator.devicePosture.type;

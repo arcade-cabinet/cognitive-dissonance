@@ -134,7 +134,6 @@ function detectFoldable(): boolean {
  */
 function detectFoldState(): 'folded' | 'unfolded' | 'tent' | 'book' {
   // Try to use Device Posture API if available
-  // @ts-expect-error experimental API
   if ('devicePosture' in navigator) {
     // @ts-expect-error experimental API
     const posture = navigator.devicePosture.type;

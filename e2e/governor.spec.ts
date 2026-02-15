@@ -15,7 +15,7 @@ test.describe('Automated Playthrough with Governor', () => {
   });
 
   test('should run automated playthrough with default settings', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
 
     // Take screenshot before starting
     await page.screenshot({ path: 'test-results/screenshots/governor-01-start.png' });
@@ -55,7 +55,7 @@ test.describe('Automated Playthrough with Governor', () => {
   });
 
   test('should play aggressively with high accuracy', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
 
     const governor = new GameGovernor(page, {
       aggressiveness: 0.9,
@@ -87,7 +87,7 @@ test.describe('Automated Playthrough with Governor', () => {
   });
 
   test('should play defensively with lower accuracy', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
 
     const governor = new GameGovernor(page, {
       aggressiveness: 0.5,
@@ -118,7 +118,7 @@ test.describe('Automated Playthrough with Governor', () => {
   });
 
   test('should verify game continues running during automated play', async ({ page }) => {
-    await page.goto('/psyduck-panic/');
+    await page.goto('/game');
 
     const governor = new GameGovernor(page);
 

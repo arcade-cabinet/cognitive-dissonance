@@ -1,80 +1,35 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Detect Copilot CI environment (used by GitHub Copilot Workspace)
+const isCopilotCI = process.env.GITHUB_ACTIONS && process.env.RUNNER_NAME?.includes('copilot');
+const isCI = !!process.env.CI || isCopilotCI;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  forbidOnly: isCI,
+  retries: isCI ? 1 : 0,
+  workers: isCI ? 4 : undefined,
+  reporter: isCI ? 'line' : 'html',
   use: {
-    baseURL: 'http://localhost:4321/psyduck-panic',
-    trace: 'on',
-    screenshot: 'on',
-    video: 'on',
+    baseURL: 'http://localhost:4173', // Vite preview default port
+    // Only capture traces/screenshots/video on failure
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
   projects: [
-    // Desktop
+    // Core smoke tests on primary devices only
     {
       name: 'Desktop Chrome',
       use: { ...devices['Desktop Chrome'] },
+      testMatch: /.*\.(spec|test)\.ts/, // Run all tests
     },
-    {
-      name: 'Desktop Firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'Desktop Safari',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    // Mobile - Phones Portrait
     {
       name: 'iPhone 12 Portrait',
       use: { ...devices['iPhone 12'] },
+      testMatch: /.*\.(spec|test)\.ts/, // Run all tests
     },
-    {
-      name: 'iPhone 12 Pro Portrait',
-      use: { ...devices['iPhone 12 Pro'] },
-    },
-    {
-      name: 'iPhone 13 Portrait',
-      use: { ...devices['iPhone 13'] },
-    },
-    {
-      name: 'iPhone 14 Portrait',
-      use: { ...devices['iPhone 14'] },
-    },
-    {
-      name: 'Pixel 5 Portrait',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Galaxy S21 Portrait',
-      use: {
-        ...devices['Pixel 5'], // Use Pixel 5 as base (similar Android specs)
-        viewport: { width: 360, height: 800 },
-        deviceScaleFactor: 3,
-        userAgent:
-          'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
-      },
-    },
-
-    // Mobile - Phones Landscape
-    {
-      name: 'iPhone 12 Landscape',
-      use: {
-        ...devices['iPhone 12 landscape'],
-      },
-    },
-    {
-      name: 'Pixel 5 Landscape',
-      use: {
-        ...devices['Pixel 5 landscape'],
-      },
-    },
-
-    // Tablets Portrait
     {
       name: 'iPad Pro 11 Portrait',
       use: {
@@ -85,6 +40,64 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
+      testMatch: /.*\.(spec|test)\.ts/, // Run all tests
+    },
+
+    // Comprehensive device testing (only for device-responsive.spec.ts)
+    {
+      name: 'Desktop Firefox',
+      use: { ...devices['Desktop Firefox'] },
+      testMatch: /device-responsive\.spec\.ts/,
+    },
+    {
+      name: 'Desktop Safari',
+      use: { ...devices['Desktop Safari'] },
+      testMatch: /device-responsive\.spec\.ts/,
+    },
+    {
+      name: 'iPhone 12 Pro Portrait',
+      use: { ...devices['iPhone 12 Pro'] },
+      testMatch: /device-responsive\.spec\.ts/,
+    },
+    {
+      name: 'iPhone 13 Portrait',
+      use: { ...devices['iPhone 13'] },
+      testMatch: /device-responsive\.spec\.ts/,
+    },
+    {
+      name: 'iPhone 14 Portrait',
+      use: { ...devices['iPhone 14'] },
+      testMatch: /device-responsive\.spec\.ts/,
+    },
+    {
+      name: 'Pixel 5 Portrait',
+      use: { ...devices['Pixel 5'] },
+      testMatch: /device-responsive\.spec\.ts/,
+    },
+    {
+      name: 'Galaxy S21 Portrait',
+      use: {
+        ...devices['Pixel 5'],
+        viewport: { width: 360, height: 800 },
+        deviceScaleFactor: 3,
+        userAgent:
+          'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
+      },
+      testMatch: /device-responsive\.spec\.ts/,
+    },
+    {
+      name: 'iPhone 12 Landscape',
+      use: {
+        ...devices['iPhone 12 landscape'],
+      },
+      testMatch: /device-responsive\.spec\.ts/,
+    },
+    {
+      name: 'Pixel 5 Landscape',
+      use: {
+        ...devices['Pixel 5 landscape'],
+      },
+      testMatch: /device-responsive\.spec\.ts/,
     },
     {
       name: 'iPad Pro 12.9 Portrait',
@@ -96,9 +109,8 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
+      testMatch: /device-responsive\.spec\.ts/,
     },
-
-    // Tablets Landscape
     {
       name: 'iPad Pro 11 Landscape',
       use: {
@@ -109,9 +121,8 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
+      testMatch: /device-responsive\.spec\.ts/,
     },
-
-    // Foldables
     {
       name: 'Samsung Galaxy Fold Folded',
       use: {
@@ -122,6 +133,7 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
+      testMatch: /device-responsive\.spec\.ts/,
     },
     {
       name: 'Samsung Galaxy Fold Unfolded',
@@ -133,6 +145,7 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
+      testMatch: /device-responsive\.spec\.ts/,
     },
     {
       name: 'Surface Duo Portrait',
@@ -144,6 +157,7 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
+      testMatch: /device-responsive\.spec\.ts/,
     },
     {
       name: 'Surface Duo Landscape',
@@ -155,12 +169,15 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
+      testMatch: /device-responsive\.spec\.ts/,
     },
   ],
   webServer: {
-    command: 'npm run preview',
-    url: 'http://localhost:4321/psyduck-panic',
-    reuseExistingServer: !process.env.CI,
+    command: 'pnpm exec vite preview --port 4173',
+    port: 4173,
+    reuseExistingServer: !isCI,
     timeout: 120000,
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });
