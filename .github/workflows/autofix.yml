@@ -54,12 +54,10 @@ jobs:
         run: |
           echo "$USER_PROMPT" > prompt.txt
 
-      - name: Save last commit content
+- name: Save last commit content
         run: |
           printf '\n\nContent of the latest commit (in the format of `git show`):\n' >> prompt.txt
-          echo '```' >> prompt.txt
-          git show >> prompt.txt
-          echo '```' >> prompt.txt
+          echo '
 
       - name: Assemble Jules payload
         env:
