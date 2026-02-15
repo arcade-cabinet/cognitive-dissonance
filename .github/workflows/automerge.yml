@@ -31,11 +31,13 @@ jobs:
       # Identify PR type for conditional logic
       - name: Identify PR type
         id: pr-type
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           if [ "${{ github.actor }}" == "dependabot[bot]" ]; then
             echo "type=dependabot" >> $GITHUB_OUTPUT
             echo "🤖 Detected Dependabot PR"
-          elif [ "${{ github.actor }}" == "github-actions[bot]" ] && [[ "${{ github.event.pull_request.title }}" == "chore: release"* ]]; then
+          elif [ "${{ github.actor }}" == "github-actions[bot]" ] && [[ "$PR_TITLE" == "chore: release"* ]]; then
             echo "type=release" >> $GITHUB_OUTPUT
             echo "🚀 Detected Release PR"
           else
