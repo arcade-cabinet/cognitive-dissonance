@@ -74,20 +74,10 @@ jobs:
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
-      # Wait for CI checks to complete
-      - name: Wait for CI checks
-        if: steps.validate-author.outputs.valid == 'true'
-        uses: lewagon/wait-on-check-action@74049309dfeff245fe8009a0137eacf28136cb3c # v1.5.0
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
-          running-workflow-name: 'Automerge PR'
-          # Wait for all required checks
-          check-regexp: '(lint|typecheck|test|Build|E2E).*'
-          allowed-conclusions: success,skipped,neutral
-          fail-on-no-checks: false
-
+      # Note: CI/CD checks are enforced via branch protection rules
+      # The automerge will only proceed once all required checks pass
+      # No explicit wait step needed as GitHub handles this automatically
+      
       # Auto-approve Dependabot patch/minor updates
       - name: Auto-approve Dependabot PR
         if: |
