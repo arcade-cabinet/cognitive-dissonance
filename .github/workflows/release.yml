@@ -24,13 +24,10 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  build-android-apks:
+  prepare-android:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [arm64-v8a, armeabi-v7a, x86, x86_64]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -76,9 +73,110 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Create Android project
+      - name: Check for Release Signing Configuration
         run: |
-          pnpm cap add android || true
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "HAS_SIGNING=true" >> $GITHUB_ENV
+            echo "SIGNING_TYPE=provided" >> $GITHUB_ENV
+            echo "✅ Release signing secrets detected"
+          else
+            echo "HAS_SIGNING=true" >> $GITHUB_ENV
+            echo "SIGNING_TYPE=generated" >> $GITHUB_ENV
+            echo "⚠️  No signing secrets configured - generating throwaway keystore"
+            echo "ℹ️  This is suitable for testing only, not production releases"
+            echo "ℹ️  See docs/ANDROID_SIGNING.md for production signing setup"
+          fi
+
+      - name: Generate Throwaway Keystore
+        if: env.SIGNING_TYPE == 'generated'
+        run: |
+          # Generate a throwaway keystore for testing
+          keytool -genkey -v \
+            -keystore android/app/release.keystore \
+            -alias psyduck-panic-test \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 365 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=Test, OU=Test, O=Test, L=Test, S=Test, C=US"
+          
+          # Create gradle.properties with throwaway credentials
+          cat > android/gradle.properties << EOF
+          android.useAndroidX=true
+          android.enableJetifier=true
+          RELEASE_STORE_FILE=release.keystore
+          RELEASE_STORE_PASSWORD=android
+          RELEASE_KEY_ALIAS=psyduck-panic-test
+          RELEASE_KEY_PASSWORD=android
+          EOF
+          
+          echo "✅ Generated throwaway keystore (testing only)"
+
+      - name: Configure Release Signing
+        if: env.SIGNING_TYPE == 'provided'
+        run: |
+          # Decode and save provided keystore
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+          
+          # Create gradle.properties with signing config
+          cat > android/gradle.properties << EOF
+          android.useAndroidX=true
+          android.enableJetifier=true
+          RELEASE_STORE_FILE=release.keystore
+          RELEASE_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS=${{ secrets.KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
+          EOF
+          
+          echo "✅ Configured production keystore"
+
+      - name: Configure Gradle Signing
+        run: |
+          # Update app/build.gradle to add signing config if not present
+          if ! grep -q "signingConfigs" android/app/build.gradle; then
+            sed -i '/android {/a\    signingConfigs {\n        release {\n            storeFile file(RELEASE_STORE_FILE)\n            storePassword RELEASE_STORE_PASSWORD\n            keyAlias RELEASE_KEY_ALIAS\n            keyPassword RELEASE_KEY_PASSWORD\n        }\n    }' android/app/build.gradle
+            
+            sed -i '/buildTypes {/,/}/ s/release {/release {\n            signingConfig signingConfigs.release/' android/app/build.gradle
+          fi
+          
+          echo "✅ Gradle signing configuration complete"
+
+      - name: Cache Android build
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            android
+            dist
+            node_modules
+          key: android-build-${{ github.sha }}-${{ needs.release-please.outputs.version }}
+
+  build-android-apks:
+    needs: [release-please, prepare-android]
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [arm64-v8a, armeabi-v7a, x86, x86_64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Restore Android build
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            android
+            dist
+            node_modules
+          key: android-build-${{ github.sha }}-${{ needs.release-please.outputs.version }}
+          fail-on-cache-miss: true
 
       - name: Configure Android build for ${{ matrix.arch }}
         run: |
@@ -88,65 +186,32 @@ jobs:
       - name: Build Android APK (${{ matrix.arch }})
         run: |
           cd android
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
           cd ..
 
       - name: Rename APK
         run: |
           mkdir -p dist-android
-          cp android/app/build/outputs/apk/debug/app-debug.apk \
+          cp android/app/build/outputs/apk/release/app-release.apk \
              dist-android/psyduck-panic-${{ needs.release-please.outputs.version }}-${{ matrix.arch }}.apk
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.release-please.outputs.tag_name }}
-          files: |
-            dist-android/psyduck-panic-${{ needs.release-please.outputs.version }}-${{ matrix.arch }}.apk
+          files: dist-android/*.apk
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-universal-apk:
-    needs: release-please
+    needs: [release-please, prepare-android]
     if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: '10.13.0'
-          run_install: false
-
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build web app
-        run: pnpm build:mobile
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -154,31 +219,33 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Create Android project
-        run: |
-          pnpm cap add android || true
+      - name: Restore Android build
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            android
+            dist
+            node_modules
+          key: android-build-${{ github.sha }}-${{ needs.release-please.outputs.version }}
+          fail-on-cache-miss: true
 
       - name: Build Universal Android APK
         run: |
           cd android
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
           cd ..
 
       - name: Rename Universal APK
         run: |
           mkdir -p dist-android
-          cp android/app/build/outputs/apk/debug/app-debug.apk \
+          cp android/app/build/outputs/apk/release/app-release.apk \
              dist-android/psyduck-panic-${{ needs.release-please.outputs.version }}-universal.apk
 
       - name: Upload Universal APK to Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.release-please.outputs.tag_name }}
-          files: |
-            dist-android/psyduck-panic-${{ needs.release-please.outputs.version }}-universal.apk
+          files: dist-android/*.apk
           draft: false
           prerelease: false
         env:
