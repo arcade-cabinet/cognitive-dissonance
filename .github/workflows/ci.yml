@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   lint:
@@ -129,7 +130,7 @@ jobs:
       - name: Run E2E comprehensive tests
         run: pnpm exec playwright test --project="${{ matrix.project }}" --workers=1 --reporter=junit,line
         env:
-          PLAYWRIGHT_JUNIT_OUTPUT_NAME: junit-${{ matrix.project }}.xml
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: junit-${{ matrix.project }}.xml
       - name: Upload JUnit test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
@@ -159,7 +160,8 @@ jobs:
       - name: Combine JUnit reports
         run: |
           mkdir -p combined-junit
-          if [ -d "junit-results" ] && [ "$(ls -A junit-results/*.xml 2>/dev/null)" ]; then
+          # Check if any XML files exist
+          if [ -d "junit-results" ] && compgen -G "junit-results/*.xml" > /dev/null; then
             echo '<?xml version="1.0" encoding="UTF-8"?>' > combined-junit/junit-combined.xml
             echo '<testsuites>' >> combined-junit/junit-combined.xml
             for file in junit-results/*.xml; do
@@ -232,3 +234,115 @@ jobs:
             exit 1
           fi
           echo "✅ All CI checks passed"
+
+  # Post PR comment with CI results
+  pr-comment:
+    name: Update PR with CI Results
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    needs: [lint, typecheck, unit, build, e2e-smoke, ci-success]
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Generate CI summary
+        id: summary
+        run: |
+          # Determine overall status
+          if [[ "${{ needs.ci-success.result }}" == "success" ]]; then
+            STATUS="✅ **CI Passed**"
+            EMOJI="🎉"
+          else
+            STATUS="❌ **CI Failed**"
+            EMOJI="⚠️"
+          fi
+          
+          # Build detailed results
+          cat << EOF > summary.md
+          ## ${EMOJI} CI Results for PR #${{ github.event.pull_request.number }}
+          
+          ${STATUS}
+          
+          ### Job Results
+          | Job | Status |
+          |-----|--------|
+          | Lint | ${{ needs.lint.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+          | Type Check | ${{ needs.typecheck.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+          | Unit Tests | ${{ needs.unit.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+          | Build | ${{ needs.build.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+          | E2E Smoke Tests | ${{ needs.e2e-smoke.result == 'success' && '✅ Passed' || needs.e2e-smoke.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }} |
+          
+          ### Quick Actions
+          EOF
+          
+          # Add failure-specific guidance
+          if [[ "${{ needs.lint.result }}" != "success" ]]; then
+            echo "- 🔧 Run \`pnpm lint:fix\` to auto-fix linting issues" >> summary.md
+          fi
+          
+          if [[ "${{ needs.typecheck.result }}" != "success" ]]; then
+            echo "- 🔍 Run \`pnpm exec tsc --noEmit\` to check types locally" >> summary.md
+          fi
+          
+          if [[ "${{ needs.unit.result }}" != "success" ]]; then
+            echo "- 🧪 Run \`pnpm test\` to reproduce unit test failures" >> summary.md
+          fi
+          
+          if [[ "${{ needs.e2e-smoke.result }}" == "failure" ]]; then
+            echo "- 🎭 Run \`pnpm exec playwright test --project=\"Desktop Chrome\"\` to debug E2E tests" >> summary.md
+          fi
+          
+          if [[ "${{ needs.ci-success.result }}" == "success" ]]; then
+            cat << EOF >> summary.md
+          
+          ---
+          _This PR is ready for review! All checks have passed._
+          EOF
+          else
+            cat << EOF >> summary.md
+          
+          ---
+          _Please fix the failing checks before requesting review._
+          EOF
+          fi
+          
+          echo "summary_file=summary.md" >> $GITHUB_OUTPUT
+
+      - name: Post or update PR comment
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('summary.md', 'utf8');
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('CI Results for PR')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: summary
+              });
+              console.log('Updated existing PR comment');
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: summary
+              });
+              console.log('Created new PR comment');
+            }
+
