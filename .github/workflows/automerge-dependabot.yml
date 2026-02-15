@@ -21,12 +21,12 @@ jobs:
 
       - name: Get Dependabot metadata
         id: metadata
-        uses: dependabot/fetch-metadata@5e5f99653a5b510e8555840e80cbf1514ad4af38 # v2.2.0
+        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a # v2.5.0
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Wait for CI checks
-        uses: lewagon/wait-on-check-action@595dabb3acf442d47e29c9ec9ba44db0c6bdd18f # v1.3.4
+        uses: lewagon/wait-on-check-action@a499964d3917700d29a2a8baf3f16b078d609410 # v1.5.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
