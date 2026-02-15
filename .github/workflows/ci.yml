@@ -130,7 +130,7 @@ jobs:
       - name: Run E2E comprehensive tests
         run: pnpm exec playwright test --project="${{ matrix.project }}" --workers=1 --reporter=junit,line
         env:
-          PLAYWRIGHT_JUNIT_OUTPUT_FILE: junit-${{ matrix.project }}.xml
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: junit-${{ matrix.project }}.xml
       - name: Upload JUnit test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
@@ -265,11 +265,11 @@ jobs:
           ### Job Results
           | Job | Status |
           |-----|--------|
-          | Lint | ${{ needs.lint.result == 'success' && '✅ Passed' || '❌ Failed' }} |
-          | Type Check | ${{ needs.typecheck.result == 'success' && '✅ Passed' || '❌ Failed' }} |
-          | Unit Tests | ${{ needs.unit.result == 'success' && '✅ Passed' || '❌ Failed' }} |
-          | Build | ${{ needs.build.result == 'success' && '✅ Passed' || '❌ Failed' }} |
-          | E2E Smoke Tests | ${{ needs.e2e-smoke.result == 'success' && '✅ Passed' || needs.e2e-smoke.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }} |
+          | Lint | ${{ (needs.lint.result == 'success' && '✅ Passed') || (needs.lint.result == 'skipped' && '⏭️ Skipped') || (needs.lint.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |
+          | Type Check | ${{ (needs.typecheck.result == 'success' && '✅ Passed') || (needs.typecheck.result == 'skipped' && '⏭️ Skipped') || (needs.typecheck.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |
+          | Unit Tests | ${{ (needs.unit.result == 'success' && '✅ Passed') || (needs.unit.result == 'skipped' && '⏭️ Skipped') || (needs.unit.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |
+          | Build | ${{ (needs.build.result == 'success' && '✅ Passed') || (needs.build.result == 'skipped' && '⏭️ Skipped') || (needs.build.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |
+          | E2E Smoke Tests | ${{ (needs.e2e-smoke.result == 'success' && '✅ Passed') || (needs.e2e-smoke.result == 'skipped' && '⏭️ Skipped') || (needs.e2e-smoke.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |
           
           ### Quick Actions
           EOF

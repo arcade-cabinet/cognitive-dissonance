@@ -28,8 +28,9 @@ jobs:
         if: steps.wait-for-ci.outputs.conclusion != 'success'
         run: |
           echo "❌ CI workflow did not succeed: ${{ steps.wait-for-ci.outputs.conclusion }}"
+          echo "::notice title=Auto-merge skipped::CI checks must pass before auto-merge can be enabled"
           echo "Skipping auto-merge"
-          exit 0
+          exit 1
 
       - name: Enable auto-merge for Dependabot PRs
         if: steps.wait-for-ci.outputs.conclusion == 'success'
