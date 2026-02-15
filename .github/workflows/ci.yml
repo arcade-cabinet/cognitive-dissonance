@@ -127,21 +127,26 @@ jobs:
           path: dist/
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium webkit firefox
+      - name: Set project slug
+        id: slug
+        run: |
+          PROJECT_SLUG=$(echo "${{ matrix.project }}" | sed 's/ /-/g')
+          echo "project_slug=${PROJECT_SLUG}" >> $GITHUB_OUTPUT
       - name: Run E2E comprehensive tests
         run: pnpm exec playwright test --project="${{ matrix.project }}" --workers=1 --reporter=junit,line
         env:
-          PLAYWRIGHT_JUNIT_OUTPUT_NAME: junit-${{ matrix.project }}.xml
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: junit-${{ steps.slug.outputs.project_slug }}.xml
       - name: Upload JUnit test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
-          name: e2e-comprehensive-junit-${{ matrix.project }}
-          path: junit-${{ matrix.project }}.xml
+          name: e2e-comprehensive-junit-${{ steps.slug.outputs.project_slug }}
+          path: junit-${{ steps.slug.outputs.project_slug }}.xml
           retention-days: 7
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: failure()
         with:
-          name: e2e-comprehensive-reports-${{ matrix.project }}
+          name: e2e-comprehensive-reports-${{ steps.slug.outputs.project_slug }}
           path: playwright-report/
           retention-days: 7
 
@@ -166,7 +171,7 @@ jobs:
             echo '<testsuites>' >> combined-junit/junit-combined.xml
             for file in junit-results/*.xml; do
               # Extract testsuite elements (skip XML declaration and testsuites wrapper)
-              sed -n '/<testsuite/,/<\/testsuite>/p' "$file" >> combined-junit/junit-combined.xml
+              sed -n '/<testsuite[> ]/,/<\/testsuite>/p' "$file" >> combined-junit/junit-combined.xml
             done
             echo '</testsuites>' >> combined-junit/junit-combined.xml
             echo "✅ Combined JUnit reports successfully"
@@ -321,13 +326,9 @@ jobs:
               issue_number: context.issue.number,
             });
             
-            // Add a hidden marker to the summary for identification
-            const marker = '<!-- ci-results-bot-comment -->';
-            const markedSummary = marker + '\n' + summary;
-            
             const botComment = comments.find(comment => 
               comment.user.type === 'Bot' && 
-              comment.body.includes('<!-- ci-results-bot-comment -->')
+              comment.body.includes('CI Results for PR')
             );
             
             if (botComment) {
@@ -336,7 +337,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: botComment.id,
-                body: markedSummary
+                body: summary
               });
               console.log('Updated existing PR comment');
             } else {
@@ -345,8 +346,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: markedSummary
+                body: summary
               });
               console.log('Created new PR comment');
             }
-
