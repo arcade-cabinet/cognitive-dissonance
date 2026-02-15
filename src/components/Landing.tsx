@@ -1,11 +1,25 @@
 import anime from 'animejs';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/landing.css';
 
 export default function Landing() {
   const navigate = useNavigate();
   const bubblesRef = useRef<HTMLDivElement>(null);
+
+  // Stabilize random bubble values using useMemo
+  const bubbleData = useMemo(
+    () =>
+      Array.from({ length: 20 }, (_, i) => ({
+        id: `bubble-${i}`,
+        emoji: ['🦠', '📈', '🤖', '💭', '⚡'][Math.floor(Math.random() * 5)],
+        initialLeft: Math.random() * 100,
+        duration: 15000 + Math.random() * 10000,
+        rotationDuration: 8000 + Math.random() * 4000,
+        delay: i * 800 + Math.random() * 2000,
+      })),
+    []
+  );
 
   const startGame = () => {
     navigate('/game');
@@ -17,11 +31,13 @@ export default function Landing() {
 
     const bubbles = bubblesRef.current.querySelectorAll('.bubble');
 
-    // Animate each bubble independently
+    // Animate each bubble independently using stable data
     bubbles.forEach((bubble, index) => {
-      // Random initial position
+      const data = bubbleData[index];
+
+      // Set initial position
       anime.set(bubble, {
-        left: `${Math.random() * 100}%`,
+        left: `${data.initialLeft}%`,
         bottom: '-5%',
         opacity: 0,
       });
@@ -29,13 +45,13 @@ export default function Landing() {
       // Create floating animation with anime.js
       anime({
         targets: bubble,
-        translateY: [{ value: -window.innerHeight - 100, duration: 15000 + Math.random() * 10000 }],
+        translateY: [{ value: -window.innerHeight - 100, duration: data.duration }],
         translateX: [
           { value: () => (Math.random() - 0.5) * 200, duration: 3000, easing: 'easeInOutQuad' },
           { value: () => (Math.random() - 0.5) * 200, duration: 3000, easing: 'easeInOutQuad' },
           { value: () => (Math.random() - 0.5) * 200, duration: 3000, easing: 'easeInOutQuad' },
         ],
-        rotate: [{ value: 360, duration: 8000 + Math.random() * 4000 }],
+        rotate: [{ value: 360, duration: data.rotationDuration }],
         opacity: [
           { value: 0.4, duration: 1000, easing: 'easeInQuad' },
           { value: 0.4, duration: 12000 },
@@ -47,24 +63,22 @@ export default function Landing() {
           { value: 0.8, duration: 7000, easing: 'easeInOutSine' },
         ],
         loop: true,
-        delay: index * 800 + Math.random() * 2000,
+        delay: data.delay,
         easing: 'linear',
       });
     });
-  }, []);
+  }, [bubbleData]);
 
   return (
     <div className="landing-container">
       {/* Animated Background */}
       <div className="animated-bg">
         <div className="floating-bubbles" ref={bubblesRef}>
-          {Array.from({ length: 20 }, (_, i) => `bubble-${Date.now()}-${i}-${Math.random()}`).map(
-            (id) => (
-              <div key={id} className="bubble">
-                {['🦠', '📈', '🤖', '💭', '⚡'][Math.floor(Math.random() * 5)]}
-              </div>
-            )
-          )}
+          {bubbleData.map((data) => (
+            <div key={data.id} className="bubble">
+              {data.emoji}
+            </div>
+          ))}
         </div>
         <div className="grid-overlay"></div>
       </div>
@@ -129,7 +143,9 @@ export default function Landing() {
                 <div className="panic-bar" style={{ width: '20%' }}></div>
               </div>
             </div>
-            <div className="arrow">→</div>
+            <div className="arrow" aria-hidden="true">
+              →
+            </div>
             <div className="character panic">
               <div className="character-label">PANIC</div>
               <div className="emoji-character stressed">😰</div>
@@ -137,7 +153,9 @@ export default function Landing() {
                 <div className="panic-bar warning" style={{ width: '60%' }}></div>
               </div>
             </div>
-            <div className="arrow">→</div>
+            <div className="arrow" aria-hidden="true">
+              →
+            </div>
             <div className="character psyduck">
               <div className="character-label">PSYDUCK</div>
               <div className="emoji-character evolved">🦆</div>

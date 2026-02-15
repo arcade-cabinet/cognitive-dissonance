@@ -1,7 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { SFX } from '../lib/audio';
-import { initializePlatform } from '../lib/capacitor-device';
 import { GAME_HEIGHT, GAME_WIDTH, WAVES } from '../lib/constants';
 import { calculateViewport, createResizeObserver, detectDevice, } from '../lib/device-utils';
 import { PixiRenderer } from '../lib/pixi-renderer';
@@ -92,12 +91,11 @@ export default function Game() {
     useEffect(() => {
         uiRef.current = ui;
     }, [ui]);
-    // Initialize platform features (Capacitor)
+    // Ref to hold the latest viewport for pointer events
+    const viewportRef = useRef(viewport);
     useEffect(() => {
-        initializePlatform().catch((error) => {
-            console.warn('Failed to initialize platform:', error);
-        });
-    }, []);
+        viewportRef.current = viewport;
+    }, [viewport]);
     // Initialize responsive viewport
     useEffect(() => {
         const deviceInfo = detectDevice();
@@ -244,9 +242,11 @@ export default function Game() {
         if (!canvasRef.current)
             return;
         const rect = canvasRef.current.getBoundingClientRect();
+        // Get current viewport from ref to avoid closure issues
+        const currentViewport = viewportRef.current;
         // Convert viewport coordinates to game coordinates using responsive viewport
-        const x = (e.clientX - rect.left - viewport.offsetX) / viewport.scale;
-        const y = (e.clientY - rect.top - viewport.offsetY) / viewport.scale;
+        const x = (e.clientX - rect.left) / currentViewport.scale;
+        const y = (e.clientY - rect.top) / currentViewport.scale;
         workerRef.current?.postMessage({ type: 'CLICK', x, y });
     };
     return (_jsx("div", { id: "game-scaler", style: { touchAction: 'none' }, children: _jsxs("div", { id: "game-container", style: {

@@ -37,19 +37,9 @@ export async function captureCanvasAsDataURL(page: Page): Promise<string> {
 }
 
 /**
- * Save canvas content to a file
+ * Save canvas content to a file using Playwright's screenshot
  */
 export async function saveCanvasScreenshot(page: Page, filename: string): Promise<void> {
-  const dataURL = await captureCanvasAsDataURL(page);
-  const base64Data = dataURL.replace(/^data:image\/png;base64,/, '');
-
-  // Save using Node.js fs (needs to be done outside of browser context)
-  await page.evaluate((data) => {
-    // This won't work in browser context, we need a different approach
-    return data;
-  }, base64Data);
-
-  // Alternative: Use Playwright's built-in screenshot but ensure it captures the canvas
   await page.locator('#gameCanvas').screenshot({ path: filename });
 }
 

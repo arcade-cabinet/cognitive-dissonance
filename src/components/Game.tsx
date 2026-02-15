@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { SFX } from '../lib/audio';
-import { initializePlatform } from '../lib/capacitor-device';
 import { GAME_HEIGHT, GAME_WIDTH, WAVES } from '../lib/constants';
 import {
   calculateViewport,
@@ -136,12 +135,11 @@ export default function Game() {
     uiRef.current = ui;
   }, [ui]);
 
-  // Initialize platform features (Capacitor)
+  // Ref to hold the latest viewport for pointer events
+  const viewportRef = useRef(viewport);
   useEffect(() => {
-    initializePlatform().catch((error) => {
-      console.warn('Failed to initialize platform:', error);
-    });
-  }, []);
+    viewportRef.current = viewport;
+  }, [viewport]);
 
   // Initialize responsive viewport
   useEffect(() => {
@@ -307,9 +305,12 @@ export default function Game() {
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
 
+    // Get current viewport from ref to avoid closure issues
+    const currentViewport = viewportRef.current;
+
     // Convert viewport coordinates to game coordinates using responsive viewport
-    const x = (e.clientX - rect.left - viewport.offsetX) / viewport.scale;
-    const y = (e.clientY - rect.top - viewport.offsetY) / viewport.scale;
+    const x = (e.clientX - rect.left) / currentViewport.scale;
+    const y = (e.clientY - rect.top) / currentViewport.scale;
 
     workerRef.current?.postMessage({ type: 'CLICK', x, y });
   };

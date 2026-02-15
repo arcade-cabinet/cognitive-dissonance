@@ -40,7 +40,7 @@ test.describe('Automated Playthrough with Governor', () => {
         (resolve) =>
           setTimeout(() => {
             governor.stop();
-            resolve({ result: 'loss', score: number });
+            resolve({ result: 'loss', score: 0 });
           }, 60000) // 60 second timeout
       ),
     ]);
@@ -75,7 +75,7 @@ test.describe('Automated Playthrough with Governor', () => {
       new Promise<{ result: 'loss'; score: number }>((resolve) =>
         setTimeout(() => {
           governor.stop();
-          resolve({ result: 'loss', score: number });
+          resolve({ result: 'loss', score: 0 });
         }, 60000)
       ),
     ]);
@@ -106,7 +106,7 @@ test.describe('Automated Playthrough with Governor', () => {
       new Promise<{ result: 'loss'; score: number }>((resolve) =>
         setTimeout(() => {
           governor.stop();
-          resolve({ result: 'loss', score: number });
+          resolve({ result: 'loss', score: 0 });
         }, 60000)
       ),
     ]);
