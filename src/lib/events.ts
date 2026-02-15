@@ -1,7 +1,7 @@
 import type { Enemy, PowerUpInstance } from './types';
 
 export type GameEvent =
-  | { type: 'SFX'; name: string; args?: any[] }
+  | { type: 'SFX'; name: string; args?: unknown[] }
   | { type: 'PARTICLE'; x: number; y: number; color: string }
   | { type: 'CONFETTI'; x: number; y: number; color: string }
   | { type: 'FEED'; handle: string; text: string; stat: string }

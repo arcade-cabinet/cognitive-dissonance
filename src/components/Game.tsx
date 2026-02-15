@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { SFX } from '../lib/audio';
 import { GAME_HEIGHT, GAME_WIDTH, WAVES } from '../lib/constants';
+import {
+  calculateViewport,
+  createResizeObserver,
+  detectDevice,
+  type ViewportDimensions,
+} from '../lib/device-utils';
 import type { GameState } from '../lib/events';
 import { PixiRenderer } from '../lib/pixi-renderer';
 import { saveScore } from '../lib/storage';
@@ -114,12 +120,40 @@ export default function Game() {
   const rendererRef = useRef<PixiRenderer | null>(null);
   const sfxRef = useRef<SFX | null>(null);
   const [ui, dispatch] = useReducer(uiReducer, initialState);
+  const [viewport, setViewport] = useState<ViewportDimensions>({
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+    aspectRatio: GAME_WIDTH / GAME_HEIGHT,
+  });
 
   // Ref to hold the latest UI state for event handlers
   const uiRef = useRef(ui);
   useEffect(() => {
     uiRef.current = ui;
   }, [ui]);
+
+  // Ref to hold the latest viewport for pointer events
+  const viewportRef = useRef(viewport);
+  useEffect(() => {
+    viewportRef.current = viewport;
+  }, [viewport]);
+
+  // Initialize responsive viewport
+  useEffect(() => {
+    const deviceInfo = detectDevice();
+    const initialViewport = calculateViewport(GAME_WIDTH, GAME_HEIGHT, deviceInfo);
+    setViewport(initialViewport);
+
+    // Set up resize observer
+    const cleanup = createResizeObserver((newViewport) => {
+      setViewport(newViewport);
+    });
+
+    return cleanup;
+  }, []);
 
   // Initialize SFX
   useEffect(() => {
@@ -160,7 +194,7 @@ export default function Game() {
     const worker = new GameWorker();
     workerRef.current = worker;
 
-    worker.onmessage = (e) => {
+    worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
       if (msg.type === 'STATE') {
         const state = msg.state as GameState;
@@ -270,21 +304,40 @@ export default function Game() {
   const handleCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * GAME_WIDTH;
-    const y = ((e.clientY - rect.top) / rect.height) * GAME_HEIGHT;
+
+    // Get current viewport from ref to avoid closure issues
+    const currentViewport = viewportRef.current;
+
+    // Convert viewport coordinates to game coordinates using responsive viewport
+    const x = (e.clientX - rect.left) / currentViewport.scale;
+    const y = (e.clientY - rect.top) / currentViewport.scale;
+
     workerRef.current?.postMessage({ type: 'CLICK', x, y });
   };
 
   return (
     <div id="game-scaler" style={{ touchAction: 'none' }}>
-      <div id="game-container">
+      <div
+        id="game-container"
+        style={{
+          width: `${viewport.width}px`,
+          height: `${viewport.height}px`,
+          position: 'relative',
+          margin: '0 auto',
+        }}
+      >
         <canvas
           ref={canvasRef}
           id="gameCanvas"
           width={GAME_WIDTH}
           height={GAME_HEIGHT}
           onPointerDown={handleCanvasPointerDown}
-          style={{ touchAction: 'none' }}
+          style={{
+            touchAction: 'none',
+            width: '100%',
+            height: '100%',
+            display: 'block',
+          }}
           tabIndex={0}
           aria-label="Game Area: Tap enemies to counter them"
         ></canvas>

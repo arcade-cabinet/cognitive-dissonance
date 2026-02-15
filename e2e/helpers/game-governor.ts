@@ -1,6 +1,6 @@
 /**
  * Game Governor - Automated playthrough controller for testing
- * 
+ *
  * This module provides automated game control for E2E testing,
  * simulating realistic player behavior and decision-making.
  */
@@ -38,7 +38,7 @@ export class GameGovernor {
    */
   async start(): Promise<void> {
     this.isRunning = true;
-    
+
     // Click start button
     const startBtn = this.page.locator('#start-btn');
     if (await startBtn.isVisible()) {
@@ -67,7 +67,7 @@ export class GameGovernor {
       // Check if game is still running
       const overlay = this.page.locator('#overlay');
       const isHidden = await overlay.evaluate((el) => el.classList.contains('hidden'));
-      
+
       if (!isHidden) {
         // Game over or paused
         break;
@@ -78,7 +78,7 @@ export class GameGovernor {
 
       // Make decisions based on state
       if (state.panic > 50 && this.config.useSpecials && state.nukeReady) {
-        await this.useNuke();
+        await this.activateNuke();
       } else {
         await this.tryCounterEnemies();
       }
@@ -134,16 +134,16 @@ export class GameGovernor {
     // For now, cycle through abilities
     const abilities = ['1', '2', '3'];
     const ability = abilities[Math.floor(Math.random() * abilities.length)];
-    
+
     if (Math.random() < this.config.aggressiveness) {
       await this.page.keyboard.press(ability);
     }
   }
 
   /**
-   * Use nuke ability
+   * Activate nuke ability
    */
-  private async useNuke(): Promise<void> {
+  private async activateNuke(): Promise<void> {
     await this.page.keyboard.press('q');
   }
 
@@ -157,11 +157,11 @@ export class GameGovernor {
     // Wait for game to end
     while (this.isRunning) {
       await this.page.waitForTimeout(1000);
-      
+
       // Check if game ended
       const overlay = this.page.locator('#overlay');
       const isHidden = await overlay.evaluate((el) => el.classList.contains('hidden'));
-      
+
       if (!isHidden) {
         // Game ended
         break;

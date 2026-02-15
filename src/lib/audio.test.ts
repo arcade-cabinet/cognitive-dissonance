@@ -29,7 +29,7 @@ class MockAudioContext {
 }
 
 // Mock AudioContext for testing - cast through unknown for type safety
-global.AudioContext = MockAudioContext as unknown as typeof AudioContext;
+globalThis.AudioContext = MockAudioContext as unknown as typeof AudioContext;
 
 describe('SFX Audio System', () => {
   let sfx: SFX;

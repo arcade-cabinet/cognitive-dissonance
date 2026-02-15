@@ -98,9 +98,18 @@ pnpm format
 
 ```
 psyduck-panic/
-├── .github/workflows/     # CI/CD pipelines
-│   ├── ci.yml            # Continuous integration
-│   └── cd.yml            # Deployment to GitHub Pages
+├── .github/
+│   ├── workflows/        # CI/CD pipelines
+│   │   ├── ci.yml                       # Continuous integration
+│   │   ├── cd.yml                       # Deployment to GitHub Pages
+│   │   ├── release.yml                  # Android APK builds
+│   │   ├── automerge-dependabot.yml    # Auto-merge dependency updates
+│   │   └── automerge-release.yml       # Auto-merge release PRs
+│   └── dependabot.yml    # Automated dependency updates
+├── docs/                 # Documentation
+│   ├── AUTOMATED_WORKFLOWS.md  # Workflow documentation
+│   ├── ANDROID_SIGNING.md      # Android signing guide
+│   └── DEPLOYMENT.md           # Deployment guide
 ├── e2e/                  # Playwright E2E tests
 ├── src/
 │   ├── components/
@@ -153,6 +162,30 @@ Production build is optimized and deployed to GitHub Pages:
 - **Bundle Size**: ~226 KB (gzipped: ~72 KB)
 - **Build Time**: ~1.5 seconds
 - **Deployment**: Automatic via GitHub Actions
+
+## 🤖 Automated Workflows
+
+This project uses automated workflows for dependency management and releases:
+
+- **Dependabot**: Automatically creates PRs for dependency updates (weekly, Mondays)
+- **Automerge**: Automatically merges safe dependency updates and release PRs when CI passes
+- **Release Automation**: Automatically creates release PRs and builds Android APKs
+
+See [`docs/AUTOMATED_WORKFLOWS.md`](docs/AUTOMATED_WORKFLOWS.md) for detailed documentation.
+
+### Quick Commands
+
+```bash
+# View automerge PRs
+gh pr list --label "automerge"
+
+# View workflow runs
+gh run list --workflow=automerge-dependabot.yml
+gh run list --workflow=automerge-release.yml
+
+# Disable automerge for a PR
+gh pr edit <PR_NUMBER> --remove-label "automerge"
+```
 
 ## 🤝 Contributing
 

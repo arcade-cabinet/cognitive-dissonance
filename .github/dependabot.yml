@@ -1,0 +1,80 @@
+version: 2
+updates:
+  # Enable version updates for npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "automerge"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    # Group related packages together
+    groups:
+      # Group all Capacitor packages
+      capacitor:
+        patterns:
+          - "@capacitor/*"
+      # Group React and related packages
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "react-router-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      # Group testing packages
+      testing:
+        patterns:
+          - "@playwright/test"
+          - "playwright"
+          - "@testing-library/*"
+          - "@vitest/*"
+          - "vitest"
+          - "jsdom"
+      # Group build tools
+      build-tools:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+          - "typescript"
+      # Group development tools
+      dev-tools:
+        patterns:
+          - "@biomejs/biome"
+          - "@types/node"
+    # Ignore major version updates for stability
+    ignore:
+      # Allow patch and minor updates only for these
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "automerge"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      # Group all GitHub Actions updates
+      github-actions:
+        patterns:
+          - "*"

@@ -1,19 +1,23 @@
-name: CI
+name: CI - Fast Quality Checks
 
 on:
-  push:
-    branches: [main, copilot/**]
   pull_request:
     branches: [main]
+  workflow_call: # Allow CD to call this workflow
 
 permissions:
   contents: read
 
 jobs:
-  lint:
-    name: Lint
+  # Matrix job for parallel quality checks
+  quality-checks:
+    name: ${{ matrix.check }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        check: ['lint', 'typecheck', 'test']
     permissions:
       contents: read
     steps:
@@ -31,61 +35,30 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
-      - name: Run Biome lint
-        run: pnpm lint
+      - name: Run ${{ matrix.check }}
+        run: |
+          case "${{ matrix.check }}" in
+            lint)
+              pnpm lint
+              ;;
+            typecheck)
+              pnpm exec tsc --noEmit
+              ;;
+            test)
+              pnpm test:coverage
+              ;;
+          esac
 
-  typecheck:
-    name: Type Check
+  # Quick smoke test: Only 3 core devices for fast feedback on PRs
+  e2e-smoke:
+    name: E2E Smoke - ${{ matrix.device }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      
-      - name: Run Astro check
-        run: pnpm astro check
-
-  test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      
-      - name: Run Vitest
-        run: pnpm test:coverage
-
-  e2e:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 8
+    needs: [quality-checks]
+    strategy:
+      fail-fast: false
+      matrix:
+        device: ['Desktop Chrome', 'iPhone 12 Portrait', 'iPad Pro 11 Portrait']
     permissions:
       contents: read
     steps:
@@ -109,24 +82,22 @@ jobs:
       - name: Build project
         run: pnpm build
       
-      - name: Run Playwright tests
-        run: pnpm test:e2e
+      - name: Run Playwright tests on ${{ matrix.device }}
+        run: pnpm exec playwright test --project="${{ matrix.device }}"
       
       - name: Upload test results
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: playwright-report
+          name: playwright-smoke-${{ matrix.device }}-report
           path: playwright-report/
-          retention-days: 7
+          retention-days: 3
 
   build:
     name: Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # E2E tests are excluded from gating the build artifact to avoid blocking on potential flakiness
-    # while still running them as part of the CI pipeline for visibility
-    needs: [lint, typecheck, test]
+    needs: [quality-checks, e2e-smoke]
     permissions:
       contents: read
     steps:
@@ -153,3 +124,4 @@ jobs:
           name: dist
           path: dist/
           retention-days: 1
+

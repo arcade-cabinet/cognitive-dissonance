@@ -1,0 +1,245 @@
+name: Release - Build Android APKs
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  prepare-android:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: get-version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ inputs.tag }}"
+          else
+            VERSION="${{ github.event.release.tag_name }}"
+          fi
+          # Remove 'v' prefix if present
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: '20'
+          
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+        with:
+          version: '10.13.0'
+          run_install: false
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web app
+        run: pnpm build:mobile
+
+      - name: Setup Java
+        uses: actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b # v4.5.0
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@00854ea68c109d98c75d956347303bf7c45b0277 # v3.2.1
+
+      - name: Check for Release Signing Configuration
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "SIGNING_TYPE=provided" >> $GITHUB_ENV
+            echo "✅ Release signing secrets detected"
+          else
+            echo "SIGNING_TYPE=generated" >> $GITHUB_ENV
+            echo "⚠️  No signing secrets configured - generating throwaway keystore"
+            echo "ℹ️  This is suitable for testing only, not production releases"
+            echo "ℹ️  See docs/ANDROID_SIGNING.md for production signing setup"
+          fi
+
+      - name: Generate Throwaway Keystore
+        if: env.SIGNING_TYPE == 'generated'
+        run: |
+          keytool -genkey -v \
+            -keystore android/app/release.keystore \
+            -alias psyduck-panic-test \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 365 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=Test, OU=Test, O=Test, L=Test, S=Test, C=US"
+          
+          cat > android/gradle.properties << EOF
+          android.useAndroidX=true
+          android.enableJetifier=true
+          RELEASE_STORE_FILE=release.keystore
+          RELEASE_STORE_PASSWORD=android
+          RELEASE_KEY_ALIAS=psyduck-panic-test
+          RELEASE_KEY_PASSWORD=android
+          EOF
+          
+          echo "✅ Generated throwaway keystore (testing only)"
+
+      - name: Configure Release Signing
+        if: env.SIGNING_TYPE == 'provided'
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+          
+          cat > android/gradle.properties << EOF
+          android.useAndroidX=true
+          android.enableJetifier=true
+          RELEASE_STORE_FILE=release.keystore
+          RELEASE_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS=${{ secrets.KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
+          EOF
+          
+          echo "✅ Configured production keystore"
+
+      - name: Configure Gradle Signing
+        run: |
+          if ! grep -q "signingConfigs" android/app/build.gradle; then
+            sed -i '/android {/a\    signingConfigs {\n        release {\n            storeFile file(RELEASE_STORE_FILE)\n            storePassword RELEASE_STORE_PASSWORD\n            keyAlias RELEASE_KEY_ALIAS\n            keyPassword RELEASE_KEY_PASSWORD\n        }\n    }' android/app/build.gradle
+            
+            sed -i '/buildTypes {/,/}/ s/release {/release {\n            signingConfig signingConfigs.release/' android/app/build.gradle
+          fi
+          
+          echo "✅ Gradle signing configuration complete"
+
+      - name: Cache Android build
+        uses: actions/cache/save@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
+        with:
+          path: |
+            android
+            dist
+            node_modules
+          key: android-build-${{ github.sha }}-${{ steps.get-version.outputs.version }}
+
+  build-android-apks:
+    needs: prepare-android
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [arm64-v8a, armeabi-v7a, x86, x86_64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Java
+        uses: actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b # v4.5.0
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Restore Android build
+        uses: actions/cache/restore@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
+        with:
+          path: |
+            android
+            dist
+            node_modules
+          key: android-build-${{ github.sha }}-${{ needs.prepare-android.outputs.version }}
+          fail-on-cache-miss: true
+
+      - name: Configure Android build for ${{ matrix.arch }}
+        run: |
+          sed -i "s/abiFilters.*/abiFilters '${{ matrix.arch }}'/" android/app/build.gradle || true
+
+      - name: Build Android APK (${{ matrix.arch }})
+        run: |
+          cd android
+          ./gradlew assembleRelease
+          cd ..
+
+      - name: Rename APK
+        run: |
+          mkdir -p dist-android
+          cp android/app/build/outputs/apk/release/app-release.apk \
+             dist-android/psyduck-panic-${{ needs.prepare-android.outputs.version }}-${{ matrix.arch }}.apk
+
+      - name: Upload APK to Release
+        uses: softprops/action-gh-release@01570a1f39cb168c169c802c3bceb9e93fb10974 # v2.2.0
+        with:
+          tag_name: ${{ github.event.release.tag_name || inputs.tag }}
+          files: dist-android/*.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-universal-apk:
+    needs: prepare-android
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Java
+        uses: actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b # v4.5.0
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Restore Android build
+        uses: actions/cache/restore@6849a6489940f00c2f30c0fb92c6274307ccb58a # v4.1.2
+        with:
+          path: |
+            android
+            dist
+            node_modules
+          key: android-build-${{ github.sha }}-${{ needs.prepare-android.outputs.version }}
+          fail-on-cache-miss: true
+
+      - name: Build Universal Android APK
+        run: |
+          cd android
+          ./gradlew assembleRelease
+          cd ..
+
+      - name: Rename Universal APK
+        run: |
+          mkdir -p dist-android
+          cp android/app/build/outputs/apk/release/app-release.apk \
+             dist-android/psyduck-panic-${{ needs.prepare-android.outputs.version }}-universal.apk
+
+      - name: Upload Universal APK to Release
+        uses: softprops/action-gh-release@01570a1f39cb168c169c802c3bceb9e93fb10974 # v2.2.0
+        with:
+          tag_name: ${{ github.event.release.tag_name || inputs.tag }}
+          files: dist-android/*.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

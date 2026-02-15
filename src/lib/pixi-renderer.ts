@@ -1,4 +1,5 @@
 import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { CharacterRenderer } from './character-renderer';
 import { GAME_HEIGHT, GAME_WIDTH } from './constants';
 import type { GameState } from './events';
 
@@ -7,8 +8,11 @@ export class PixiRenderer {
   gameContainer: Container;
   starsContainer: Container;
   enemyContainer: Container;
+  characterContainer: Container;
   uiContainer: Container;
   particlesContainer: Container;
+
+  characterRenderer: CharacterRenderer;
 
   stars: { x: number; y: number; z: number; sz: number; sp: number; a: number; sprite: Graphics }[];
   particles: {
@@ -45,6 +49,7 @@ export class PixiRenderer {
     this.gameContainer = new Container();
     this.starsContainer = new Container();
     this.enemyContainer = new Container();
+    this.characterContainer = new Container();
     this.uiContainer = new Container();
     this.particlesContainer = new Container();
 
@@ -56,6 +61,9 @@ export class PixiRenderer {
     this.bossGraphics = null;
 
     this.flashGraphics = new Graphics();
+
+    // Create character renderer
+    this.characterRenderer = new CharacterRenderer();
 
     this.enemyStyle = new TextStyle({
       fontFamily: '"Press Start 2P", monospace',
@@ -86,8 +94,13 @@ export class PixiRenderer {
     this.app.stage.addChild(this.gameContainer);
     this.gameContainer.addChild(this.starsContainer);
     this.gameContainer.addChild(this.enemyContainer);
+    this.gameContainer.addChild(this.characterContainer);
     this.gameContainer.addChild(this.particlesContainer);
     this.gameContainer.addChild(this.uiContainer);
+
+    // Add character to character container
+    this.characterContainer.addChild(this.characterRenderer.container);
+    this.characterRenderer.setPosition(GAME_WIDTH / 2, 400);
 
     // Add flash overlay
     this.app.stage.addChild(this.flashGraphics);
@@ -123,6 +136,9 @@ export class PixiRenderer {
     } else {
       this.gameContainer.position.set(0, 0);
     }
+
+    // Update character
+    this.characterRenderer.update(state.panic, performance.now());
 
     // Update Stars
     for (const star of this.stars) {
@@ -277,7 +293,8 @@ export class PixiRenderer {
       if (!bossText) {
         bossText = new Text({ text: '👾', style: { fontSize: 48, fill: '#e74c3c' } });
         bossText.label = 'bossText';
-        (bossText as any).name = 'bossText';
+        // Set name property for identification
+        Object.assign(bossText, { name: 'bossText' });
         bossText.anchor.set(0.5);
         this.gameContainer.addChild(bossText);
       }

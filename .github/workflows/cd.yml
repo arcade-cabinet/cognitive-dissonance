@@ -1,4 +1,4 @@
-name: CD - Deploy to GitHub Pages
+name: CD - Continuous Deployment
 
 on:
   push:
@@ -6,20 +6,57 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
   pages: write
   id-token: write
+  issues: write # For Jules action
 
 concurrency:
-  group: 'pages'
+  group: 'cd-${{ github.ref }}'
   cancel-in-progress: true
 
 jobs:
-  # Run all CI checks before deploying
-  lint:
-    name: Lint
+  # Call CI workflow first for fast quality checks
+  ci:
+    name: Run CI Quality Checks
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  # Full E2E matrix: Test all 17 device profiles in parallel
+  e2e-full-matrix:
+    name: E2E - ${{ matrix.device }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: [ci]
+    strategy:
+      fail-fast: false
+      matrix:
+        device: 
+          # Desktop browsers
+          - 'Desktop Chrome'
+          - 'Desktop Firefox'
+          - 'Desktop Safari'
+          # Phones - Portrait
+          - 'iPhone 12 Portrait'
+          - 'iPhone 13 Portrait'
+          - 'iPhone 14 Portrait'
+          - 'Pixel 5 Portrait'
+          - 'Galaxy S21 Portrait'
+          # Phones - Landscape
+          - 'Galaxy S21 Landscape'
+          # Tablets - Portrait
+          - 'iPad Pro 11 Portrait'
+          - 'iPad Pro 12.9 Portrait'
+          # Tablets - Landscape
+          - 'iPad Pro 11 Landscape'
+          - 'iPad Pro 12.9 Landscape'
+          # Foldables
+          - 'Galaxy Fold Portrait'
+          - 'Galaxy Fold Landscape'
+          - 'Surface Duo Portrait'
+          - 'Surface Duo Landscape'
     permissions:
       contents: read
     steps:
@@ -37,75 +74,131 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
-      - name: Run Biome lint
-        run: pnpm lint
-
-  typecheck:
-    name: Type Check
+      - name: Install Playwright Browsers
+        run: |
+          if [[ "${{ matrix.device }}" == *"Chrome"* ]] || [[ "${{ matrix.device }}" == *"Galaxy"* ]] || [[ "${{ matrix.device }}" == *"Pixel"* ]]; then
+            pnpm exec playwright install --with-deps chromium
+          elif [[ "${{ matrix.device }}" == *"Firefox"* ]]; then
+            pnpm exec playwright install --with-deps firefox
+          elif [[ "${{ matrix.device }}" == *"Safari"* ]] || [[ "${{ matrix.device }}" == *"iPad"* ]] || [[ "${{ matrix.device }}" == *"iPhone"* ]]; then
+            pnpm exec playwright install --with-deps webkit
+          else
+            pnpm exec playwright install --with-deps chromium
+          fi
+      
+      - name: Build project
+        run: pnpm build
+      
+      - name: Run Playwright tests on ${{ matrix.device }}
+        run: pnpm exec playwright test --project="${{ matrix.device }}"
+      
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: playwright-${{ matrix.device }}-report
+          path: playwright-report/
+          retention-days: 7
+  # Jules Action: Auto-heal any CD failures by aggregating errors
+  auto-heal-failures:
+    name: Auto-heal CD Failures
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    if: failure()
+    needs: [ci, e2e-full-matrix]
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: google-labs-code/jules-action@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          google-jules-api-key: ${{ secrets.GOOGLE_JULES_API_KEY }}
+          task: |
+            The CD pipeline has failed on the main branch. Please analyze all failures and fix them:
+            
+            1. Aggregate all errors from failed jobs (CI quality checks, E2E matrix tests)
+            2. Fix linting errors with auto-fixes
+            3. Fix TypeScript compilation errors
+            4. Fix failing unit tests
+            5. Fix failing E2E tests across all device profiles
+            6. Ensure the build succeeds
+            
+            Run all checks locally to verify fixes before committing to main.
+            
+            If fixes cannot be automated, create a detailed issue with:
+            - All aggregated error messages
+            - Failed device profiles (for E2E)
+            - Suggested remediation steps
+
+
+  # Release Please - Creates release PRs based on conventional commits
+  # Only runs after all quality gates pass (CI + full E2E matrix)
+  release-please:
+    name: Create Release PR
+    runs-on: ubuntu-latest
+    needs: [ci, e2e-full-matrix]
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: googleapis/release-please-action@7987652d64b4581673a76e33ad5e98e3dd56832f # v4.1.3
+        id: release
+        with:
+          release-type: node
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # Build and deploy to GitHub Pages
+  # Runs in parallel with E2E matrix (doesn't need to wait)
+  build-pages:
+    name: Build for GitHub Pages
+    runs-on: ubuntu-latest
+    needs: [ci]
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      
-      - name: Run Astro check
-        run: pnpm astro check
-
-  test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      
-      - name: Setup pnpm
-        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      
-      - name: Run Vitest
-        run: pnpm test:coverage
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: [lint, typecheck, test]
-    steps:
-      - name: Checkout your repository using git
+      - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       
-      - name: Install, build, and upload your site
-        uses: withastro/action@15aa0a5a1e067940253e3b259413ab2ae882a740 # v5.2.0
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build Vite project
+        run: pnpm build
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: './dist'
 
-  deploy:
+  deploy-pages:
     name: Deploy to GitHub Pages
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
+    needs: build-pages
+    permissions:
+      pages: write
+      id-token: write
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
