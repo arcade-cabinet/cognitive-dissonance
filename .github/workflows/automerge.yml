@@ -1,14 +1,13 @@
 name: Automerge PRs
 
 # Unified automerge workflow for both Dependabot and Release PRs
-# Consolidates logic to reduce duplication and maintenance overhead
+# Uses pull_request_target for secure access to secrets while validating PR author
+# See: https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, labeled]
-    branches: [main]
   pull_request_target:
     types: [opened, synchronize, reopened, labeled]
+    branches: [main]
 
 permissions:
   contents: write
@@ -19,36 +18,57 @@ jobs:
   automerge:
     name: Automerge PR
     runs-on: ubuntu-latest
-    # Only run for Dependabot or Release PRs
-    if: |
-      github.actor == 'dependabot[bot]' ||
-      (github.actor == 'github-actions[bot]' && startsWith(github.event.pull_request.title, 'chore: release'))
     steps:
-      # Checkout repository (needed for gh CLI)
-      - name: Check out code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      # Identify PR type for conditional logic
-      - name: Identify PR type
-        id: pr-type
+      # Validate PR author using GitHub API (not forgeable context)
+      - name: Validate PR Author
+        id: validate-author
         env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
-          if [ "${{ github.actor }}" == "dependabot[bot]" ]; then
-            echo "type=dependabot" >> $GITHUB_OUTPUT
-            echo "🤖 Detected Dependabot PR"
-          elif [ "${{ github.actor }}" == "github-actions[bot]" ] && [[ "$PR_TITLE" == "chore: release"* ]]; then
-            echo "type=release" >> $GITHUB_OUTPUT
-            echo "🚀 Detected Release PR"
+          # Get PR details from API (more secure than context)
+          PR_DATA=$(gh api repos/$REPO/pulls/$PR_NUMBER)
+          
+          # Extract author and app info
+          PR_AUTHOR=$(echo "$PR_DATA" | jq -r '.user.login')
+          PR_AUTHOR_TYPE=$(echo "$PR_DATA" | jq -r '.user.type')
+          PR_TITLE=$(echo "$PR_DATA" | jq -r '.title')
+          
+          echo "Author: $PR_AUTHOR (Type: $PR_AUTHOR_TYPE)"
+          echo "Title: $PR_TITLE"
+          
+          # Validate author is either dependabot or github-actions bot
+          if [ "$PR_AUTHOR" == "dependabot[bot]" ] && [ "$PR_AUTHOR_TYPE" == "Bot" ]; then
+            echo "pr-type=dependabot" >> $GITHUB_OUTPUT
+            echo "valid=true" >> $GITHUB_OUTPUT
+            echo "✅ Validated Dependabot PR"
+          elif [ "$PR_AUTHOR" == "github-actions[bot]" ] && [ "$PR_AUTHOR_TYPE" == "Bot" ] && [[ "$PR_TITLE" == "chore: release"* ]]; then
+            echo "pr-type=release" >> $GITHUB_OUTPUT
+            echo "valid=true" >> $GITHUB_OUTPUT
+            echo "✅ Validated Release PR"
           else
-            echo "type=unknown" >> $GITHUB_OUTPUT
-            echo "❌ Unknown PR type"
-            exit 1
+            echo "pr-type=unknown" >> $GITHUB_OUTPUT
+            echo "valid=false" >> $GITHUB_OUTPUT
+            echo "❌ Not a valid automerge PR (author: $PR_AUTHOR, type: $PR_AUTHOR_TYPE)"
+            exit 0  # Exit gracefully, not an error
           fi
+
+      # Exit early if not a valid PR type
+      - name: Check if valid PR
+        if: steps.validate-author.outputs.valid != 'true'
+        run: |
+          echo "Not an automerge candidate, exiting"
+          exit 0
+
+      # Checkout repository (needed for gh CLI commands)
+      - name: Check out code
+        if: steps.validate-author.outputs.valid == 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       # Get Dependabot metadata (only for Dependabot PRs)
       - name: Get Dependabot metadata
-        if: steps.pr-type.outputs.type == 'dependabot'
+        if: steps.validate-author.outputs.pr-type == 'dependabot'
         id: metadata
         uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a # v2.5.0
         with:
@@ -56,6 +76,7 @@ jobs:
 
       # Wait for CI checks to complete
       - name: Wait for CI checks
+        if: steps.validate-author.outputs.valid == 'true'
         uses: lewagon/wait-on-check-action@a499964d3917700d29a2a8baf3f16b078d609410 # v1.5.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -69,61 +90,68 @@ jobs:
       # Auto-approve Dependabot patch/minor updates
       - name: Auto-approve Dependabot PR
         if: |
-          steps.pr-type.outputs.type == 'dependabot' &&
+          steps.validate-author.outputs.pr-type == 'dependabot' &&
           (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
            steps.metadata.outputs.update-type == 'version-update:semver-minor')
-        run: |
-          gh pr review --approve "${{ github.event.pull_request.number }}" --body \
-            "✅ Auto-approving ${{ steps.metadata.outputs.update-type }}
-
-            Dependency: **${{ steps.metadata.outputs.dependency-names }}**
-            Update: ${{ steps.metadata.outputs.previous-version }} → ${{ steps.metadata.outputs.new-version }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
+          PREVIOUS_VERSION: ${{ steps.metadata.outputs.previous-version }}
+          NEW_VERSION: ${{ steps.metadata.outputs.new-version }}
+        run: |
+          gh pr review --approve "${{ github.event.pull_request.number }}" --body \
+            "✅ Auto-approving $UPDATE_TYPE
+
+            Dependency: **$DEPENDENCY_NAMES**
+            Update: $PREVIOUS_VERSION → $NEW_VERSION"
 
       # Auto-approve release PRs
       - name: Auto-approve release PR
-        if: steps.pr-type.outputs.type == 'release'
+        if: steps.validate-author.outputs.pr-type == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr review --approve "${{ github.event.pull_request.number }}" --body \
             "🚀 Auto-approving release PR. All CI checks have passed.
             
             This release will be published when merged."
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Enable auto-merge for patch/minor Dependabot updates
       - name: Enable auto-merge for Dependabot PRs
         if: |
-          steps.pr-type.outputs.type == 'dependabot' &&
+          steps.validate-author.outputs.pr-type == 'dependabot' &&
           (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
            steps.metadata.outputs.update-type == 'version-update:semver-minor')
-        run: |
-          gh pr merge --auto --squash "${{ github.event.pull_request.number }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge --auto --squash "${{ github.event.pull_request.number }}"
 
       # Enable auto-merge for release PRs
       - name: Enable auto-merge for release PR
-        if: steps.pr-type.outputs.type == 'release'
+        if: steps.validate-author.outputs.pr-type == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr merge --auto --squash "${{ github.event.pull_request.number }}"
           gh pr edit "${{ github.event.pull_request.number }}" --add-label "autorelease: tagged"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Comment on Dependabot major updates (don't auto-merge)
       - name: Comment on major updates
         if: |
-          steps.pr-type.outputs.type == 'dependabot' &&
+          steps.validate-author.outputs.pr-type == 'dependabot' &&
           steps.metadata.outputs.update-type == 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
+          PREVIOUS_VERSION: ${{ steps.metadata.outputs.previous-version }}
+          NEW_VERSION: ${{ steps.metadata.outputs.new-version }}
         run: |
           gh pr comment "${{ github.event.pull_request.number }}" --body \
             "⚠️ This is a **major version update**. Please review carefully before merging.
             
             Auto-merge is disabled for major updates to prevent breaking changes.
             
-            Dependency: **${{ steps.metadata.outputs.dependency-names }}**
-            Update: ${{ steps.metadata.outputs.previous-version }} → ${{ steps.metadata.outputs.new-version }}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            Dependency: **$DEPENDENCY_NAMES**
+            Update: $PREVIOUS_VERSION → $NEW_VERSION"

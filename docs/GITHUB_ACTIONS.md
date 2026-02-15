@@ -82,6 +82,12 @@ You can skip E2E smoke tests in several ways:
 
 **Purpose**: Unified workflow for auto-merging Dependabot and Release PRs
 
+**Security Model**:
+- Uses `pull_request_target` for secure access to secrets
+- Validates PR author using GitHub API (not forgeable context values)
+- Prevents pwn request attacks by validating bot identity before checkout
+- See: [Preventing pwn requests](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/)
+
 **Features**:
 - Auto-approves and merges Dependabot patch/minor updates
 - Auto-approves and merges Release PRs after CI passes
