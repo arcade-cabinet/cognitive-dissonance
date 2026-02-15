@@ -31,9 +31,8 @@ jobs:
             });
             // Note: This returns a redirect URL to download logs
             return logs.url;
-      
-      - name: Invoke Jules to fix failure
-        uses: google-labs-code/jules-invoke@v1
+      - name: Invoke Jules for Auto-Fix
+        uses: google-labs-code/jules-action@bff7875eaa123cac6742b7cfc51005b95ba4d566
         with:
           prompt: |
             The CI/CD workflow "${{ github.event.workflow_run.name }}" has failed.
