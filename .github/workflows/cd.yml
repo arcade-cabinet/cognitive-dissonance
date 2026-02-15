@@ -25,51 +25,14 @@ jobs:
     permissions:
       contents: read
 
-  # Build project once and upload artifact for E2E tests
-  # This avoids rebuilding 17 times in the matrix
-  build-for-e2e:
-    name: Build for E2E Tests
-    runs-on: ubuntu-latest
-    needs: [ci]
-    permissions:
-      contents: read
-    steps:
-      # Checkout repository
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      
-      # Setup Node.js environment with pnpm and caching
-      - name: Setup pnpm
-        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
-      
-      - name: Setup Node.js with cache
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      
-      # Install dependencies (cached by setup-node)
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      
-      # Build project once for all E2E tests
-      - name: Build project
-        run: pnpm build
-      
-      # Upload build artifact for E2E tests
-      - name: Upload build artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: dist-e2e
-          path: dist/
-          retention-days: 1
-
   # Full E2E matrix: Test all device profiles in parallel
   # This is the comprehensive test suite for production deployments
+  # Uses the build artifact from the CI workflow
   e2e-full-matrix:
     name: E2E - ${{ matrix.device }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [build-for-e2e]
+    needs: [ci]
     strategy:
       fail-fast: false
       matrix:
@@ -118,11 +81,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
-      # Download pre-built artifact instead of rebuilding
+      # Download pre-built artifact from CI workflow
       - name: Download build artifact
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: dist-e2e
+          name: dist
           path: dist/
       
       # Install only the required browser for this device to save time
