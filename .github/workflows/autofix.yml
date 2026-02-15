@@ -19,6 +19,11 @@ jobs:
       actions: read
     
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 30
+
       - name: Download workflow logs
         uses: actions/github-script@v7
         id: get-logs
@@ -31,10 +36,10 @@ jobs:
             });
             // Note: This returns a redirect URL to download logs
             return logs.url;
-      - name: Invoke Jules for Auto-Fix
-        uses: BeksOmega/jules-action@v1.0.0
-        with:
-          prompt: |
+
+      - name: Create initial prompt
+        env:
+          USER_PROMPT: |
             The CI/CD workflow "${{ github.event.workflow_run.name }}" has failed.
 
             **Failed Run:** ${{ github.event.workflow_run.html_url }}
@@ -46,6 +51,34 @@ jobs:
             2. Identify the root cause
             3. Implement a fix
             4. Ensure the fix passes CI
-          jules_api_key: ${{ secrets.GOOGLE_JULES_API_KEY }}
-          starting_branch: ${{ github.event.workflow_run.head_branch }}
-          include_last_commit: true
+        run: |
+          echo "$USER_PROMPT" > prompt.txt
+
+      - name: Save last commit content
+        run: |
+          echo -e '\n\nContent of the latest commit (in the format of `git show`):'  >> prompt.txt
+          echo '```' >> prompt.txt
+          git show   >> prompt.txt
+          echo '```' >> prompt.txt
+
+      - name: Assemble Jules payload
+        run: |
+          jq -n --arg jules_prompt "$(cat prompt.txt)" --arg starting_branch "${{ github.event.workflow_run.head_branch }}" --arg repo_full_name "${{ github.repository }}" '{
+              "prompt": $jules_prompt,
+              "sourceContext": {
+                "source": "sources/github/\($repo_full_name)",
+                "githubRepoContext": {
+                  "startingBranch": $starting_branch
+                }
+              },
+              "requirePlanApproval": false,
+              "automationMode": "AUTO_CREATE_PR"
+            }' > jules_payload.json
+
+      - name: Invoke Jules API
+        run: |
+          curl 'https://jules.googleapis.com/v1alpha/sessions' \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Goog-Api-Key: ${{ secrets.GOOGLE_JULES_API_KEY }}" \
+            -d @jules_payload.json
