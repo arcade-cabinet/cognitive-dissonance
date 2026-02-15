@@ -112,6 +112,7 @@ jobs:
           retention-days: 7
   
   # Jules Action: Auto-heal any CD failures by aggregating errors
+  # Uses Google's Jules AI agent to automatically fix common CI/CD issues
   auto-heal-failures:
     name: Auto-heal CD Failures
     runs-on: ubuntu-latest
@@ -122,7 +123,7 @@ jobs:
       pull-requests: write
       issues: write
     steps:
-      - uses: google-labs-code/jules-action@main
+      - uses: google-labs-code/jules-action@bff7875eaa123cac6742b7cfc51005b95ba4d566 # v1.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           google-jules-api-key: ${{ secrets.GOOGLE_JULES_API_KEY }}
