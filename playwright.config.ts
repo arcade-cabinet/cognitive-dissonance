@@ -22,7 +22,9 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173', // Vite preview default port
     // Disable animations for stable E2E tests
-    reducedMotion: 'reduce',
+    contextOptions: {
+      reducedMotion: 'reduce',
+    },
     // Only capture traces/screenshots/video on failure
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
