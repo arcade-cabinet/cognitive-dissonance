@@ -88,6 +88,12 @@ jobs:
         with:
           name: coverage-reports
           path: coverage/
+      - name: List coverage files
+        run: |
+          echo "Coverage directory contents:"
+          ls -la coverage/
+          echo "Test results directory contents:"
+          ls -la test-results/ || echo "test-results directory doesn't exist yet"
       - name: SonarCloud Scan
         uses: sonarsource/sonarqube-scan-action@884b79409bbd464b2a59edc326a4b77dc56b2195 # v3.0.0
         env:

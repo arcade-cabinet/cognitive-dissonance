@@ -10,7 +10,9 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
   workers: isCI ? 4 : undefined,
-  reporter: isCI ? 'line' : 'html',
+  reporter: isCI 
+    ? [['@bdellegrazie/playwright-sonar-reporter', { outputFile: 'test-results/e2e-sonar-report.xml' }], ['line']]
+    : 'html',
   use: {
     baseURL: 'http://localhost:4173', // Vite preview default port
     // Only capture traces/screenshots/video on failure

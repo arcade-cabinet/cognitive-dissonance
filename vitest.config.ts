@@ -10,6 +10,7 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['node_modules', 'dist', 'e2e'],
+    reporters: ['default', ['vitest-sonar-reporter', { outputFile: 'test-results/sonar-report.xml' }]],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
