@@ -503,7 +503,7 @@ canvas {
   text-shadow: 2px 2px 0 #000;
 }
 #wave-announce.show {
-  animation: waveAnn 2.5s ease-out forwards;
+  animation: waveAnn 9.0s ease-out forwards;
 }
 @keyframes waveAnn {
   0% {
