@@ -199,7 +199,7 @@ export default function Game() {
               break;
             case 'WAVE_START':
               dispatch({ type: 'WAVE_START', title: event.title, sub: event.sub });
-              setTimeout(() => dispatch({ type: 'HIDE_WAVE' }), 3000);
+              setTimeout(() => dispatch({ type: 'HIDE_WAVE' }), 5000);
               break;
             case 'FEED':
               dispatch({
