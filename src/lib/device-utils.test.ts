@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
-  type DeviceInfo,
   calculateViewport,
   createResizeObserver,
+  type DeviceInfo,
   detectDevice,
   gameToViewport,
   getUIScale,
@@ -10,11 +10,6 @@ import {
 } from './device-utils';
 
 describe('device-utils', () => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _originalWindow = { ...window };
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _originalNavigator = { ...navigator };
-
   beforeEach(() => {
     // Reset window dimensions
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 800 });
@@ -54,8 +49,7 @@ describe('device-utils', () => {
     });
 
     // Ensure ontouchstart is undefined for desktop tests
-    // @ts-expect-error
-    delete window.ontouchstart;
+    delete (window as unknown as Record<string, unknown>).ontouchstart;
   });
 
   afterEach(() => {
@@ -121,7 +115,6 @@ describe('device-utils', () => {
 
     test('safely handles missing visualViewport', () => {
       // Ensure visualViewport is undefined
-      // @ts-ignore
       Object.defineProperty(window, 'visualViewport', { value: undefined });
 
       // Should not throw
@@ -131,7 +124,6 @@ describe('device-utils', () => {
 
     test('detects foldable via window segments if available', () => {
       const getWindowSegments = vi.fn().mockReturnValue([{ x: 0 }, { x: 100 }]);
-      // @ts-ignore
       Object.defineProperty(window, 'visualViewport', {
         value: {
           getWindowSegments,
@@ -217,25 +209,36 @@ describe('device-utils', () => {
 
   describe('getUIScale', () => {
     test('returns correct scale for phone', () => {
-      const info = { type: 'phone', screenWidth: 375, pixelRatio: 2 } as any;
+      const info = {
+        type: 'phone',
+        screenWidth: 375,
+        pixelRatio: 2,
+      } as Partial<DeviceInfo> as DeviceInfo;
       expect(getUIScale(info)).toBe(0.8); // 375*2 = 750 < 1000
     });
 
     test('returns correct scale for tablet', () => {
-      const info = { type: 'tablet', screenWidth: 768, pixelRatio: 2 } as any;
+      const info = {
+        type: 'tablet',
+        screenWidth: 768,
+        pixelRatio: 2,
+      } as Partial<DeviceInfo> as DeviceInfo;
       expect(getUIScale(info)).toBe(1.0);
     });
 
     test('returns correct scale for foldable', () => {
-      const folded = { type: 'foldable', foldState: 'folded' } as any;
+      const folded = { type: 'foldable', foldState: 'folded' } as Partial<DeviceInfo> as DeviceInfo;
       expect(getUIScale(folded)).toBe(0.85);
 
-      const unfolded = { type: 'foldable', foldState: 'unfolded' } as any;
+      const unfolded = {
+        type: 'foldable',
+        foldState: 'unfolded',
+      } as Partial<DeviceInfo> as DeviceInfo;
       expect(getUIScale(unfolded)).toBe(1.0);
     });
 
     test('returns correct scale for desktop', () => {
-      const info = { type: 'desktop' } as any;
+      const info = { type: 'desktop' } as Partial<DeviceInfo> as DeviceInfo;
       expect(getUIScale(info)).toBe(1.1);
     });
   });

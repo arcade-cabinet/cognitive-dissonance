@@ -22,9 +22,9 @@ test.describe('Responsive Device Tests', () => {
     // Wait for canvas to have dimensions (polling assertion for hydration)
     await expect(async () => {
       const box = await canvas.boundingBox();
-      expect(box).not.toBeNull();
-      expect(box!.width).toBeGreaterThan(0);
-      expect(box!.height).toBeGreaterThan(0);
+      if (!box) throw new Error('Canvas bounding box is null');
+      expect(box.width).toBeGreaterThan(0);
+      expect(box.height).toBeGreaterThan(0);
     }).toPass({ timeout: 5000 });
 
     // Take screenshot for visual verification
@@ -217,9 +217,9 @@ test.describe('Foldable-Specific Tests', () => {
     // Canvas should fit within narrow viewport (polling for hydration)
     await expect(async () => {
       const box = await canvas.boundingBox();
-      expect(box).not.toBeNull();
+      if (!box) throw new Error('Canvas bounding box is null');
       // Allow a small margin of error for borders/scaling
-      expect(box!.width).toBeLessThanOrEqual(viewport.width + 2);
+      expect(box.width).toBeLessThanOrEqual(viewport.width + 2);
     }).toPass({ timeout: 5000 });
   });
 
