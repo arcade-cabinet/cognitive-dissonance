@@ -310,4 +310,123 @@ describe('GameLogic', () => {
       expect(game.momPerks.cdReduction).toBe(0);
     });
   });
+
+  describe('Game Loop Update', () => {
+    beforeEach(() => {
+      game.start();
+    });
+
+    it('should reduce cooldowns', () => {
+      game.abilityCd.reality = 100;
+      game.nukeCd = 100;
+      game.pu.shield = 100;
+
+      game.update(1.0, 1000); // 1 frame (~16ms)
+
+      expect(game.abilityCd.reality).toBeLessThan(100);
+      expect(game.nukeCd).toBeLessThan(100);
+      expect(game.pu.shield).toBeLessThan(100);
+    });
+
+    it('should spawn enemies over time', () => {
+      const initial = game.enemies.length;
+      // Advance time significantly
+      // Spawn delay is around 1000ms usually
+      for (let i = 0; i < 120; i++) {
+        game.update(1.0, i * 16.67);
+      }
+      expect(game.enemies.length).toBeGreaterThan(initial);
+    });
+
+    it('should update enemies position', () => {
+      game.spawnEnemy();
+      const enemy = game.enemies[0];
+      const initialX = enemy.x;
+
+      game.update(1.0, 1000);
+
+      expect(enemy.x).not.toBe(initialX);
+    });
+
+    it('should remove enemies out of bounds and penalize', () => {
+      game.spawnEnemy();
+      const enemy = game.enemies[0];
+      // Move enemy out of bounds
+      enemy.x = -100;
+
+      const initialPanic = game.panic;
+      game.update(1.0, 1000);
+
+      expect(game.enemies).not.toContain(enemy);
+      expect(game.panic).toBeGreaterThan(initialPanic);
+    });
+
+    it('should decay panic over time if combo > 3', () => {
+      game.panic = 50;
+      game.combo = 10;
+
+      game.update(1.0, 1000);
+
+      expect(game.panic).toBeLessThan(50);
+    });
+
+    it('should transition to next wave', () => {
+      game.waveTime = 1; // 1 second left
+      game.secondAccumulator = 990; // almost a second
+
+      game.update(2.0, 1000); // Push over threshold
+
+      // Should trigger next wave
+      expect(game.events).toContainEqual(expect.objectContaining({ type: 'WAVE_START' }));
+    });
+
+    it('should update boss when active', () => {
+      const bossConfig = {
+        name: 'Test Boss',
+        hp: 100,
+        pats: ['burst'],
+      };
+      game.startBoss(bossConfig);
+      if (!game.boss) throw new Error('Boss not started');
+      const boss = game.boss;
+      const initialTimer = boss.timer;
+
+      game.update(1.0, 1000);
+
+      expect(boss.timer).toBeGreaterThan(initialTimer);
+      // Boss AI should have produced actions
+    });
+
+    it('should process boss hit with nuke', () => {
+      const bossConfig = {
+        name: 'Test Boss',
+        hp: 100,
+        pats: ['burst'],
+      };
+      game.startBoss(bossConfig);
+      game.nukeCd = 0;
+      game.running = true;
+
+      game.triggerNuke();
+
+      expect(game.boss?.hp).toBeLessThan(100);
+      expect(game.events).toContainEqual(expect.objectContaining({ type: 'BOSS_HIT' }));
+    });
+
+    it('should kill boss if HP drops to 0', () => {
+      const bossConfig = {
+        name: 'Test Boss',
+        hp: 3,
+        pats: ['burst'],
+      };
+      game.startBoss(bossConfig);
+      game.nukeCd = 0;
+
+      game.triggerNuke(); // 3 damage
+
+      expect(game.boss).toBeNull(); // Boss dead
+      expect(game.events).toContainEqual(expect.objectContaining({ type: 'BOSS_DIE' }));
+      expect(game.bossPhase).toBe(false);
+    });
+  });
 });

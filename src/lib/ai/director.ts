@@ -228,7 +228,8 @@ class SustainingState extends State<AIDirector> {
 
   override execute(director: AIDirector): void {
     // Gently nudge tension toward 0.5 (delta-scaled so it's frame-rate independent)
-    director.targetTension += (0.5 - director.targetTension) * 0.01 * director.lastDelta;
+    // Use 0.5 factor to close half the gap per second (approx)
+    director.targetTension += (0.5 - director.targetTension) * 0.5 * director.lastDelta;
 
     const skill = director.getSkillEstimate();
 
@@ -254,8 +255,8 @@ class RelievingState extends State<AIDirector> {
   }
 
   override execute(director: AIDirector): void {
-    // Slowly reduce tension further
-    director.targetTension = Math.max(0.1, director.targetTension - 0.01 * director.lastDelta);
+    // Slowly reduce tension further (approx 0.2 per second)
+    director.targetTension = Math.max(0.1, director.targetTension - 0.2 * director.lastDelta);
     // Once panic drops and player stabilizes, start building again
     if (
       director.performance.panic < 50 &&

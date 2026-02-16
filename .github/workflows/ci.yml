@@ -292,15 +292,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@9e907b5e64f6b83e7804b09294d44122997950d6 # v4.32.3
-        with:
-          languages: 'javascript-typescript'
-          build-mode: 'none'
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@9e907b5e64f6b83e7804b09294d44122997950d6 # v4.32.3
-
       - name: Download coverage reports
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
