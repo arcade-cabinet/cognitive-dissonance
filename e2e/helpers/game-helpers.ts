@@ -125,13 +125,31 @@ export async function deviceScreenshot(
 // ─── Keyboard Abilities ──────────────────────────────────────
 // The 3D keyboard uses F1-F4 keys (not 1/2/3/Q)
 
-/** Press all ability keys in sequence */
-export async function pressAllAbilities(page: Page, delayMs = 300): Promise<void> {
-  await page.keyboard.press('F1'); // Reality
-  await page.waitForTimeout(delayMs);
-  await page.keyboard.press('F2'); // History
-  await page.waitForTimeout(delayMs);
-  await page.keyboard.press('F3'); // Logic
+/** Press all ability keys in sequence with optional condition-based waits */
+export async function pressAllAbilities(
+  page: Page,
+  delayMs = 300,
+  useConditionalWait = false
+): Promise<void> {
+  const keys = ['F1', 'F2', 'F3'] as const;
+
+  for (const key of keys) {
+    await page.keyboard.press(key);
+    if (useConditionalWait) {
+      // Wait for the cooldown indicator to appear on the key
+      await page
+        .waitForFunction(
+          () => {
+            const bar = document.querySelector('#panic-bar');
+            return bar !== null;
+          },
+          { timeout: 2000 }
+        )
+        .catch(() => {});
+    } else {
+      await page.waitForTimeout(delayMs);
+    }
+  }
 }
 
 /** Press the nuke key */

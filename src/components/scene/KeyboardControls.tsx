@@ -145,7 +145,7 @@ function RGBUnderglow({ panicRef }: { panicRef: React.RefObject<number> }) {
 
   useFrame(({ clock }) => {
     if (!lightRef.current) return;
-    const p = panicRef.current;
+    const p = panicRef.current ?? 0;
     // Shift from cool cyan to angry red with panic
     const r = Math.min(1, (80 + p * 2) / 255);
     const g = Math.max(0.1, (180 - p * 2) / 255);
@@ -194,6 +194,7 @@ function FKey({ keyDef, position, panicRef, cooldownRef, onPress }: FKeyProps) {
 
     // ── Get cooldown state ──
     const cd = cooldownRef.current;
+    if (!cd) return;
     let remaining: number;
     let max: number;
     if (keyDef.abilityType) {
@@ -233,7 +234,7 @@ function FKey({ keyDef, position, panicRef, cooldownRef, onPress }: FKeyProps) {
 
     // ── RGB LED strip: panic-driven color ──
     if (ledMatRef.current) {
-      const p = panicRef.current;
+      const p = panicRef.current ?? 0;
       const ledR = Math.min(1, (80 + p * 2) / 255);
       const ledG = Math.max(0.1, (180 - p * 2) / 255);
       const ledB = Math.max(0.15, (220 - p) / 255);

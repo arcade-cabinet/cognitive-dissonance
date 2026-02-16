@@ -46,7 +46,7 @@ export function getPanicZone(panic: number): PanicZone {
  * This creates the feel of "it was fine and then suddenly it WASN'T"
  */
 export function calculatePanicDamage(baseDamage: number, currentPanic: number): number {
-  // Sigmoid centered at 50, steepness 0.06
+  // Sigmoid centered at 50, steepness 8
   const t = currentPanic / 100;
   const sigmoid = 1 / (1 + Math.exp(-8 * (t - 0.5)));
   // Map sigmoid (0-1) to multiplier (0.5-2.0)

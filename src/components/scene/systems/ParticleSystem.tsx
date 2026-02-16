@@ -15,17 +15,7 @@ import { useRef } from 'react';
 import * as THREE from 'three';
 import { ECS } from '../../../ecs/react';
 import { confettis, particles, trails, world } from '../../../ecs/world';
-import { GAME_HEIGHT, GAME_WIDTH } from '../../../lib/constants';
-
-/** Convert game X to scene X */
-function gx(x: number): number {
-  return (x - GAME_WIDTH / 2) / 100;
-}
-
-/** Convert game Y to scene Y */
-function gy(y: number): number {
-  return -(y - GAME_HEIGHT / 2) / 100;
-}
+import { gx, gy } from '../coordinates';
 
 // ─── Particles ───────────────────────────────────────────────
 

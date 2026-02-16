@@ -49,7 +49,7 @@ export async function saveCanvasScreenshot(page: Page, filename: string): Promis
   const canvas = page.locator('#gameCanvas canvas');
   const count = await canvas.count();
   if (count > 0) {
-    await canvas.screenshot({ path: filename });
+    await canvas.first().screenshot({ path: filename });
   } else {
     // Fallback to the container itself
     await page.locator('#gameCanvas').screenshot({ path: filename });
@@ -71,17 +71,12 @@ export async function waitForGameReady(page: Page): Promise<void> {
 
   // Verify canvas has WebGL content (R3F uses WebGL, not 2d)
   const hasContent = await page.evaluate(() => {
-    // R3F wraps the actual canvas inside a div with the id
     const container = document.getElementById('gameCanvas');
     if (!container) return false;
-
-    const canvas = container.querySelector('canvas') || container;
-    if (canvas instanceof HTMLCanvasElement) {
-      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-      return gl !== null;
-    }
-    // R3F container div exists — canvas is inside
-    return container.querySelector('canvas') !== null;
+    const canvas = container.querySelector('canvas');
+    if (!canvas || !(canvas instanceof HTMLCanvasElement)) return false;
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    return gl !== null;
   });
 
   if (!hasContent) {

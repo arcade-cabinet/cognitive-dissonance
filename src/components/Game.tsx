@@ -24,6 +24,7 @@ export default function Game() {
   const workerRef = useRef<Worker | null>(null);
   const sfxRef = useRef<SFX | null>(null);
   const musicRef = useRef<AdaptiveMusic | null>(null);
+  const musicInitRef = useRef<Promise<void> | null>(null);
   const [ui, dispatch] = useReducer(uiReducer, initialUIState);
   const [viewport, setViewport] = useState<ViewportDimensions>(() => {
     if (typeof window !== 'undefined') {
@@ -67,11 +68,11 @@ export default function Game() {
     sfxRef.current.init();
 
     const music = new AdaptiveMusic();
-    music.init();
+    musicInitRef.current = music.init();
     musicRef.current = music;
 
     return () => {
-      sfxRef.current?.stopMusic();
+      sfxRef.current?.destroy();
       sfxRef.current = null;
       music.destroy();
     };
@@ -128,8 +129,13 @@ export default function Game() {
           switch (event.type) {
             case 'SFX':
               if (event.name === 'startMusic') {
-                // Use Tone.js adaptive music instead of SFX music
-                musicRef.current?.start((event.args?.[0] as number) ?? 0);
+                // Ensure init completes before starting adaptive music
+                const wave = (event.args?.[0] as number) ?? 0;
+                if (musicInitRef.current) {
+                  musicInitRef.current.then(() => musicRef.current?.start(wave));
+                } else {
+                  musicRef.current?.start(wave);
+                }
               } else if (event.name === 'stopMusic') {
                 musicRef.current?.stop();
               } else if (sfxRef.current) {
@@ -245,6 +251,8 @@ export default function Game() {
   }, [handleStartLogic, handleAbility, handleNuke]);
 
   const handleCanvasPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Only forward clicks during gameplay — ignore when overlay is showing
+    if (uiRef.current.screen !== 'playing') return;
     const rect = e.currentTarget.getBoundingClientRect();
     const currentViewport = viewportRef.current;
     const x = (e.clientX - rect.left) / currentViewport.scale;
@@ -375,7 +383,7 @@ export default function Game() {
 
           {/* Controls are now 3D keyboard F-keys in the scene.
               Hidden HTML buttons kept for accessibility and e2e test IDs. */}
-          <div id="controls" style={{ display: 'none' }}>
+          <div id="controls" className="sr-only">
             <button type="button" id="btn-reality" onClick={() => handleAbility('reality')}>
               REALITY
             </button>

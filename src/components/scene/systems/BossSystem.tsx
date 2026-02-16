@@ -11,32 +11,33 @@
 
 import { Billboard, Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
+import type React from 'react';
 import { useRef } from 'react';
 import type * as THREE from 'three';
 import { colors } from '../../../design/tokens';
 import { ECS } from '../../../ecs/react';
 import { bosses } from '../../../ecs/world';
-import { GAME_HEIGHT, GAME_WIDTH } from '../../../lib/constants';
-
-function gx(x: number): number {
-  return (x - GAME_WIDTH / 2) / 100;
-}
-
-function gy(y: number): number {
-  return -(y - GAME_HEIGHT / 2) / 100;
-}
+import { gx, gy } from '../coordinates';
 
 interface BossSystemProps {
-  wave: number;
+  waveRef: React.RefObject<number>;
 }
 
-export function BossSystem({ wave }: BossSystemProps) {
+export function BossSystem({ waveRef }: BossSystemProps) {
   return (
-    <ECS.Entities in={bosses}>{(entity) => <BossMesh entity={entity} wave={wave} />}</ECS.Entities>
+    <ECS.Entities in={bosses}>
+      {(entity) => <BossMesh entity={entity} waveRef={waveRef} />}
+    </ECS.Entities>
   );
 }
 
-function BossMesh({ entity, wave }: { entity: (typeof bosses.entities)[number]; wave: number }) {
+function BossMesh({
+  entity,
+  waveRef,
+}: {
+  entity: (typeof bosses.entities)[number];
+  waveRef: React.RefObject<number>;
+}) {
   const groupRef = useRef<THREE.Group>(null);
   const glowRef = useRef<THREE.Mesh>(null);
   const orbGroupRef = useRef<THREE.Group>(null);
@@ -64,7 +65,7 @@ function BossMesh({ entity, wave }: { entity: (typeof bosses.entities)[number]; 
   });
 
   const iFrameFlash = entity.boss.iFrame > 0;
-  const bossEmoji = wave >= 4 ? '\u{1F9E0}' : '\u{1F682}'; // brain : train
+  const bossEmoji = waveRef.current >= 4 ? '\u{1F9E0}' : '\u{1F682}'; // brain : train
 
   return (
     <group ref={groupRef}>

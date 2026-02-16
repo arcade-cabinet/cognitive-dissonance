@@ -164,6 +164,9 @@ export class BossAI {
 
   /** Pick a random enemy type from available types */
   randomEnemyType(): EnemyType {
+    if (this.state.enemyTypes.length === 0) {
+      throw new Error('No enemy types configured');
+    }
     return this.state.enemyTypes[Math.floor(Math.random() * this.state.enemyTypes.length)];
   }
 }

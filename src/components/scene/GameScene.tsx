@@ -115,10 +115,10 @@ export const GameScene = forwardRef<GameSceneHandle, GameSceneProps>(function Ga
       <CameraController shakeRef={shakeRef} />
 
       {/* Environment */}
-      <RoomBackground panic={panicRef.current} wave={waveRef.current} />
+      <RoomBackground panicRef={panicRef} waveRef={waveRef} />
 
       {/* Character */}
-      <CharacterModel panic={panicRef.current} />
+      <CharacterModel panicRef={panicRef} />
 
       {/* 3D Keyboard Controls — interactive F-keys */}
       <KeyboardControls
@@ -130,7 +130,7 @@ export const GameScene = forwardRef<GameSceneHandle, GameSceneProps>(function Ga
 
       {/* ECS-driven entities */}
       <EnemySystem />
-      <BossSystem wave={waveRef.current} />
+      <BossSystem waveRef={waveRef} />
       <ParticleSystem />
       <TrailSystem />
       <ConfettiSystem />

@@ -216,8 +216,11 @@ export function calculateViewport(
 
     scale = width / baseWidth;
   }
-  // Foldable unfolded - treat like a small tablet
-  else if (type === 'foldable' && foldState === 'unfolded') {
+  // Foldable unfolded/tent/book - treat like a small tablet
+  else if (
+    type === 'foldable' &&
+    (foldState === 'unfolded' || foldState === 'tent' || foldState === 'book')
+  ) {
     if (screenAspectRatio > baseAspectRatio) {
       height = availableHeight * 0.92;
       width = height * baseAspectRatio;

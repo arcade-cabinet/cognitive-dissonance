@@ -2,22 +2,8 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Game from './components/Game';
 import Landing from './components/Landing';
+import LoadingScreen from './components/LoadingScreen';
 import { initializePlatform } from './lib/capacitor-device';
-
-const loadingStyle = {
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  height: '100vh',
-  background: '#0a0a18',
-  color: '#f1c40f',
-  fontFamily: "'Space Mono', monospace",
-  fontSize: '1.5rem',
-} as const;
-
-function LoadingScreen() {
-  return <div style={loadingStyle}>Loading...</div>;
-}
 
 function App() {
   const [platformReady, setPlatformReady] = useState(false);

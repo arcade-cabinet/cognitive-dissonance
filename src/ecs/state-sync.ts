@@ -18,7 +18,8 @@ import { type Entity, world } from './world';
 /** Map from game enemy ID to ECS entity for fast lookup */
 const enemyEntityMap = new Map<number, Entity>();
 let currentBossEntity: Entity | null = null;
-const powerUpEntities: Entity[] = [];
+/** Map from powerup ID to ECS entity for stable tracking */
+const powerUpEntityMap = new Map<string, Entity>();
 
 export function syncStateToECS(state: GameState): void {
   syncEnemies(state);
@@ -103,22 +104,23 @@ function syncBoss(state: GameState): void {
 }
 
 function syncPowerUps(state: GameState): void {
-  // Remove excess powerup entities
-  while (powerUpEntities.length > state.powerups.length) {
-    const entity = powerUpEntities.pop();
-    if (entity) world.remove(entity);
-  }
+  const activeIds = new Set<string>();
 
-  // Update or add powerup entities
-  for (let i = 0; i < state.powerups.length; i++) {
-    const pu = state.powerups[i];
-    if (i < powerUpEntities.length) {
-      const entity = powerUpEntities[i];
-      if (entity.position) {
-        entity.position.x = pu.x;
-        entity.position.y = pu.y;
+  for (const pu of state.powerups) {
+    activeIds.add(pu.id);
+    const existing = powerUpEntityMap.get(pu.id);
+
+    if (existing) {
+      // Update position and velocity
+      if (existing.position) {
+        existing.position.x = pu.x;
+        existing.position.y = pu.y;
+      }
+      if (existing.velocity) {
+        existing.velocity.vy = pu.vy;
       }
     } else {
+      // Spawn new powerup entity
       const entity = world.add({
         position: { x: pu.x, y: pu.y, z: 0 },
         velocity: { vx: 0, vy: pu.vy, vz: 0 },
@@ -128,7 +130,15 @@ function syncPowerUps(state: GameState): void {
           dur: pu.dur,
         },
       });
-      powerUpEntities.push(entity);
+      powerUpEntityMap.set(pu.id, entity);
+    }
+  }
+
+  // Remove departed powerups
+  for (const [id, entity] of powerUpEntityMap) {
+    if (!activeIds.has(id)) {
+      world.remove(entity);
+      powerUpEntityMap.delete(id);
     }
   }
 }
@@ -205,5 +215,5 @@ export function clearAllEntities(): void {
   }
   enemyEntityMap.clear();
   currentBossEntity = null;
-  powerUpEntities.length = 0;
+  powerUpEntityMap.clear();
 }

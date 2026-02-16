@@ -11,24 +11,33 @@
 
 import { Billboard, Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
-import type * as THREE from 'three';
+import type React from 'react';
+import { useRef } from 'react';
+import * as THREE from 'three';
 import { colors } from '../../design/tokens';
 
 const ch = colors.character;
 const psyduck = ch.psyduck;
 
+// Pre-parse token colors for lerp
+const panicSkin = new THREE.Color(ch.panic.skin);
+const psyduckBody = new THREE.Color(psyduck.body);
+const panicShirt = new THREE.Color(ch.panic.shirt);
+
 interface CharacterModelProps {
-  panic: number;
+  panicRef: React.RefObject<number>;
 }
 
-export function CharacterModel({ panic }: CharacterModelProps) {
+export function CharacterModel({ panicRef }: CharacterModelProps) {
   const groupRef = useRef<THREE.Group>(null);
   const auraRef = useRef<THREE.Group>(null);
+  const skinMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const bodyMatRef = useRef<THREE.MeshStandardMaterial>(null);
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
     const t = clock.elapsedTime;
+    const panic = panicRef.current;
 
     // Breathing animation
     const breathe = Math.sin(t * 2) * 0.02;
@@ -51,31 +60,34 @@ export function CharacterModel({ panic }: CharacterModelProps) {
     } else if (auraRef.current) {
       auraRef.current.visible = false;
     }
+
+    // Dynamic skin color
+    if (skinMatRef.current) {
+      if (panic < 33) {
+        skinMatRef.current.color.set(ch.normal.skin);
+      } else if (panic < 66) {
+        skinMatRef.current.color.set(ch.panic.skin);
+      } else {
+        const lerpT = (panic - 66) / 34;
+        skinMatRef.current.color.copy(panicSkin).lerp(psyduckBody, lerpT);
+      }
+    }
+
+    // Dynamic body color
+    if (bodyMatRef.current) {
+      if (panic < 33) {
+        bodyMatRef.current.color.set(ch.normal.shirt);
+      } else if (panic < 66) {
+        bodyMatRef.current.color.set(ch.panic.shirt);
+      } else {
+        const lerpT = (panic - 66) / 34;
+        bodyMatRef.current.color.copy(panicShirt).lerp(psyduckBody, lerpT);
+      }
+    }
   });
 
+  const panic = panicRef.current;
   const state: CharacterState = panic < 33 ? 'normal' : panic < 66 ? 'panic' : 'psyduck';
-
-  // Interpolated colors using design tokens
-  const skinColor = useMemo(() => {
-    if (panic < 33) return ch.normal.skin;
-    if (panic < 66) return ch.panic.skin;
-    // Lerp from panic skin to Psyduck yellow
-    const t = (panic - 66) / 34;
-    const r = Math.round(245 + (241 - 245) * t);
-    const g = Math.round(203 + (196 - 203) * t);
-    const b = Math.round(167 + (15 - 167) * t);
-    return `rgb(${r},${g},${b})`;
-  }, [panic]);
-
-  const bodyColor = useMemo(() => {
-    if (panic < 66) return ch.normal.shirt;
-    // Lerp from shirt blue to Psyduck yellow
-    const t = (panic - 66) / 34;
-    const r = Math.round(52 + (241 - 52) * t);
-    const g = Math.round(152 + (196 - 152) * t);
-    const b = Math.round(219 + (15 - 219) * t);
-    return `rgb(${r},${g},${b})`;
-  }, [panic]);
 
   const speechText =
     state === 'normal'
@@ -101,20 +113,20 @@ export function CharacterModel({ panic }: CharacterModelProps) {
       {/* Body */}
       <mesh position={[0, -0.3, 0]}>
         <sphereGeometry args={[state === 'psyduck' ? 0.5 : 0.4, 16, 16]} />
-        <meshStandardMaterial color={bodyColor} roughness={0.7} />
+        <meshStandardMaterial ref={bodyMatRef} color={ch.normal.shirt} roughness={0.7} />
       </mesh>
 
       {/* Head */}
       <mesh position={[0, 0.25, 0]}>
         <sphereGeometry args={[state === 'psyduck' ? 0.48 : 0.42, 16, 16]} />
-        <meshStandardMaterial color={skinColor} roughness={0.6} />
+        <meshStandardMaterial ref={skinMatRef} color={ch.normal.skin} roughness={0.6} />
       </mesh>
 
       {/* Hair / Psyduck head tuft */}
-      {state !== 'psyduck' ? <HumanHair panic={panic} /> : <PsyduckTuft />}
+      {state !== 'psyduck' ? <HumanHair panicRef={panicRef} /> : <PsyduckTuft />}
 
       {/* Eyes */}
-      <Eyes state={state} panic={panic} />
+      <Eyes state={state} panicRef={panicRef} />
 
       {/* Mouth */}
       {state === 'psyduck' ? (
@@ -169,7 +181,8 @@ export function CharacterModel({ panic }: CharacterModelProps) {
   );
 }
 
-function HumanHair({ panic }: { panic: number }) {
+function HumanHair({ panicRef }: { panicRef: React.RefObject<number> }) {
+  const panic = panicRef.current;
   const hairColor = ch.normal.hair;
   return (
     <group position={[0, 0.5, 0]}>
@@ -223,7 +236,7 @@ function PsyduckTuft() {
 
 type CharacterState = 'normal' | 'panic' | 'psyduck';
 
-function Eyes({ state, panic }: { state: CharacterState; panic: number }) {
+function Eyes({ state, panicRef }: { state: CharacterState; panicRef: React.RefObject<number> }) {
   const leftPupilRef = useRef<THREE.Mesh>(null);
   const rightPupilRef = useRef<THREE.Mesh>(null);
 
@@ -231,6 +244,7 @@ function Eyes({ state, panic }: { state: CharacterState; panic: number }) {
   useFrame(({ clock }) => {
     if (!leftPupilRef.current || !rightPupilRef.current) return;
     const t = clock.elapsedTime;
+    const panic = panicRef.current;
 
     // At low panic, pupils gently look around. At high panic, they dart frantically.
     const speed = 1 + (panic / 100) * 4;

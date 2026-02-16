@@ -44,15 +44,16 @@ export class AdaptiveMusic {
   async init(): Promise<void> {
     if (this.initialized) return;
 
-    // Master volume
-    this.masterGain = new Tone.Gain(0.25).toDestination();
+    // Master volume → distortion → destination
+    this.distortion = new Tone.Distortion({ distortion: 0, wet: 0 });
+    this.distortion.toDestination();
+
+    this.masterGain = new Tone.Gain(0.25);
+    this.masterGain.connect(this.distortion);
 
     // Effects
     this.reverbSend = new Tone.Reverb({ decay: 1.5, wet: 0.2 });
     this.reverbSend.connect(this.masterGain);
-
-    this.distortion = new Tone.Distortion({ distortion: 0, wet: 0 });
-    this.distortion.connect(this.masterGain);
 
     // Bass synth - warm triangle/square
     this.bassSynth = new Tone.MonoSynth({

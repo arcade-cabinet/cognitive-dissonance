@@ -40,7 +40,8 @@ export interface DirectorModifiers {
   /** Max enemies adjustment (-2 to +4) */
   maxEnemyAdjustment: number;
   /** Should we spawn a special (encrypted/child) enemy? */
-  spawnSpecial: boolean;
+  /** Chance (0-1) that a special enemy spawns. Check Math.random() < this at spawn time. */
+  spawnSpecialChance: number;
   /** Boss aggression (0-1), makes boss attack more frequently */
   bossAggression: number;
 }
@@ -53,6 +54,8 @@ export class AIDirector extends GameEntity {
   tension: number;
   targetTension: number;
   stateTimer: number;
+  /** Last frame delta in seconds — used by FSM states */
+  lastDelta: number;
   performance: PlayerPerformance;
   modifiers: DirectorModifiers;
 
@@ -65,6 +68,7 @@ export class AIDirector extends GameEntity {
     this.tension = 0.3;
     this.targetTension = 0.3;
     this.stateTimer = 0;
+    this.lastDelta = 0.016;
     this.actionWindow = 5000; // 5 second rolling window
 
     this.performance = {
@@ -82,7 +86,7 @@ export class AIDirector extends GameEntity {
       spawnDelayMultiplier: 1,
       enemySpeedMultiplier: 1,
       maxEnemyAdjustment: 0,
-      spawnSpecial: false,
+      spawnSpecialChance: 0,
       bossAggression: 0.3,
     };
 
@@ -100,10 +104,13 @@ export class AIDirector extends GameEntity {
   /** Record a player action (counter or miss) */
   recordAction(hit: boolean, now: number): void {
     this.recentActions.push({ time: now, hit });
-    // Prune old actions
+    // Prune old actions efficiently
     const cutoff = now - this.actionWindow;
-    while (this.recentActions.length > 0 && this.recentActions[0].time < cutoff) {
-      this.recentActions.shift();
+    const firstValid = this.recentActions.findIndex((a) => a.time >= cutoff);
+    if (firstValid > 0) {
+      this.recentActions = this.recentActions.slice(firstValid);
+    } else if (firstValid === -1) {
+      this.recentActions = [];
     }
   }
 
@@ -120,16 +127,20 @@ export class AIDirector extends GameEntity {
   /** Feed current game state to the director */
   updatePerformance(perf: Partial<PlayerPerformance>, now: number): void {
     Object.assign(this.performance, perf);
-    // Prune old actions
+    // Prune old actions efficiently
     const cutoff = now - this.actionWindow;
-    while (this.recentActions.length > 0 && this.recentActions[0].time < cutoff) {
-      this.recentActions.shift();
+    const firstValid = this.recentActions.findIndex((a) => a.time >= cutoff);
+    if (firstValid > 0) {
+      this.recentActions = this.recentActions.slice(firstValid);
+    } else if (firstValid === -1) {
+      this.recentActions = [];
     }
     this.updateAccuracy();
   }
 
   /** Main update — call every frame with dt in seconds */
   override update(delta: number): this {
+    this.lastDelta = delta;
     this.stateTimer += delta;
 
     // Smooth tension interpolation (never jumps)
@@ -160,7 +171,7 @@ export class AIDirector extends GameEntity {
       // Max enemies: -1 at low → +4 at max
       maxEnemyAdjustment: Math.round(-1 + t * 5),
       // Special enemies chance increases with tension
-      spawnSpecial: Math.random() < t * 0.15,
+      spawnSpecialChance: t * 0.15,
       // Boss aggression tracks tension directly
       bossAggression: 0.2 + t * 0.6,
     };
@@ -188,7 +199,7 @@ class BuildingState extends State<AIDirector> {
     const skill = director.getSkillEstimate();
     // Tension builds faster when player is more skilled
     const buildRate = 0.03 + skill * 0.05;
-    director.targetTension = Math.min(1, director.targetTension + buildRate * 0.016);
+    director.targetTension = Math.min(1, director.targetTension + buildRate * director.lastDelta);
 
     // Transition to SURGING if tension is high and player is still killing it
     if (director.tension > 0.7 && skill > 0.7 && director.stateTimer > 3) {
@@ -244,7 +255,7 @@ class RelievingState extends State<AIDirector> {
 
   override execute(director: AIDirector): void {
     // Slowly reduce tension further
-    director.targetTension = Math.max(0.1, director.targetTension - 0.01 * 0.016);
+    director.targetTension = Math.max(0.1, director.targetTension - 0.01 * director.lastDelta);
 
     // Once panic drops and player stabilizes, start building again
     if (

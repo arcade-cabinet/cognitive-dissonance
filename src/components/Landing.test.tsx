@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Landing from './Landing';
 
 // Mock animejs to avoid DOM animation issues in jsdom
@@ -27,6 +27,10 @@ function renderLanding() {
 }
 
 describe('Landing Page', () => {
+  beforeEach(() => {
+    mockedNavigate.mockClear();
+  });
+
   it('should render the game title', () => {
     renderLanding();
     const titles = screen.getAllByText('PSYDUCK PANIC');

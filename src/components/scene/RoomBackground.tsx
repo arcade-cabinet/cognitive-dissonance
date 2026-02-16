@@ -13,6 +13,7 @@
 
 import { Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
+import type React from 'react';
 import { useRef } from 'react';
 import type * as THREE from 'three';
 import { colors } from '../../design/tokens';
@@ -20,22 +21,26 @@ import { colors } from '../../design/tokens';
 const sc = colors.scene;
 
 interface RoomBackgroundProps {
-  panic: number;
-  wave: number;
+  panicRef: React.RefObject<number>;
+  waveRef: React.RefObject<number>;
 }
 
-export function RoomBackground({ panic, wave }: RoomBackgroundProps) {
-  const w = Math.min(wave, 4);
+export function RoomBackground({ panicRef, waveRef }: RoomBackgroundProps) {
+  const w = Math.min(waveRef.current, 4);
   const monitorGlowRef = useRef<THREE.PointLight>(null);
   const monitorGlow2Ref = useRef<THREE.PointLight>(null);
   const bgMatRef = useRef<THREE.MeshStandardMaterial>(null);
   const screenMatRef = useRef<THREE.MeshStandardMaterial>(null);
 
   useFrame(() => {
+    const panic = panicRef.current;
+    const wave = waveRef.current;
+    const wClamped = Math.min(wave, 4);
+
     // Dynamic monitor glow — shifts from cool cyan to angry red-orange with panic
     // Inspired by original 2D: radial gradient from (W/2, 560) with screen blend
-    const gR = Math.min(1, (80 + panic * 2.5 + w * 10) / 255);
-    const gG = Math.max(0.08, (180 - panic * 2 - w * 8) / 255);
+    const gR = Math.min(1, (80 + panic * 2.5 + wClamped * 10) / 255);
+    const gG = Math.max(0.08, (180 - panic * 2 - wClamped * 8) / 255);
     const gB = Math.max(0.15, (220 - panic) / 255);
 
     if (monitorGlowRef.current) {
@@ -55,7 +60,7 @@ export function RoomBackground({ panic, wave }: RoomBackgroundProps) {
 
     // Wall color shifts with panic — from cool indigo to warm purple-red
     if (bgMatRef.current) {
-      const r = Math.min(70, 28 + panic * 0.45 + w * 3) / 255;
+      const r = Math.min(70, 28 + panic * 0.45 + wClamped * 3) / 255;
       const g = Math.max(12, 28 - panic * 0.18) / 255;
       const b = Math.min(85, 66 + panic * 0.15) / 255;
       bgMatRef.current.color.setRGB(r, g, b);
@@ -387,7 +392,8 @@ export function RoomBackground({ panic, wave }: RoomBackgroundProps) {
 function WindowStars() {
   const groupRef = useRef<THREE.Group>(null);
   const starsData = useRef(
-    Array.from({ length: 50 }, () => ({
+    Array.from({ length: 50 }, (_, i) => ({
+      id: `star-${i}`,
       x: -2.6 + (Math.random() - 0.5) * 1.8,
       y: 0.8 + (Math.random() - 0.5) * 2.2,
       size: Math.random() * 0.015 + 0.005,
@@ -410,7 +416,7 @@ function WindowStars() {
   return (
     <group ref={groupRef}>
       {starsData.map((star) => (
-        <mesh key={`star-${star.x}-${star.y}`} position={[star.x, star.y, -2.79]}>
+        <mesh key={star.id} position={[star.x, star.y, -2.79]}>
           <planeGeometry args={[star.size, star.size]} />
           <meshBasicMaterial color={colors.ui.text.primary} />
         </mesh>

@@ -30,7 +30,7 @@ Psyduck Panic: Evolution Deluxe is a browser-based retro arcade game where playe
 
 ### Architecture
 
-```
+```text
 Presentation Layer (Main Thread)
 ├── React Components (UI/HUD) — Game.tsx (lazy loaded), Landing.tsx
 ├── R3F Canvas (3D Scene) — GameScene.tsx
@@ -82,7 +82,7 @@ Platform Layer
 
 - Game space: 800x600 (GAME_WIDTH x GAME_HEIGHT)
 - Scene space: x mapped to (-4, 4), y mapped to (3, -3) via `gx()` / `gy()` helpers
-- Each rendering system has its own `gx`/`gy` converters
+- Shared `src/components/scene/coordinates.ts` provides `gx()`/`gy()` — all rendering systems import from there
 
 ---
 
@@ -119,7 +119,7 @@ Platform Layer
 
 ### Build Chunks (vite.config.ts)
 
-```
+```text
 vendor-react, vendor-three, vendor-tone, vendor-anime, game-utils, game-ecs
 Game chunk (lazy loaded): Game-*.js (~43KB) — deferred until /game route
 ```
@@ -140,7 +140,7 @@ pnpm test:e2e     # E2E tests (Playwright)
 
 ## File Structure
 
-```
+```text
 src/
 ├── components/
 │   ├── Game.tsx              # Main game component (R3F Canvas + HUD + worker comm)

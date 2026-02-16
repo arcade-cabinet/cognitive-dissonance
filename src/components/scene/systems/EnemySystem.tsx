@@ -18,17 +18,7 @@ import { useRef } from 'react';
 import type * as THREE from 'three';
 import { ECS } from '../../../ecs/react';
 import { enemies } from '../../../ecs/world';
-import { GAME_HEIGHT, GAME_WIDTH } from '../../../lib/constants';
-
-/** Convert game X (0-800) to scene X (-4 to 4) */
-function gx(x: number): number {
-  return (x - GAME_WIDTH / 2) / 100;
-}
-
-/** Convert game Y (0-600) to scene Y (3 to -3) */
-function gy(y: number): number {
-  return -(y - GAME_HEIGHT / 2) / 100;
-}
+import { gx, gy } from '../coordinates';
 
 export function EnemySystem() {
   return (

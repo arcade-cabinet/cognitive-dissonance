@@ -51,7 +51,7 @@ export class GameLogic {
   private recentEscapes: number;
   private recentCounters: number;
   private recentResetTimer: number;
-  private bossWaveTransitionPending: boolean;
+  private bossWaveTransitionFrames: number;
 
   // Event queue
   events: GameEvent[] = [];
@@ -98,7 +98,7 @@ export class GameLogic {
     this.recentEscapes = 0;
     this.recentCounters = 0;
     this.recentResetTimer = 0;
-    this.bossWaveTransitionPending = false;
+    this.bossWaveTransitionFrames = 0;
 
     this.reset();
   }
@@ -141,7 +141,7 @@ export class GameLogic {
     this.recentEscapes = 0;
     this.recentCounters = 0;
     this.recentResetTimer = 0;
-    this.bossWaveTransitionPending = false;
+    this.bossWaveTransitionFrames = 0;
   }
 
   startOrContinue(): void {
@@ -346,7 +346,7 @@ export class GameLogic {
         this.fl = 0.4;
         this.flCol = '#2ecc71';
         this.events.push({ type: 'CONFETTI', x: W / 2, y: 120, color: 'random' });
-        this.bossWaveTransitionPending = true;
+        this.bossWaveTransitionFrames = 90;
       }
     }
     for (let i = this.enemies.length - 1; i >= 0; i--) {
@@ -426,10 +426,12 @@ export class GameLogic {
   update(dt: number, now: number): void {
     if (!this.running) return;
 
-    // Boss wave transition (delayed to allow confetti)
-    if (this.bossWaveTransitionPending) {
-      this.bossWaveTransitionPending = false;
-      setTimeout(() => this.nextWave(), 1500);
+    // Boss wave transition (frame-based delay to allow confetti)
+    if (this.bossWaveTransitionFrames > 0) {
+      this.bossWaveTransitionFrames--;
+      if (this.bossWaveTransitionFrames <= 0) {
+        this.nextWave();
+      }
     }
 
     const deltaSec = (dt * 16.67) / 1000; // Convert frame-time factor to seconds

@@ -159,4 +159,13 @@ export class SFX {
       this.musicInterval = null;
     }
   }
+
+  /** Clean up all audio resources */
+  destroy(): void {
+    this.stopMusic();
+    if (this.ctx) {
+      this.ctx.close().catch(() => {});
+      this.ctx = null;
+    }
+  }
 }

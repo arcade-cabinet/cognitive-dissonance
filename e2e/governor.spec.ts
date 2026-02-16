@@ -114,7 +114,7 @@ test.describe('Automated Playthrough with Governor', () => {
     await verifyGamePlaying(page);
 
     // Let governor play
-    governor.start();
+    await governor.start();
     await page.waitForTimeout(5000);
 
     // Verify game is still running

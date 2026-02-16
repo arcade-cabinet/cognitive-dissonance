@@ -26,7 +26,7 @@ Psyduck Panic is a browser-based retro arcade game built with modern web technol
 
 ## System Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                      Presentation Layer                      │
 ├─────────────────────────────────────────────────────────────┤
@@ -68,7 +68,7 @@ Psyduck Panic is a browser-based retro arcade game built with modern web technol
 ### Game Component (`Game.tsx`)
 The main React component that orchestrates the game:
 
-```
+```text
 Game.tsx
 ├── R3F Canvas
 │   └── GameScene (ref-based updates at 60fps)
@@ -91,7 +91,7 @@ Game.tsx
 ### 3D Scene (`GameScene.tsx`)
 Orchestrates all R3F rendering systems:
 
-```
+```text
 GameScene
 ├── CameraController (screen shake)
 ├── RoomBackground (3D diorama)
@@ -118,7 +118,7 @@ GameScene
 ### ECS Layer (Miniplex)
 Entity Component System for all game entities:
 
-```
+```text
 ECS (src/ecs/)
 ├── world.ts
 │   ├── Entity type (position, velocity, enemy, boss, particle, trail, confetti, powerUp)
@@ -136,7 +136,7 @@ ECS (src/ecs/)
 ### Game Logic (`GameLogic`)
 Core game mechanics in Web Worker:
 
-```
+```text
 GameLogic (Worker)
 ├── Game Loop
 │   └── 60 FPS update cycle
@@ -159,7 +159,7 @@ GameLogic (Worker)
 ## Data Flow
 
 ### Game Loop Flow
-```
+```text
 1. Worker: Update game state (60 FPS)
    ├── Update enemy positions
    ├── Check collisions
@@ -183,7 +183,7 @@ GameLogic (Worker)
 ```
 
 ### State Flow
-```
+```text
 GameState (from Worker)
 ├── enemies: Enemy[]
 ├── powerups: PowerUpInstance[]
@@ -206,12 +206,12 @@ GameState (from Worker)
 - **Game space**: 800x600 pixels (GAME_WIDTH x GAME_HEIGHT)
 - **Scene space**: x: (-4, 4), y: (3, -3)
 - **Conversion**: `gx(x) = (x - 400) / 100`, `gy(y) = -(y - 300) / 100`
-- Each rendering system has local `gx()`/`gy()` helpers
+- Shared `src/components/scene/coordinates.ts` provides `gx()`/`gy()` — all rendering systems import from there
 
 ## Platform Integration
 
 ### Capacitor Integration
-```
+```text
 Web App
 └── Capacitor Runtime
     ├── iOS
@@ -225,7 +225,7 @@ Web App
 ```
 
 ### Device Detection Flow
-```
+```text
 1. App Launch
    ├── Capacitor.isNativePlatform()
    └── Initialize native plugins
@@ -252,7 +252,7 @@ Web App
 ### Viewport Calculation
 The game maintains a 4:3 aspect ratio (800x600 base) while adapting to any screen:
 
-```
+```text
 Viewport Dimensions
 ├── Phone Portrait
 │   ├── Use 95% of width
@@ -292,7 +292,7 @@ Viewport Dimensions
 
 ## Build Pipeline
 
-```
+```text
 Source Code
     ↓
 TypeScript Compilation (tsc --noEmit)
@@ -317,7 +317,7 @@ Native App Bundles
 
 ## File Structure
 
-```
+```text
 psyduck-panic/
 ├── src/
 │   ├── components/
