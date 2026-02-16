@@ -127,7 +127,9 @@ export function RoomBackground({ panic, wave }: RoomBackgroundProps) {
         decay={2}
         color="#50b4dc"
       />
-      <ambientLight intensity={0.15} color="#1a1a3a" />
+      <ambientLight intensity={0.3} color="#1a1a3a" />
+      {/* Fill light from camera direction for scene visibility */}
+      <directionalLight position={[0, 2, 4]} intensity={0.2} color="#334466" />
 
       {/* Posters */}
       <group position={[-0.6, 1.2, -2.9]}>

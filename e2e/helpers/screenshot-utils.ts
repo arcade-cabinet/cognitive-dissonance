@@ -24,13 +24,18 @@ export async function captureGameScreenshot(page: Page, filename: string): Promi
 
 /**
  * Capture the game canvas as a base64 image
- * This directly extracts the canvas content
+ * R3F wraps the actual canvas inside a container div
  */
 export async function captureCanvasAsDataURL(page: Page): Promise<string> {
   return await page.evaluate(() => {
-    const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+    const container = document.getElementById('gameCanvas');
+    if (!container) {
+      throw new Error('Game canvas container not found');
+    }
+    // R3F places the actual canvas element inside the container div
+    const canvas = container.querySelector('canvas') as HTMLCanvasElement;
     if (!canvas) {
-      throw new Error('Game canvas not found');
+      throw new Error('WebGL canvas not found inside R3F container');
     }
     return canvas.toDataURL('image/png');
   });
@@ -40,29 +45,43 @@ export async function captureCanvasAsDataURL(page: Page): Promise<string> {
  * Save canvas content to a file using Playwright's screenshot
  */
 export async function saveCanvasScreenshot(page: Page, filename: string): Promise<void> {
-  await page.locator('#gameCanvas').screenshot({ path: filename });
+  // Target the actual canvas inside R3F's container div
+  const canvas = page.locator('#gameCanvas canvas');
+  const count = await canvas.count();
+  if (count > 0) {
+    await canvas.screenshot({ path: filename });
+  } else {
+    // Fallback to the container itself
+    await page.locator('#gameCanvas').screenshot({ path: filename });
+  }
 }
 
 /**
  * Wait for game to be fully loaded and rendering
  */
 export async function waitForGameReady(page: Page): Promise<void> {
-  // Wait for canvas to exist
+  // Wait for R3F container to exist
   await page.waitForSelector('#gameCanvas', { state: 'attached' });
 
   // Wait for game container to be visible
   await page.waitForSelector('#game-container', { state: 'visible' });
 
-  // Give PixiJS time to initialize and render first frame
+  // Give R3F/Three.js time to initialize and render first frame
   await page.waitForTimeout(1000);
 
-  // Verify canvas has content by checking if it has a context
+  // Verify canvas has WebGL content (R3F uses WebGL, not 2d)
   const hasContent = await page.evaluate(() => {
-    const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
-    if (!canvas) return false;
+    // R3F wraps the actual canvas inside a div with the id
+    const container = document.getElementById('gameCanvas');
+    if (!container) return false;
 
-    const ctx = canvas.getContext('2d');
-    return ctx !== null;
+    const canvas = container.querySelector('canvas') || container;
+    if (canvas instanceof HTMLCanvasElement) {
+      const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+      return gl !== null;
+    }
+    // R3F container div exists — canvas is inside
+    return container.querySelector('canvas') !== null;
   });
 
   if (!hasContent) {

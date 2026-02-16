@@ -233,7 +233,7 @@ export default function Game() {
         }}
         onPointerDown={handleCanvasPointerDown}
       >
-        {/* R3F Canvas replaces PixiJS */}
+        {/* R3F 3D Canvas */}
         <Canvas
           id="gameCanvas"
           style={{
