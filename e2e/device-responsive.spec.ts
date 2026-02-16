@@ -41,17 +41,19 @@ test.describe('Responsive Device Tests', () => {
     const canvas = page.locator('#gameCanvas');
     await expect(canvas).toBeVisible();
 
-    const canvasBox = await canvas.boundingBox();
-    if (!canvasBox) {
-      throw new Error('Canvas bounding box is null');
-    }
+    await expect(async () => {
+      const canvasBox = await canvas.boundingBox();
+      if (!canvasBox) {
+        throw new Error('Canvas bounding box is null');
+      }
 
-    // Calculate aspect ratio (should be close to 4:3 = 1.333...)
-    const aspectRatio = canvasBox.width / canvasBox.height;
+      // Calculate aspect ratio (should be close to 4:3 = 1.333...)
+      const aspectRatio = canvasBox.width / canvasBox.height;
 
-    // Allow some tolerance for rounding
-    expect(aspectRatio).toBeGreaterThan(1.2);
-    expect(aspectRatio).toBeLessThan(1.5);
+      // Allow some tolerance for rounding
+      expect(aspectRatio).toBeGreaterThan(1.2);
+      expect(aspectRatio).toBeLessThan(1.5);
+    }).toPass({ timeout: 5000 });
   });
 
   test('should show start screen with all elements', async ({ page }) => {
@@ -129,14 +131,15 @@ test.describe('Phone-Specific Tests', () => {
 
     for (const selector of buttons) {
       const btn = page.locator(selector);
-      const box = await btn.boundingBox();
-      if (!box) {
-        throw new Error(`Button ${selector} bounding box is null`);
-      }
-
-      // Buttons should be at least 40px in both dimensions for touch
-      expect(box.height).toBeGreaterThanOrEqual(40);
-      expect(box.width).toBeGreaterThanOrEqual(40);
+      await expect(async () => {
+        const box = await btn.boundingBox();
+        if (!box) {
+          throw new Error(`Button ${selector} bounding box is null`);
+        }
+        // Buttons should be at least 40px in both dimensions for touch
+        expect(box.height).toBeGreaterThanOrEqual(40);
+        expect(box.width).toBeGreaterThanOrEqual(40);
+      }).toPass({ timeout: 5000 });
     }
   });
 
@@ -172,13 +175,15 @@ test.describe('Tablet-Specific Tests', () => {
 
     const canvas = page.locator('#gameCanvas');
     await expect(canvas).toBeVisible();
-    const canvasBox = await canvas.boundingBox();
 
-    // On tablets, canvas should be larger than phone sizes
-    if (!canvasBox) {
-      throw new Error('Canvas bounding box is null');
-    }
-    expect(canvasBox.width).toBeGreaterThan(500);
+    // On tablets, canvas should be larger than phone sizes (polling for hydration)
+    await expect(async () => {
+      const canvasBox = await canvas.boundingBox();
+      if (!canvasBox) {
+        throw new Error('Canvas bounding box is null');
+      }
+      expect(canvasBox.width).toBeGreaterThan(500);
+    }).toPass({ timeout: 5000 });
   });
 
   test('should show comfortable UI spacing on tablets', async ({ page, viewport }) => {
@@ -194,11 +199,13 @@ test.describe('Tablet-Specific Tests', () => {
     const controls = page.locator('#controls');
     await expect(controls).toBeVisible();
 
-    const controlsBox = await controls.boundingBox();
-    if (!controlsBox) {
-      throw new Error('Controls bounding box is null');
-    }
-    expect(controlsBox.width).toBeGreaterThan(300);
+    await expect(async () => {
+      const controlsBox = await controls.boundingBox();
+      if (!controlsBox) {
+        throw new Error('Controls bounding box is null');
+      }
+      expect(controlsBox.width).toBeGreaterThan(300);
+    }).toPass({ timeout: 5000 });
   });
 });
 
@@ -232,13 +239,15 @@ test.describe('Foldable-Specific Tests', () => {
 
     const canvas = page.locator('#gameCanvas');
     await expect(canvas).toBeVisible();
-    const canvasBox = await canvas.boundingBox();
 
-    // Should use more of the unfolded screen
-    if (!canvasBox) {
-      throw new Error('Canvas bounding box is null');
-    }
-    expect(canvasBox.width).toBeGreaterThan(600);
+    // Should use more of the unfolded screen (polling for hydration)
+    await expect(async () => {
+      const canvasBox = await canvas.boundingBox();
+      if (!canvasBox) {
+        throw new Error('Canvas bounding box is null');
+      }
+      expect(canvasBox.width).toBeGreaterThan(600);
+    }).toPass({ timeout: 5000 });
   });
 });
 
@@ -282,12 +291,14 @@ test.describe('Character Rendering Tests', () => {
     const overlay = page.locator('#overlay');
     await expect(overlay).toHaveClass(/hidden/, { timeout: 3000 });
 
-    // Get canvas dimensions
+    // Get canvas dimensions (polling for hydration)
     const canvas = page.locator('#gameCanvas');
-    const canvasBox = await canvas.boundingBox();
-    if (!canvasBox) {
-      throw new Error('Canvas bounding box is null');
-    }
+    await expect(async () => {
+      const canvasBox = await canvas.boundingBox();
+      if (!canvasBox) {
+        throw new Error('Canvas bounding box is null');
+      }
+    }).toPass({ timeout: 5000 });
 
     // Character should be rendering (we can't directly check canvas content,
     // but we can verify the game is running)
@@ -315,18 +326,20 @@ test.describe('Orientation Change Tests', () => {
       // Wait for resize to complete
       await expect(canvas).toBeVisible();
 
-      // Canvas should adapt
-      const newBox = await canvas.boundingBox();
-      if (!newBox) {
-        throw new Error('Canvas bounding box is null after resize');
-      }
-      expect(newBox.width).toBeGreaterThan(0);
-      expect(newBox.height).toBeGreaterThan(0);
+      // Canvas should adapt (polling for resize)
+      await expect(async () => {
+        const newBox = await canvas.boundingBox();
+        if (!newBox) {
+          throw new Error('Canvas bounding box is null after resize');
+        }
+        expect(newBox.width).toBeGreaterThan(0);
+        expect(newBox.height).toBeGreaterThan(0);
 
-      // Aspect ratio should still be maintained
-      const aspectRatio = newBox.width / newBox.height;
-      expect(aspectRatio).toBeGreaterThan(1.2);
-      expect(aspectRatio).toBeLessThan(1.5);
+        // Aspect ratio should still be maintained
+        const aspectRatio = newBox.width / newBox.height;
+        expect(aspectRatio).toBeGreaterThan(1.2);
+        expect(aspectRatio).toBeLessThan(1.5);
+      }).toPass({ timeout: 5000 });
 
       // Take screenshot after orientation change
       const deviceName = test.info().project.name.replace(/\s+/g, '-').toLowerCase();
