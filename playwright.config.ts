@@ -45,6 +45,7 @@ export default defineConfig({
     {
       name: 'iPad Pro 11 Portrait',
       use: {
+        browserName: 'webkit',
         viewport: { width: 834, height: 1194 },
         userAgent:
           'Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
@@ -114,6 +115,7 @@ export default defineConfig({
     {
       name: 'iPad Pro 12.9 Portrait',
       use: {
+        browserName: 'webkit',
         viewport: { width: 1024, height: 1366 },
         userAgent:
           'Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
@@ -126,6 +128,7 @@ export default defineConfig({
     {
       name: 'iPad Pro 11 Landscape',
       use: {
+        browserName: 'webkit',
         viewport: { width: 1194, height: 834 },
         userAgent:
           'Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
