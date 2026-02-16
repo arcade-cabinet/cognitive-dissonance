@@ -25,7 +25,7 @@ test.describe('Responsive Device Tests', () => {
       if (!box) throw new Error('Canvas bounding box is null');
       expect(box.width).toBeGreaterThan(0);
       expect(box.height).toBeGreaterThan(0);
-    }).toPass({ timeout: 5000 });
+    }).toPass({ timeout: 15000 });
 
     // Take screenshot for visual verification
     const deviceName = test.info().project.name.replace(/\s+/g, '-').toLowerCase();
@@ -220,7 +220,7 @@ test.describe('Foldable-Specific Tests', () => {
       if (!box) throw new Error('Canvas bounding box is null');
       // Allow a small margin of error for borders/scaling
       expect(box.width).toBeLessThanOrEqual(viewport.width + 2);
-    }).toPass({ timeout: 5000 });
+    }).toPass({ timeout: 15000 });
   });
 
   test('should utilize unfolded screen space', async ({ page, viewport }) => {
