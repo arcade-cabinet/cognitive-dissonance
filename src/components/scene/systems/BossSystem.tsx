@@ -13,6 +13,7 @@ import { Billboard, Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
 import type * as THREE from 'three';
+import { colors } from '../../../design/tokens';
 import { ECS } from '../../../ecs/react';
 import { bosses } from '../../../ecs/world';
 import { GAME_HEIGHT, GAME_WIDTH } from '../../../lib/constants';
@@ -70,15 +71,15 @@ function BossMesh({ entity, wave }: { entity: (typeof bosses.entities)[number]; 
       {/* Outer glow */}
       <mesh ref={glowRef}>
         <sphereGeometry args={[0.9, 16, 16]} />
-        <meshBasicMaterial color="#e74c3c" transparent opacity={0.15} />
+        <meshBasicMaterial color={colors.boss.primary} transparent opacity={0.15} />
       </mesh>
 
       {/* Main boss sphere */}
       <mesh>
         <sphereGeometry args={[0.45, 16, 16]} />
         <meshStandardMaterial
-          color={iFrameFlash ? '#ffffff' : '#e74c3c'}
-          emissive={iFrameFlash ? '#ffffff' : '#e74c3c'}
+          color={iFrameFlash ? colors.boss.flash : colors.boss.primary}
+          emissive={iFrameFlash ? colors.boss.flash : colors.boss.primary}
           emissiveIntensity={iFrameFlash ? 1 : 0.4}
           roughness={0.3}
         />
@@ -105,23 +106,23 @@ function BossMesh({ entity, wave }: { entity: (typeof bosses.entities)[number]; 
         </Text>
       </Billboard>
 
-      {/* Orbiting orbs */}
+      {/* Orbiting orbs — reality (orange), history (green), logic (purple) */}
       <group ref={orbGroupRef}>
-        {[0xe67e22, 0x2ecc71, 0x9b59b6].map((color) => {
-          const idx = [0xe67e22, 0x2ecc71, 0x9b59b6].indexOf(color);
+        {(['reality', 'history', 'logic'] as const).map((type, idx) => {
+          const color = colors.accent[type];
           const angle = (idx * Math.PI * 2) / 3;
           return (
             <mesh
-              key={`orb-${color}`}
+              key={`orb-${type}`}
               position={[Math.cos(angle) * 0.65, Math.sin(angle) * 0.35, 0]}
             >
               <sphereGeometry args={[0.08, 8, 8]} />
               <meshStandardMaterial
                 color={color}
                 emissive={color}
-                emissiveIntensity={0.3}
+                emissiveIntensity={0.4}
                 transparent
-                opacity={0.6}
+                opacity={0.7}
               />
             </mesh>
           );
@@ -129,7 +130,7 @@ function BossMesh({ entity, wave }: { entity: (typeof bosses.entities)[number]; 
       </group>
 
       {/* Boss point light (red glow) */}
-      <pointLight color="#e74c3c" intensity={2} distance={3} decay={2} />
+      <pointLight color={colors.boss.primary} intensity={2} distance={3} decay={2} />
     </group>
   );
 }

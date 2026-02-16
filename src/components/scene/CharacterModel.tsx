@@ -13,6 +13,10 @@ import { Billboard, Text } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import type * as THREE from 'three';
+import { colors } from '../../design/tokens';
+
+const ch = colors.character;
+const psyduck = ch.psyduck;
 
 interface CharacterModelProps {
   panic: number;
@@ -51,11 +55,11 @@ export function CharacterModel({ panic }: CharacterModelProps) {
 
   const state = panic < 33 ? 'normal' : panic < 66 ? 'panic' : 'psyduck';
 
-  // Interpolated colors
+  // Interpolated colors using design tokens
   const skinColor = useMemo(() => {
-    if (panic < 33) return '#ffdbac';
-    if (panic < 66) return '#f5cba7';
-    // Lerp to yellow for psyduck
+    if (panic < 33) return ch.normal.skin;
+    if (panic < 66) return ch.panic.skin;
+    // Lerp from panic skin to Psyduck yellow
     const t = (panic - 66) / 34;
     const r = Math.round(245 + (241 - 245) * t);
     const g = Math.round(203 + (196 - 203) * t);
@@ -64,7 +68,8 @@ export function CharacterModel({ panic }: CharacterModelProps) {
   }, [panic]);
 
   const bodyColor = useMemo(() => {
-    if (panic < 66) return '#3498db';
+    if (panic < 66) return ch.normal.shirt;
+    // Lerp from shirt blue to Psyduck yellow
     const t = (panic - 66) / 34;
     const r = Math.round(52 + (241 - 52) * t);
     const g = Math.round(152 + (196 - 152) * t);
@@ -78,7 +83,12 @@ export function CharacterModel({ panic }: CharacterModelProps) {
       : state === 'panic'
         ? "IT'S EXPONENTIAL!!!"
         : 'PSY-AY-AY!!!';
-  const speechColor = state === 'normal' ? '#778899' : state === 'panic' ? '#f1c40f' : '#e74c3c';
+  const speechColor =
+    state === 'normal'
+      ? colors.ui.text.muted
+      : state === 'panic'
+        ? colors.primary.main
+        : colors.semantic.error;
 
   return (
     <group ref={groupRef} position={[0, -1.0, 0]}>
@@ -111,7 +121,7 @@ export function CharacterModel({ panic }: CharacterModelProps) {
         // Psyduck beak
         <mesh position={[0, 0.18, 0.42]}>
           <sphereGeometry args={[0.15, 16, 8]} />
-          <meshStandardMaterial color="#f0b27a" roughness={0.5} />
+          <meshStandardMaterial color={psyduck.beak} roughness={0.5} />
         </mesh>
       ) : (
         // Human mouth
@@ -129,14 +139,14 @@ export function CharacterModel({ panic }: CharacterModelProps) {
       {/* Legs / Seat */}
       <mesh position={[0, -0.75, 0]}>
         <boxGeometry args={[0.5, 0.15, 0.3]} />
-        <meshStandardMaterial color="#1a1a2e" />
+        <meshStandardMaterial color={ch.normal.pants} />
       </mesh>
 
-      {/* Psychic aura rings (psyduck state) */}
+      {/* Psychic aura rings (psyduck state) — gold and purple like the original */}
       <group ref={auraRef} visible={false}>
-        <AuraRing radius={0.8} color="#f1c40f" />
-        <AuraRing radius={1.1} color="#8e44ad" />
-        <AuraRing radius={1.4} color="#f1c40f" />
+        <AuraRing radius={0.8} color={psyduck.body} />
+        <AuraRing radius={1.1} color={colors.secondary.dark} />
+        <AuraRing radius={1.4} color={psyduck.body} />
       </group>
 
       {/* Lightning bolts at extreme panic */}
@@ -160,7 +170,7 @@ export function CharacterModel({ panic }: CharacterModelProps) {
 }
 
 function HumanHair({ panic }: { panic: number }) {
-  const hairColor = '#3d2b1f';
+  const hairColor = ch.normal.hair;
   return (
     <group position={[0, 0.5, 0]}>
       {/* Hair dome */}
@@ -281,14 +291,14 @@ function Eyes({ state, panic }: { state: string; panic: number }) {
             rotation={[0, 0, state === 'panic' ? -0.3 : 0.15]}
           >
             <boxGeometry args={[0.12, 0.02, 0.01]} />
-            <meshStandardMaterial color="#3d2b1f" />
+            <meshStandardMaterial color={ch.normal.hair} />
           </mesh>
           <mesh
             position={[0.12, eyeRadius + 0.04, 0.01]}
             rotation={[0, 0, state === 'panic' ? 0.3 : -0.15]}
           >
             <boxGeometry args={[0.12, 0.02, 0.01]} />
-            <meshStandardMaterial color="#3d2b1f" />
+            <meshStandardMaterial color={ch.normal.hair} />
           </mesh>
         </>
       )}
@@ -298,43 +308,43 @@ function Eyes({ state, panic }: { state: string; panic: number }) {
 
 function Arms({ state }: { state: string }) {
   if (state === 'psyduck') {
-    // Wings/flippers
+    // Wings/flippers — bright Psyduck yellow
     return (
       <>
         <mesh position={[-0.52, -0.15, 0]} rotation={[0, 0, -0.4]}>
           <sphereGeometry args={[0.12, 8, 8, 0, Math.PI * 2, 0, Math.PI]} />
-          <meshStandardMaterial color="#f1c40f" roughness={0.6} />
+          <meshStandardMaterial color={psyduck.body} roughness={0.6} />
         </mesh>
         <mesh position={[0.52, -0.15, 0]} rotation={[0, 0, 0.4]}>
           <sphereGeometry args={[0.12, 8, 8, 0, Math.PI * 2, 0, Math.PI]} />
-          <meshStandardMaterial color="#f1c40f" roughness={0.6} />
+          <meshStandardMaterial color={psyduck.body} roughness={0.6} />
         </mesh>
       </>
     );
   }
 
   if (state === 'panic') {
-    // Arms raised up
+    // Arms raised up — panic shirt color
     return (
       <>
         <group position={[-0.45, 0.1, 0]} rotation={[0, 0, -0.8]}>
           <mesh>
             <boxGeometry args={[0.12, 0.4, 0.12]} />
-            <meshStandardMaterial color="#3498db" />
+            <meshStandardMaterial color={ch.panic.shirt} />
           </mesh>
           <mesh position={[0, 0.25, 0]}>
             <sphereGeometry args={[0.07, 8, 8]} />
-            <meshStandardMaterial color="#f5cba7" />
+            <meshStandardMaterial color={ch.panic.skin} />
           </mesh>
         </group>
         <group position={[0.45, 0.1, 0]} rotation={[0, 0, 0.8]}>
           <mesh>
             <boxGeometry args={[0.12, 0.4, 0.12]} />
-            <meshStandardMaterial color="#3498db" />
+            <meshStandardMaterial color={ch.panic.shirt} />
           </mesh>
           <mesh position={[0, 0.25, 0]}>
             <sphereGeometry args={[0.07, 8, 8]} />
-            <meshStandardMaterial color="#f5cba7" />
+            <meshStandardMaterial color={ch.panic.skin} />
           </mesh>
         </group>
       </>
@@ -346,19 +356,19 @@ function Arms({ state }: { state: string }) {
     <>
       <mesh position={[-0.5, -0.3, 0]}>
         <boxGeometry args={[0.12, 0.38, 0.12]} />
-        <meshStandardMaterial color="#3498db" />
+        <meshStandardMaterial color={ch.normal.shirt} />
       </mesh>
       <mesh position={[-0.5, -0.55, 0]}>
         <sphereGeometry args={[0.07, 8, 8]} />
-        <meshStandardMaterial color="#ffdbac" />
+        <meshStandardMaterial color={ch.normal.skin} />
       </mesh>
       <mesh position={[0.5, -0.3, 0]}>
         <boxGeometry args={[0.12, 0.38, 0.12]} />
-        <meshStandardMaterial color="#3498db" />
+        <meshStandardMaterial color={ch.normal.shirt} />
       </mesh>
       <mesh position={[0.5, -0.55, 0]}>
         <sphereGeometry args={[0.07, 8, 8]} />
-        <meshStandardMaterial color="#ffdbac" />
+        <meshStandardMaterial color={ch.normal.skin} />
       </mesh>
     </>
   );
@@ -392,7 +402,7 @@ function LightningBolts() {
         const z = Math.sin(angle) * 0.6;
         return (
           <Billboard key={i} position={[x, 0, z]}>
-            <Text fontSize={0.15} color="#f1c40f">
+            <Text fontSize={0.15} color={psyduck.body}>
               {'\u26A1'}
             </Text>
           </Billboard>

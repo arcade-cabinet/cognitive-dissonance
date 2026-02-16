@@ -44,7 +44,7 @@ export const colors = {
   // UI Colors
   ui: {
     background: {
-      primary: '#0a0a18',
+      primary: '#0e0e28',
       secondary: '#1a1a2e',
       tertiary: '#16213e',
       overlay: 'rgba(5, 5, 15, 0.97)',
@@ -56,10 +56,36 @@ export const colors = {
       muted: '#7f8c8d',
     },
     border: {
-      default: '#1a1a3a',
+      default: '#2a2a4a',
       accent: 'rgba(241, 196, 15, 0.3)',
       glow: 'rgba(0, 255, 255, 0.5)',
     },
+  },
+
+  // 3D Scene Colors — dark foundation with vivid colorful accents
+  // Inspired by the original 2D game's neon-arcade-meets-cozy-bedroom aesthetic
+  scene: {
+    background: '#0e0e28',
+    wall: '#1c1c42', // Rich dark indigo
+    floor: '#1e1e38', // Visible dark navy
+    desk: '#34495e', // Bright enough to see desk surface
+    deskEdge: '#2c3e50', // Visible edge highlight
+    keyboard: '#222d3a', // Dark but visible keys
+    mouse: '#4a6070', // Light enough to read shape
+    windowPane: '#060620', // Deep night sky
+    windowFrame: '#4a5a6c', // Visible frame
+    poster: '#303050', // Visible poster bg
+    posterText: '#aabbdd', // Bright, clearly readable
+    monitorGlow: '#60ccff', // Vivid cyan-blue glow
+    monitorGlowWarm: '#ff8844', // Warm panic glow
+    moonColor: '#fffde8', // Bright moon
+    moonGlow: '#ffd090', // Warm golden glow
+    ambient: '#5566aa', // Rich blue ambient
+    fillLight: '#88aacc', // Bright fill
+    keyLight: '#aabbcc', // Strong key light
+    rimLight: '#4466aa', // Saturated blue rim
+    deskLamp: '#ffcc66', // Warm desk accent
+    screenSpill: '#3388ff', // Monitor screen spill color
   },
 
   // Powerup Colors

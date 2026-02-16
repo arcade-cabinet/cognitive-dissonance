@@ -15,6 +15,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import * as THREE from 'three';
+import { colors } from '../../design/tokens';
 import {
   clearAllEntities,
   spawnConfetti,
@@ -45,7 +46,7 @@ export const GameScene = forwardRef<GameSceneHandle>(function GameScene(_, ref) 
   // Set scene background to a visible dark blue (not pure black)
   const { scene } = useThree();
   useEffect(() => {
-    scene.background = new THREE.Color('#0e0e28');
+    scene.background = new THREE.Color(colors.scene.background);
   }, [scene]);
 
   useImperativeHandle(ref, () => ({

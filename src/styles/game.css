@@ -316,6 +316,7 @@ canvas {
   transform: translateY(4px);
   border-bottom-width: 0;
   filter: brightness(0.85);
+  box-shadow: none;
 }
 .btn span {
   display: block;
@@ -326,19 +327,32 @@ canvas {
 }
 .btn.reality {
   background: linear-gradient(180deg, #e67e22, #d35400);
+  box-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.4),
+    0 0 12px rgba(230, 126, 34, 0.3);
 }
 .btn.history {
   background: linear-gradient(180deg, #2ecc71, #27ae60);
+  box-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.4),
+    0 0 12px rgba(46, 204, 113, 0.3);
 }
 .btn.logic {
   background: linear-gradient(180deg, #9b59b6, #8e44ad);
+  box-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.4),
+    0 0 12px rgba(155, 89, 182, 0.3);
 }
 .btn.special {
   background: linear-gradient(180deg, #e74c3c, #c0392b);
+  box-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.4),
+    0 0 12px rgba(231, 76, 60, 0.3);
 }
 .btn.on-cooldown {
   filter: grayscale(0.8) brightness(0.4);
   pointer-events: none;
+  box-shadow: none;
 }
 .key-hint {
   position: absolute;

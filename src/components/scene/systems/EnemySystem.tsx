@@ -59,20 +59,20 @@ function EnemyMesh({ entity }: { entity: (typeof enemies.entities)[number] }) {
 
   return (
     <group ref={groupRef}>
-      {/* Glow sphere (larger, transparent) */}
+      {/* Glow sphere (larger, transparent) — vivid halo like original 2D */}
       <mesh>
-        <sphereGeometry args={[radius + 0.1, 16, 16]} />
-        <meshBasicMaterial color={displayColor} transparent opacity={0.08} />
+        <sphereGeometry args={[radius + 0.12, 16, 16]} />
+        <meshBasicMaterial color={displayColor} transparent opacity={0.15} />
       </mesh>
 
-      {/* Main bubble */}
+      {/* Main bubble — saturated with strong emissive */}
       <mesh>
         <sphereGeometry args={[radius, 16, 16]} />
         <meshStandardMaterial
           color={displayColor}
           emissive={displayColor}
-          emissiveIntensity={0.3}
-          roughness={0.4}
+          emissiveIntensity={0.5}
+          roughness={0.3}
           metalness={0.1}
         />
       </mesh>
@@ -123,8 +123,8 @@ function EnemyMesh({ entity }: { entity: (typeof enemies.entities)[number] }) {
         />
       )}
 
-      {/* Point light for bubble glow */}
-      <pointLight color={displayColor} intensity={0.5} distance={1.5} decay={2} />
+      {/* Point light for bubble glow — each enemy radiates its type color */}
+      <pointLight color={displayColor} intensity={0.8} distance={2} decay={2} />
     </group>
   );
 }
