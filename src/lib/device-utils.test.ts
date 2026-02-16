@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   calculateViewport,
   createResizeObserver,
+  type DeviceInfo,
   detectDevice,
   gameToViewport,
   getUIScale,
@@ -9,9 +10,6 @@ import {
 } from './device-utils';
 
 describe('device-utils', () => {
-describe('device-utils', () => {
-  beforeEach(() => {
-
   beforeEach(() => {
     // Reset window dimensions
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 800 });
@@ -51,7 +49,6 @@ describe('device-utils', () => {
     });
 
     // Ensure ontouchstart is undefined for desktop tests
-    // @ts-expect-error
     delete window.ontouchstart;
   });
 
@@ -118,7 +115,6 @@ describe('device-utils', () => {
 
     test('safely handles missing visualViewport', () => {
       // Ensure visualViewport is undefined
-      // @ts-expect-error
       Object.defineProperty(window, 'visualViewport', { value: undefined });
 
       // Should not throw
@@ -128,7 +124,6 @@ describe('device-utils', () => {
 
     test('detects foldable via window segments if available', () => {
       const getWindowSegments = vi.fn().mockReturnValue([{ x: 0 }, { x: 100 }]);
-      // @ts-expect-error
       Object.defineProperty(window, 'visualViewport', {
         value: {
           getWindowSegments,

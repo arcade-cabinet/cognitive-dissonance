@@ -23,8 +23,8 @@ test.describe('Responsive Device Tests', () => {
     await expect(async () => {
       const box = await canvas.boundingBox();
       expect(box).not.toBeNull();
-      expect(box!.width).toBeGreaterThan(0);
-      expect(box!.height).toBeGreaterThan(0);
+      expect(box?.width).toBeGreaterThan(0);
+      expect(box?.height).toBeGreaterThan(0);
     }).toPass({ timeout: 5000 });
 
     // Take screenshot for visual verification
@@ -219,7 +219,7 @@ test.describe('Foldable-Specific Tests', () => {
       const box = await canvas.boundingBox();
       expect(box).not.toBeNull();
       // Allow a small margin of error for borders/scaling
-      expect(box!.width).toBeLessThanOrEqual(viewport.width + 2);
+      expect(box?.width).toBeLessThanOrEqual(viewport.width + 2);
     }).toPass({ timeout: 5000 });
   });
 
