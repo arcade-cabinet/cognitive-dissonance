@@ -80,7 +80,7 @@ jobs:
           echo "Test results directory contents:"
           ls -la test-results/ || echo "test-results directory not found"
       - name: SonarCloud Scan
-        uses: sonarsource/sonarqube-scan-action@884b79409bbd464b2a59edc326a4b77dc56b2195 # v3.0.0
+        uses: sonarsource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -320,7 +320,7 @@ jobs:
           echo "summary_file=summary.md" >> $GITHUB_OUTPUT
 
       - name: Post or update PR comment
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
             const fs = require('fs');
