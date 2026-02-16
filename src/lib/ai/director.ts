@@ -227,8 +227,8 @@ class SustainingState extends State<AIDirector> {
   }
 
   override execute(director: AIDirector): void {
-    // Gently nudge tension toward 0.5
-    director.targetTension += (0.5 - director.targetTension) * 0.01;
+    // Gently nudge tension toward 0.5 (delta-scaled so it's frame-rate independent)
+    director.targetTension += (0.5 - director.targetTension) * 0.01 * director.lastDelta;
 
     const skill = director.getSkillEstimate();
 
