@@ -70,6 +70,12 @@ Platform Layer
 - **Grading**: Extracted to `src/lib/grading.ts` — S/A/B/C/D based on accuracy and max combo
 - **No monoliths**: Logic lives in `/lib/`, not in `.tsx` files. Components are thin rendering layers.
 
+### Spinal Systems (AI + Panic)
+
+- **Panic Escalation** (`panic-system.ts`): Logarithmic sigmoid damage curve, natural combo-based decay, zones (Calm/Uneasy/Panicked/Meltdown), hysteresis on character transformations, dynamic difficulty modifiers
+- **AI Director** (`ai/director.ts`): Yuka.js StateMachine with 4 states (Building/Sustaining/Relieving/Surging), observes player performance, adjusts spawn rate, speed, max enemies, boss aggression
+- **Boss AI** (`ai/boss-ai.ts`): Yuka.js Vehicle + Think + GoalEvaluators. Goals: BurstAttack, SweepAttack, SpiralAttack, Reposition, Summon, Rage. Unpredictable pattern selection based on HP ratio, aggression, and randomness
+
 ### Coordinate System
 
 - Game space: 800x600 (GAME_WIDTH x GAME_HEIGHT)
@@ -93,6 +99,7 @@ Platform Layer
 | Miniplex | 2.0 | Entity Component System |
 | miniplex-react | 2.0.1 | React bindings for Miniplex (`createReactAPI`) |
 | Tone.js | 15.1 | Adaptive music system |
+| Yuka.js | 0.7.8 | Game AI (steering, FSM, goal-driven agents) |
 | Anime.js | 4.3 | UI animations |
 | Capacitor | 8.1 | Native mobile (iOS/Android) |
 | Biome | 2.3 | Linter + formatter |
@@ -104,6 +111,8 @@ Platform Layer
 - **`miniplex-react`** is the correct React bindings package. NOT `@miniplex/react` (incompatible monorepo package).
 - `miniplex-react` exports `createReactAPI` as **default export**, provides `<ECS.Entities in={bucket}>` component.
 - Miniplex eventery uses `subscribe()` which returns an unsubscribe function (not `add`/`remove`).
+- **Yuka.js** runs in the **Web Worker** (no DOM dependency). Bundled into `game.worker.js`, not a separate vendor chunk.
+- `@types/yuka` (v0.7.4) lags behind `yuka` (v0.7.8) — some newer APIs may need custom declarations.
 
 ### Build Chunks (vite.config.ts)
 
@@ -153,6 +162,11 @@ src/
 │   ├── audio.ts              # Web Audio SFX system
 │   ├── music.ts              # Tone.js adaptive music
 │   ├── grading.ts            # Grade calculation (S/A/B/C/D)
+│   ├── panic-system.ts       # Panic escalation (sigmoid curves, decay, zones)
+│   ├── ai/
+│   │   ├── index.ts          # AI module barrel export
+│   │   ├── director.ts       # Yuka FSM AI Director (dynamic difficulty)
+│   │   └── boss-ai.ts        # Yuka goal-driven boss behavior
 │   ├── ui-state.ts           # UI state reducer + actions
 │   ├── storage.ts            # IndexedDB high score persistence
 │   ├── device-utils.ts       # Responsive viewport calculations
@@ -177,7 +191,7 @@ src/
 
 ### Current Focus
 
-The R3F + ECS + Tone.js migration is complete and passing all checks. The next major effort is making the panic escalation, Psyduck transformation, and boss encounters into proper "spinal systems" of the game with real algorithms.
+All three spinal systems are implemented: Panic Escalation (logarithmic curves), AI Director (Yuka FSM), and Boss AI (Yuka goal-driven). The game needs visual polish and gameplay testing.
 
 ### Recent Changes (This Session)
 
@@ -187,17 +201,20 @@ The R3F + ECS + Tone.js migration is complete and passing all checks. The next m
 - Added grading system (S/A/B/C/D) on game over
 - Extracted UI state and grading logic into separate modules
 - Removed all PixiJS dependencies and dead code
-- Fixed all lint, type, and test issues
 - Implemented dynamic eye pupil tracking (speed increases with panic)
 - Added point light glow to enemy bubbles
+- **NEW: Panic Escalation System** — sigmoid damage curve, combo-based decay, panic zones, hysteresis on character state transitions, dynamic difficulty modifiers
+- **NEW: AI Director** — Yuka StateMachine (Building/Sustaining/Relieving/Surging) that governs spawn rate, speed, max enemies, and boss aggression based on player performance
+- **NEW: Boss AI** — Yuka Vehicle + Think + GoalEvaluators with 6 attack goals (Burst, Sweep, Spiral, Reposition, Summon, Rage), dynamic pattern selection
+- Updated tests for logarithmic panic damage
 
 ### Next Steps
 
-1. **Panic Escalation System**: Replace linear panic with logarithmic/exponential curves that create real tension. The calm→panic→psyduck transformation should feel earned and dramatic.
-2. **Yuka.js AI Governors**: Add Yuka.js for real steering behaviors, state machines, and goal-driven AI on bosses and enemy waves. Make bosses unpredictable like missile command.
-3. **Boss Overhaul**: Replace fixed patterns with dynamic, AI-driven behaviors. Bosses should feel like real threats with emergent tactics.
-4. **E2E Test Overhaul**: DRY out and reorganize Playwright tests.
-5. **React Testing Library**: Add component-level tests.
+1. **Visual gameplay testing** — Use Playwright screenshots to verify the 3D scene, transformations, boss encounters
+2. **E2E Test Overhaul**: DRY out and reorganize Playwright tests
+3. **React Testing Library**: Add component-level tests
+4. **Panic system tuning** — Playtesting to balance the sigmoid curve, decay rates, and zone thresholds
+5. **Boss AI tuning** — Balance attack cooldowns, aggression scaling, rage threshold
 
 ### Active Decisions
 
@@ -205,6 +222,8 @@ The R3F + ECS + Tone.js migration is complete and passing all checks. The next m
 - VFX (particles, trails, confetti) are render-only — spawned by events, not synced from worker.
 - The `wave` ref is passed into systems that need wave-dependent visuals (boss emoji, room clutter).
 - Music layers are controlled by panic level and wave number.
+- Yuka.js runs entirely in the Web Worker alongside GameLogic.
+- Boss AI communicates via BossAction queue (move/spawn_enemies/flash/shake).
 
 ---
 
@@ -225,15 +244,17 @@ The R3F + ECS + Tone.js migration is complete and passing all checks. The next m
 - [x] Grading system (S/A/B/C/D with accuracy + combo)
 - [x] UI state extraction (reducer pattern)
 - [x] PixiJS cleanup (removed dependency + dead code)
+- [x] Panic Escalation System (sigmoid damage, combo decay, zones, hysteresis)
+- [x] AI Director (Yuka FSM: Building/Sustaining/Relieving/Surging)
+- [x] Boss AI (Yuka goal-driven: Burst/Sweep/Spiral/Reposition/Summon/Rage)
 - [x] All 59 unit tests passing
 - [x] 0 lint warnings, 0 type errors
 - [x] Production build working
 
 ### In Progress
 
-- [ ] Proper panic escalation algorithms (logarithmic curves, real tension)
-- [ ] Yuka.js AI governors for bosses and enemy behavior
-- [ ] AGENTS.md and documentation updates
+- [ ] Visual gameplay testing via Playwright screenshots
+- [ ] Panic/AI tuning and balance
 
 ### Known Issues
 

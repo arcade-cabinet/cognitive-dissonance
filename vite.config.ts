@@ -24,6 +24,7 @@ export default defineConfig({
           'vendor-three': ['three', '@react-three/fiber', '@react-three/drei'],
           'vendor-tone': ['tone'],
           'vendor-anime': ['animejs'],
+          // yuka is bundled into game.worker.js (worker-only dependency)
 
           // Capacitor chunks (lazy loaded)
           'capacitor-core': ['@capacitor/core', '@capacitor/app'],
