@@ -5,6 +5,7 @@
  * Receives game state from the worker via ref and distributes to:
  * - RoomBackground: 3D diorama environment
  * - CharacterModel: Brother/Psyduck with panic state transitions
+ * - KeyboardControls: Interactive 3D F-keys with RGB underglow
  * - EnemySystem: ECS-driven enemy bubble rendering
  * - ParticleSystem, TrailSystem, ConfettiSystem: ECS-driven VFX
  * - BossSystem: Boss encounter rendering
@@ -24,6 +25,7 @@ import {
 } from '../../ecs/state-sync';
 import type { GameState } from '../../lib/events';
 import { CharacterModel } from './CharacterModel';
+import { type CooldownState, KeyboardControls } from './KeyboardControls';
 import { RoomBackground } from './RoomBackground';
 import { BossSystem } from './systems/BossSystem';
 import { EnemySystem } from './systems/EnemySystem';
@@ -36,12 +38,26 @@ export interface GameSceneHandle {
   reset: () => void;
 }
 
-export const GameScene = forwardRef<GameSceneHandle>(function GameScene(_, ref) {
+export interface GameSceneProps {
+  onAbility?: (type: 'reality' | 'history' | 'logic') => void;
+  onNuke?: () => void;
+}
+
+export const GameScene = forwardRef<GameSceneHandle, GameSceneProps>(function GameScene(
+  { onAbility, onNuke },
+  ref
+) {
   const stateRef = useRef<GameState | null>(null);
   const panicRef = useRef(0);
   const waveRef = useRef(0);
   const shakeRef = useRef(0);
   const flashRef = useRef({ alpha: 0, color: '#ffffff' });
+  const cooldownRef = useRef<CooldownState>({
+    abilityCd: { reality: 0, history: 0, logic: 0 },
+    abilityMax: { reality: 1, history: 1, logic: 1 },
+    nukeCd: 0,
+    nukeMax: 1,
+  });
 
   // Set scene background to a visible dark blue (not pure black)
   const { scene } = useThree();
@@ -56,6 +72,14 @@ export const GameScene = forwardRef<GameSceneHandle>(function GameScene(_, ref) 
       waveRef.current = state.wave;
       shakeRef.current = state.shake;
       flashRef.current = { alpha: state.fl, color: state.flCol };
+
+      // Update cooldown state for 3D keyboard
+      cooldownRef.current = {
+        abilityCd: state.abilityCd,
+        abilityMax: state.abilityMax,
+        nukeCd: state.nukeCd,
+        nukeMax: state.nukeMax,
+      };
 
       // Sync ECS entities
       syncStateToECS(state);
@@ -72,8 +96,18 @@ export const GameScene = forwardRef<GameSceneHandle>(function GameScene(_, ref) 
       waveRef.current = 0;
       shakeRef.current = 0;
       flashRef.current = { alpha: 0, color: '#ffffff' };
+      cooldownRef.current = {
+        abilityCd: { reality: 0, history: 0, logic: 0 },
+        abilityMax: { reality: 1, history: 1, logic: 1 },
+        nukeCd: 0,
+        nukeMax: 1,
+      };
     },
   }));
+
+  // No-op handlers for when callbacks aren't provided (start/gameover screen)
+  const noopAbility = () => {};
+  const noopNuke = () => {};
 
   return (
     <>
@@ -85,6 +119,14 @@ export const GameScene = forwardRef<GameSceneHandle>(function GameScene(_, ref) 
 
       {/* Character */}
       <CharacterModel panic={panicRef.current} />
+
+      {/* 3D Keyboard Controls — interactive F-keys */}
+      <KeyboardControls
+        panicRef={panicRef}
+        cooldownRef={cooldownRef}
+        onAbility={onAbility ?? noopAbility}
+        onNuke={onNuke ?? noopNuke}
+      />
 
       {/* ECS-driven entities */}
       <EnemySystem />
