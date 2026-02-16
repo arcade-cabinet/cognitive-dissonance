@@ -94,6 +94,14 @@ export default function Game() {
     handleStartLogic(ui);
   };
 
+  const handleAbility = useCallback((type: 'reality' | 'history' | 'logic') => {
+    workerRef.current?.postMessage({ type: 'ABILITY', ability: type });
+  }, []);
+
+  const handleNuke = useCallback(() => {
+    workerRef.current?.postMessage({ type: 'NUKE' });
+  }, []);
+
   // Initialize Worker
   useEffect(() => {
     const worker = new GameWorker();
@@ -183,6 +191,18 @@ export default function Game() {
         if (currentUI.screen === 'start' || currentUI.screen === 'gameover') {
           handleStartLogic(currentUI);
         }
+      } else if (e.key === 'F1') {
+        e.preventDefault();
+        handleAbility('reality');
+      } else if (e.key === 'F2') {
+        e.preventDefault();
+        handleAbility('history');
+      } else if (e.key === 'F3') {
+        e.preventDefault();
+        handleAbility('logic');
+      } else if (e.key === 'F4') {
+        e.preventDefault();
+        handleNuke();
       } else {
         worker.postMessage({ type: 'INPUT', key: e.key });
       }
@@ -194,15 +214,7 @@ export default function Game() {
       worker.terminate();
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [handleStartLogic]);
-
-  const handleAbility = (type: 'reality' | 'history' | 'logic') => {
-    workerRef.current?.postMessage({ type: 'ABILITY', ability: type });
-  };
-
-  const handleNuke = () => {
-    workerRef.current?.postMessage({ type: 'NUKE' });
-  };
+  }, [handleStartLogic, handleAbility, handleNuke]);
 
   const handleCanvasPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -248,7 +260,7 @@ export default function Game() {
           tabIndex={0}
           aria-label="Game Area: Tap enemies to counter them"
         >
-          <GameScene ref={sceneRef} />
+          <GameScene ref={sceneRef} onAbility={handleAbility} onNuke={handleNuke} />
         </Canvas>
 
         {/* HUD Layer */}
@@ -333,70 +345,20 @@ export default function Game() {
             </div>
           </div>
 
-          <div id="controls">
-            <button
-              type="button"
-              className="btn reality"
-              id="btn-reality"
-              onClick={() => handleAbility('reality')}
-              aria-label="Counter Reality (Shortcut: 1)"
-              aria-keyshortcuts="1"
-              style={{ touchAction: 'manipulation' }}
-            >
-              <div className="key-hint">1</div>REALITY<span>🦠 HYPE</span>
-              <div
-                className="cooldown-bar"
-                id="cd-reality"
-                style={{ width: `${(ui.abilityCd.reality / ui.abilityMax.reality) * 100}%` }}
-              ></div>
+          {/* Controls are now 3D keyboard F-keys in the scene.
+              Hidden HTML buttons kept for accessibility and e2e test IDs. */}
+          <div id="controls" style={{ display: 'none' }}>
+            <button type="button" id="btn-reality" onClick={() => handleAbility('reality')}>
+              REALITY
             </button>
-            <button
-              type="button"
-              className="btn history"
-              id="btn-history"
-              onClick={() => handleAbility('history')}
-              aria-label="Counter History (Shortcut: 2)"
-              aria-keyshortcuts="2"
-              style={{ touchAction: 'manipulation' }}
-            >
-              <div className="key-hint">2</div>HISTORY<span>📈 GROWTH</span>
-              <div
-                className="cooldown-bar"
-                id="cd-history"
-                style={{ width: `${(ui.abilityCd.history / ui.abilityMax.history) * 100}%` }}
-              ></div>
+            <button type="button" id="btn-history" onClick={() => handleAbility('history')}>
+              HISTORY
             </button>
-            <button
-              type="button"
-              className="btn logic"
-              id="btn-logic"
-              onClick={() => handleAbility('logic')}
-              aria-label="Counter Logic (Shortcut: 3)"
-              aria-keyshortcuts="3"
-              style={{ touchAction: 'manipulation' }}
-            >
-              <div className="key-hint">3</div>LOGIC<span>🤖 DEMOS</span>
-              <div
-                className="cooldown-bar"
-                id="cd-logic"
-                style={{ width: `${(ui.abilityCd.logic / ui.abilityMax.logic) * 100}%` }}
-              ></div>
+            <button type="button" id="btn-logic" onClick={() => handleAbility('logic')}>
+              LOGIC
             </button>
-            <button
-              type="button"
-              className="btn special"
-              id="btn-special"
-              onClick={handleNuke}
-              aria-label="Trigger Nuke (Shortcut: Q)"
-              aria-keyshortcuts="q"
-              style={{ touchAction: 'manipulation' }}
-            >
-              <div className="key-hint">Q</div>NUKE<span>💥 ALL</span>
-              <div
-                className="cooldown-bar"
-                id="cd-special"
-                style={{ width: `${(ui.nukeCd / ui.nukeMax) * 100}%` }}
-              ></div>
+            <button type="button" id="btn-special" onClick={handleNuke}>
+              NUKE
             </button>
           </div>
         </div>
@@ -447,10 +409,10 @@ export default function Game() {
 
           {ui.screen === 'start' && (
             <p>
-              <b style={{ color: '#e67e22' }}>1</b> Reality &nbsp;
-              <b style={{ color: '#2ecc71' }}>2</b> History &nbsp;
-              <b style={{ color: '#9b59b6' }}>3</b> Logic &nbsp;
-              <b style={{ color: '#e74c3c' }}>Q</b> Nuke
+              <b style={{ color: '#e67e22' }}>F1</b> Reality &nbsp;
+              <b style={{ color: '#2ecc71' }}>F2</b> History &nbsp;
+              <b style={{ color: '#9b59b6' }}>F3</b> Logic &nbsp;
+              <b style={{ color: '#e74c3c' }}>F4</b> Nuke
             </p>
           )}
 

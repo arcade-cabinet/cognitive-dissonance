@@ -162,13 +162,9 @@ export function RoomBackground({ panic, wave }: RoomBackgroundProps) {
         <meshStandardMaterial color={sc.keyboard} />
       </mesh>
 
-      {/* Keyboard */}
-      <mesh position={[-0.2, -1.9, 0.1]}>
-        <boxGeometry args={[1.6, 0.04, 0.18]} />
-        <meshStandardMaterial color={sc.keyboard} roughness={0.8} />
-      </mesh>
-      {/* Mouse */}
-      <mesh position={[1.45, -1.9, 0.1]}>
+      {/* Keyboard is now the interactive 3D KeyboardControls component */}
+      {/* Mouse — desk prop */}
+      <mesh position={[2.5, -1.9, 0.5]}>
         <boxGeometry args={[0.22, 0.03, 0.24]} />
         <meshStandardMaterial color={sc.mouse} roughness={0.6} />
       </mesh>
