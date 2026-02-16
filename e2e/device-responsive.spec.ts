@@ -25,7 +25,7 @@ test.describe('Responsive Device Tests', () => {
       expect(box).not.toBeNull();
       expect(box!.width).toBeGreaterThan(0);
       expect(box!.height).toBeGreaterThan(0);
-    }).toPass();
+    }).toPass({ timeout: 5000 });
 
     // Take screenshot for visual verification
     const deviceName = test.info().project.name.replace(/\s+/g, '-').toLowerCase();
