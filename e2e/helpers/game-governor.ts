@@ -124,7 +124,7 @@ export class GameGovernor {
     // Random decision based on accuracy
     if (Math.random() > this.config.accuracy) {
       // Miss intentionally to simulate human error
-      const randomKey = ['1', '2', '3'][Math.floor(Math.random() * 3)];
+      const randomKey = ['F1', 'F2', 'F3'][Math.floor(Math.random() * 3)];
       await this.page.keyboard.press(randomKey);
       return;
     }
@@ -132,7 +132,7 @@ export class GameGovernor {
     // Try to counter enemies intelligently
     // In a real implementation, we'd analyze the canvas or game state
     // For now, cycle through abilities
-    const abilities = ['1', '2', '3'];
+    const abilities = ['F1', 'F2', 'F3'];
     const ability = abilities[Math.floor(Math.random() * abilities.length)];
 
     if (Math.random() < this.config.aggressiveness) {
@@ -144,7 +144,7 @@ export class GameGovernor {
    * Activate nuke ability
    */
   private async activateNuke(): Promise<void> {
-    await this.page.keyboard.press('q');
+    await this.page.keyboard.press('F4');
   }
 
   /**

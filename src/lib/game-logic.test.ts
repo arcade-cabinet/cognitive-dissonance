@@ -152,14 +152,21 @@ describe('GameLogic', () => {
       expect(game.nukeCd).toBe(firstCd);
     });
 
-    it('should clear all enemies on nuke', () => {
-      game.spawnEnemy();
-      game.spawnEnemy();
-      game.spawnEnemy();
-      expect(game.enemies.length).toBe(3);
+    it('should clear all non-encrypted enemies on nuke', () => {
+      // Spawn several enemies — some may be randomly encrypted
+      for (let i = 0; i < 5; i++) {
+        game.spawnEnemy();
+      }
+      const totalBefore = game.enemies.length;
+      expect(totalBefore).toBe(5);
+
+      const encryptedBefore = game.enemies.filter((e) => e.encrypted).length;
 
       game.triggerNuke();
-      expect(game.enemies.length).toBe(0);
+
+      // Only encrypted enemies should survive
+      expect(game.enemies.length).toBe(encryptedBefore);
+      expect(game.enemies.every((e) => e.encrypted)).toBe(true);
     });
   });
 

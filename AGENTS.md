@@ -12,7 +12,7 @@ Psyduck Panic: Evolution Deluxe is a browser-based retro arcade game where playe
 ### Core Loop
 
 1. Thought bubbles (enemies) float toward the player
-2. Player counters them by type (Reality/History/Logic) via keyboard or click
+2. Player counters them by type (Reality/History/Logic) via 3D keyboard F-keys or click
 3. Missed bubbles increase the PANIC meter
 4. At 100% panic → game over with grading (S/A/B/C/D)
 5. Character visually transforms: Normal (0-33%) → Panic (33-66%) → Psyduck (66-100%)
@@ -32,10 +32,11 @@ Psyduck Panic: Evolution Deluxe is a browser-based retro arcade game where playe
 
 ```
 Presentation Layer (Main Thread)
-├── React Components (UI/HUD) — Game.tsx, Landing.tsx
+├── React Components (UI/HUD) — Game.tsx (lazy loaded), Landing.tsx
 ├── R3F Canvas (3D Scene) — GameScene.tsx
 │   ├── RoomBackground — 3D diorama, monitor glow shifts with panic
 │   ├── CharacterModel — Normal/Panic/Psyduck states, dynamic eyes
+│   ├── KeyboardControls — Interactive 3D F1-F4 mechanical keys with RGB underglow
 │   ├── EnemySystem — ECS-driven enemy bubbles with glow
 │   ├── BossSystem — Pulsing boss with orbiting orbs
 │   ├── ParticleSystem — Burst particles on counter
@@ -68,6 +69,7 @@ Platform Layer
 - **Event-driven VFX**: Particles/trails/confetti spawned by event handlers, not synced from worker
 - **UI state reducer**: Game.tsx uses `useReducer` with actions defined in `src/lib/ui-state.ts`
 - **Grading**: Extracted to `src/lib/grading.ts` — S/A/B/C/D based on accuracy and max combo
+- **Lazy loading**: Game component lazy-loaded via `React.lazy()` — Three.js/R3F deferred until `/game` route
 - **No monoliths**: Logic lives in `/lib/`, not in `.tsx` files. Components are thin rendering layers.
 
 ### Spinal Systems (AI + Panic)
@@ -105,6 +107,7 @@ Platform Layer
 | Biome | 2.3 | Linter + formatter |
 | Vitest | 4.0 | Unit tests |
 | Playwright | 1.58 | E2E tests |
+| @testing-library/react | 16.3 | Component tests (RTL) |
 
 ### Critical Package Notes
 
@@ -118,6 +121,7 @@ Platform Layer
 
 ```
 vendor-react, vendor-three, vendor-tone, vendor-anime, game-utils, game-ecs
+Game chunk (lazy loaded): Game-*.js (~43KB) — deferred until /game route
 ```
 
 ### Commands
@@ -128,7 +132,7 @@ pnpm build        # Production build (runs typecheck + icon gen first)
 pnpm typecheck    # TypeScript check
 pnpm lint         # Biome lint
 pnpm lint:fix     # Auto-fix lint
-pnpm test         # Unit tests (59 tests)
+pnpm test         # Unit tests (94 tests)
 pnpm test:e2e     # E2E tests (Playwright)
 ```
 
@@ -141,10 +145,12 @@ src/
 ├── components/
 │   ├── Game.tsx              # Main game component (R3F Canvas + HUD + worker comm)
 │   ├── Landing.tsx           # Landing/start screen
+│   ├── Landing.test.tsx      # Landing page RTL component tests
 │   ├── Layout.astro          # Astro page layout
 │   └── scene/
 │       ├── GameScene.tsx     # R3F scene orchestrator (camera, shake, flash)
 │       ├── CharacterModel.tsx # 3D character: Normal → Panic → Psyduck
+│       ├── KeyboardControls.tsx # 3D mechanical F1-F4 keys with RGB underglow
 │       ├── RoomBackground.tsx # 3D diorama room (desk, window, posters, clutter)
 │       └── systems/
 │           ├── EnemySystem.tsx    # ECS enemy bubble rendering
@@ -162,27 +168,39 @@ src/
 │   ├── audio.ts              # Web Audio SFX system
 │   ├── music.ts              # Tone.js adaptive music
 │   ├── grading.ts            # Grade calculation (S/A/B/C/D)
+│   ├── grading.test.ts       # Grading system tests
 │   ├── panic-system.ts       # Panic escalation (sigmoid curves, decay, zones)
 │   ├── ai/
 │   │   ├── index.ts          # AI module barrel export
 │   │   ├── director.ts       # Yuka FSM AI Director (dynamic difficulty)
 │   │   └── boss-ai.ts        # Yuka goal-driven boss behavior
 │   ├── ui-state.ts           # UI state reducer + actions
+│   ├── ui-state.test.ts      # UI reducer tests (14 cases)
 │   ├── storage.ts            # IndexedDB high score persistence
 │   ├── device-utils.ts       # Responsive viewport calculations
 │   └── capacitor-device.ts   # Native device detection
 ├── design/
-│   └── tokens.ts             # Design token system
+│   └── tokens.ts             # Design token system (350+ tokens)
 ├── styles/
 │   ├── game.css              # Game styles + grade animations
 │   ├── index.css             # Global styles
 │   └── landing.css           # Landing page styles
 ├── worker/
 │   └── game.worker.ts        # Web Worker entry point
-├── App.tsx                   # React Router setup
+├── App.tsx                   # React Router setup (lazy loads Game)
 ├── main.tsx                  # React entry point
 └── test/
-    └── setup.ts              # Vitest setup
+    └── setup.ts              # Vitest setup (RTL cleanup + jest-dom)
+
+e2e/
+├── game.spec.ts              # Core game smoke tests
+├── playthrough.spec.ts       # Full game lifecycle tests
+├── governor.spec.ts          # Automated playthrough tests
+├── device-responsive.spec.ts # Multi-device responsive tests
+└── helpers/
+    ├── game-helpers.ts       # Shared DRY test utilities
+    ├── game-governor.ts      # Automated game controller
+    └── screenshot-utils.ts   # WebGL/Canvas screenshot utilities
 ```
 
 ---
@@ -191,39 +209,45 @@ src/
 
 ### Current Focus
 
-All core systems implemented. Scene has bright, clear lighting. PR #46 findings addressed (PixiJS refs cleaned, e2e tests fixed for R3F, lighting overhauled). Game needs playtesting and AI tuning.
+All core systems and testing infrastructure complete. Game fully playable with 3D mechanical keyboard controls. Needs playtesting for AI/panic tuning and balance.
 
 ### Recent Changes (This Session)
 
-- Migrated rendering from PixiJS to React Three Fiber (3D)
-- Added Miniplex ECS for entity management
-- Added Tone.js adaptive music system
-- Added grading system (S/A/B/C/D) on game over
-- Extracted UI state and grading logic into separate modules
-- Removed all PixiJS dependencies and dead code
-- Implemented dynamic eye pupil tracking (speed increases with panic)
-- Added point light glow to enemy bubbles
-- **Panic Escalation System** — sigmoid damage curve, combo-based decay, panic zones, hysteresis on character state transitions, dynamic difficulty modifiers
-- **AI Director** — Yuka StateMachine (Building/Sustaining/Relieving/Surging) that governs spawn rate, speed, max enemies, and boss aggression based on player performance
-- **Boss AI** — Yuka Vehicle + Think + GoalEvaluators with 6 attack goals (Burst, Sweep, Spiral, Reposition, Summon, Rage), dynamic pattern selection
-- Updated tests for logarithmic panic damage
-- **Fixed PR #46 findings:**
-  - Landing page: "PixiJS 8" → "React Three Fiber", "Vite 5" → "Vite 7"
-  - All PixiJS references removed from code, CSS comments, e2e helpers
-  - E2E screenshot-utils: Fixed for R3F (WebGL context check, nested canvas targeting)
-  - game.spec.ts: Fixed canvas test for R3F div wrapper (boundingBox + nested canvas)
-  - **Scene lighting overhaul**: Ambient 0.15→0.8, monitor glow 2→5, added fill/key/rim lights, moon glow, brightened all materials. Atmosphere through color, not darkness.
+- **3D Mechanical Keyboard Controls** (`KeyboardControls.tsx`):
+  - 4 interactive F-key meshes (F1 Reality, F2 History, F3 Logic, F4 Nuke)
+  - Type-colored keycaps from design tokens (orange/green/purple/red)
+  - RGB LED underglow shifting with panic (cool cyan → angry red)
+  - Spring physics key depression on press + haptic feedback
+  - Cooldown visualization: keycap desaturates gray → re-fills with color
+  - Billboard labels (F-key number, emoji icon, ability name)
+  - F1-F4 keyboard shortcuts with preventDefault
+  - Hidden HTML buttons kept for e2e test IDs
+- **Vibrant Visual Identity** — inspired by original 2D game:
+  - Design tokens overhauled: 20+ scene colors made vibrant
+  - Dual monitor glow lights, emissive screen plane, warm desk lamp
+  - All scene materials use design tokens (CharacterModel, BossSystem, EnemySystem)
+  - Progressive room clutter builds with wave (energy drinks, books, monitors)
+- **Lazy Loading** — Game component lazy-loaded, reducing initial bundle by ~75%
+- **E2E Test DRY Refactor**:
+  - Created shared `game-helpers.ts` with navigateToGame, startGame, verifyHUD, etc.
+  - All 4 test suites refactored to use shared helpers
+  - Fixed for 3D keyboard: hidden buttons → toBeAttached, F1-F4 keys
+  - Governor updated to use F1-F4 instead of 1/2/3/Q
+- **New Unit Tests** (94 total, up from 59):
+  - `ui-state.test.ts` — 14 tests for UI reducer (all actions)
+  - `grading.test.ts` — 9 tests for grade calculation + accuracy
+  - `Landing.test.tsx` — 12 RTL component tests (rendering, navigation, content)
+  - Fixed flaky nuke test (now accounts for encrypted enemies)
 
 ### Next Steps
 
-1. **Visual gameplay testing** — Use Playwright screenshots to verify the 3D scene, transformations, boss encounters
-2. **E2E Test Overhaul**: DRY out and reorganize Playwright tests
-3. **React Testing Library**: Add component-level tests
-4. **Panic system tuning** — Playtesting to balance the sigmoid curve, decay rates, and zone thresholds
-5. **Boss AI tuning** — Balance attack cooldowns, aggression scaling, rage threshold
+1. **Panic system tuning** — Playtesting to balance the sigmoid curve, decay rates, and zone thresholds
+2. **Boss AI tuning** — Balance attack cooldowns, aggression scaling, rage threshold
+3. **Visual regression testing** — Set up Playwright screenshot comparison baselines
 
 ### Active Decisions
 
+- **3D keyboard replaces HTML buttons** — F1-F4 keys are the primary input; hidden HTML buttons remain for e2e compatibility
 - Coordinate space is 800x600 game → (-4,4) / (3,-3) scene. All systems use `gx()`/`gy()` helpers.
 - VFX (particles, trails, confetti) are render-only — spawned by events, not synced from worker.
 - The `wave` ref is passed into systems that need wave-dependent visuals (boss emoji, room clutter).
@@ -253,20 +277,25 @@ All core systems implemented. Scene has bright, clear lighting. PR #46 findings 
 - [x] Panic Escalation System (sigmoid damage, combo decay, zones, hysteresis)
 - [x] AI Director (Yuka FSM: Building/Sustaining/Relieving/Surging)
 - [x] Boss AI (Yuka goal-driven: Burst/Sweep/Spiral/Reposition/Summon/Rage)
-- [x] All 59 unit tests passing
+- [x] **3D Mechanical Keyboard Controls** (F1-F4, RGB underglow, cooldown vis, haptics)
+- [x] **Vibrant Visual Identity** (design tokens, emissive materials, colored lighting)
+- [x] **Lazy Loading** (Game route deferred, initial bundle ~75% smaller)
+- [x] **E2E Test DRY Refactor** (shared helpers, F-key controls, standardized screenshots)
+- [x] **React Testing Library** component tests (Landing page: 12 tests)
+- [x] **UI Reducer Tests** (14 tests) + **Grading Tests** (9 tests)
+- [x] Fixed flaky nuke test (encrypted enemy handling)
+- [x] All 94 unit tests passing
 - [x] 0 lint warnings, 0 type errors
 - [x] Production build working
 
 ### In Progress
 
-- [ ] Visual gameplay testing via Playwright screenshots
-- [ ] Panic/AI tuning and balance
+- [ ] Panic/AI tuning and balance (requires playtesting)
 
 ### Known Issues
 
-- Three.js vendor chunk is ~1.2MB (gzipped ~334KB) — consider code-splitting or lazy loading
-- E2E tests need reorganization (DRY refactor)
-- No React Testing Library component tests yet
+- Three.js vendor chunk is ~1.2MB (gzipped ~333KB) — inherent to Three.js, mitigated by lazy loading
+- Visual regression baselines not yet established
 
 ### Architecture Decisions Log
 
@@ -279,3 +308,6 @@ All core systems implemented. Scene has bright, clear lighting. PR #46 findings 
 | Ref-based scene updates | Avoid React re-renders at 60fps |
 | Worker for game logic | Keep main thread free for rendering |
 | Logic in `/lib/`, not `.tsx` | No monolith components; thin rendering layers |
+| 3D keyboard over HTML buttons | Visual storytelling (RGB → panic), physical feedback, diorama integration |
+| Lazy loading Game route | Defer ~1.5MB of Three.js/R3F until user navigates to /game |
+| Shared E2E helpers | DRY test utilities, consistent patterns across all test suites |
