@@ -1,6 +1,22 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { Goal } from 'yuka';
 import type { EnemyType } from '../types';
-import { BossAI, type BossState } from './boss-ai';
+import {
+  BossAI,
+  type BossState,
+  BurstAttackGoal,
+  BurstEvaluator,
+  RageEvaluator,
+  RageGoal,
+  RepositionEvaluator,
+  RepositionGoal,
+  SpiralAttackGoal,
+  SpiralEvaluator,
+  SummonEvaluator,
+  SummonGoal,
+  SweepAttackGoal,
+  SweepEvaluator,
+} from './boss-ai';
 
 const mockEnemyType: EnemyType = {
   name: 'test',
@@ -73,48 +89,134 @@ describe('BossAI', () => {
     expect(spawned).toBe(true);
   });
 
-  it('should trigger Rage mode at low HP', () => {
-    // Low HP -> High desirability for Rage
-    const lowHpState = { ...mockState, hp: 10, maxHp: 100 };
-    boss = new BossAI(lowHpState);
-    boss.attackCooldown = 0;
+  describe('Goals', () => {
+    it('BurstAttackGoal should spawn enemies and flash', () => {
+      const goal = new BurstAttackGoal(boss);
+      goal.activate();
+      goal.execute();
 
-    // We can't easily force it without mocking Math.random, but likely it will pick Rage
-    // Rage goal immediately spawns enemies and shakes
+      expect(boss.actions.some((a) => a.type === 'spawn_enemies')).toBe(true);
+      expect(boss.actions.some((a) => a.type === 'flash')).toBe(true);
+      expect(boss.attackCooldown).toBeGreaterThan(0);
+      expect(goal.status).toBe(Goal.STATUS.COMPLETED);
+    });
 
-    // Let's try to detect if Rage was picked by checking for Shake/Flash
-    // Rage adds shake intensity 12
-    let raged = false;
-    for (let i = 0; i < 50; i++) {
-      const actions = boss.update(0.1, lowHpState);
-      if (actions.some((a) => a.type === 'shake' && a.intensity === 12)) {
-        raged = true;
-        break;
+    it('SweepAttackGoal should spawn enemies over time', () => {
+      const goal = new SweepAttackGoal(boss);
+      goal.activate();
+
+      // First execution sets move target
+      goal.execute();
+      expect(boss.moveTarget).toBeDefined();
+
+      // Simulate time passing and calls
+      for (let i = 0; i < 20; i++) {
+        boss.frameDelta = 0.1;
+        goal.execute();
       }
-    }
-    // Might flake if randomness is against us, but usually Rage desirability is 0.8+ at low HP
-    expect(raged).toBe(true);
+
+      // Should have spawned enemies
+      // Note: Sweep spawns multiple times
+      expect(boss.actions.some((a) => a.type === 'spawn_enemies')).toBe(true);
+      expect(goal.status).toBe(Goal.STATUS.COMPLETED);
+    });
+
+    it('SpiralAttackGoal should spawn enemies in spiral', () => {
+      const goal = new SpiralAttackGoal(boss);
+      goal.activate();
+
+      // Simulate execution
+      for (let i = 0; i < 20; i++) {
+        boss.frameDelta = 0.1;
+        goal.execute();
+      }
+
+      expect(boss.actions.some((a) => a.type === 'spawn_enemies')).toBe(true);
+      expect(boss.actions.some((a) => a.type === 'shake')).toBe(true); // Should shake at end
+      expect(goal.status).toBe(Goal.STATUS.COMPLETED);
+    });
+
+    it('RepositionGoal should move boss', () => {
+      const goal = new RepositionGoal(boss);
+      goal.activate();
+      goal.execute();
+
+      // Check if goal completed
+      expect(goal.status).toBe(Goal.STATUS.COMPLETED);
+    });
+
+    it('SummonGoal should spawn minions', () => {
+      const goal = new SummonGoal(boss);
+      goal.execute();
+
+      const spawnAction = boss.actions.find((a) => a.type === 'spawn_enemies');
+      expect(spawnAction).toBeDefined();
+      expect(spawnAction?.enemies?.[0].child).toBe(true);
+      expect(goal.status).toBe(Goal.STATUS.COMPLETED);
+    });
+
+    it('RageGoal should spawn enemies and shake violently', () => {
+      const goal = new RageGoal(boss);
+      goal.execute();
+
+      expect(boss.actions.some((a) => a.type === 'shake' && a.intensity === 12)).toBe(true);
+      expect(boss.actions.some((a) => a.type === 'spawn_enemies')).toBe(true);
+      expect(goal.status).toBe(Goal.STATUS.COMPLETED);
+    });
   });
 
-  it('should move to target when moveTo is called', () => {
-    boss.moveTo(100, 100);
-    // Can't check internal state easily, but it shouldn't crash
-    boss.update(0.1, mockState);
-  });
+  describe('Evaluators', () => {
+    it('BurstEvaluator should return score when available', () => {
+      const evaluator = new BurstEvaluator(boss, 1.0);
+      boss.attackCooldown = 0;
+      const score = evaluator.calculateDesirability();
+      expect(score).toBeGreaterThan(0);
+    });
 
-  it('should respect pattern constraints', () => {
-    const noPatternState = { ...mockState, patterns: [] };
-    boss = new BossAI(noPatternState);
-    boss.attackCooldown = 0;
+    it('BurstEvaluator should return 0 when on cooldown', () => {
+      const evaluator = new BurstEvaluator(boss, 1.0);
+      boss.attackCooldown = 1.0;
+      expect(evaluator.calculateDesirability()).toBe(0);
+    });
 
-    // Should NOT spawn burst/sweep/spiral
-    // Only Reposition, Summon (maybe), Rage (if low HP)
-    // Summon doesn't check pattern.
+    it('SweepEvaluator should return score', () => {
+      const evaluator = new SweepEvaluator(boss, 0.9);
+      boss.attackCooldown = 0;
+      expect(evaluator.calculateDesirability()).toBeGreaterThan(0);
+    });
 
-    // If we are high HP, Summon is low desirability.
-    // Reposition is fallback.
+    it('SpiralEvaluator should return score', () => {
+      const evaluator = new SpiralEvaluator(boss, 0.7);
+      boss.attackCooldown = 0;
+      expect(evaluator.calculateDesirability()).toBeGreaterThan(0);
+    });
 
-    const _actions = boss.update(0.1, noPatternState);
-    // It might do nothing or reposition
+    it('RepositionEvaluator should return score even on cooldown', () => {
+      const evaluator = new RepositionEvaluator(boss, 0.5);
+      boss.attackCooldown = 5.0; // on cooldown
+      expect(evaluator.calculateDesirability()).toBeGreaterThan(0);
+    });
+
+    it('SummonEvaluator should favor low HP', () => {
+      const evaluator = new SummonEvaluator(boss, 0.6);
+      boss.attackCooldown = 0;
+      boss.state.hp = 10;
+
+      // Randomness makes direct comparison tricky, but we can check it returns > 0
+      expect(evaluator.calculateDesirability()).toBeGreaterThan(0);
+    });
+
+    it('RageEvaluator should return 0 if HP high', () => {
+      const evaluator = new RageEvaluator(boss, 1.2);
+      boss.state.hp = 100;
+      expect(evaluator.calculateDesirability()).toBe(0);
+    });
+
+    it('RageEvaluator should return high score if HP low', () => {
+      const evaluator = new RageEvaluator(boss, 1.2);
+      boss.state.hp = 10;
+      boss.attackCooldown = 0;
+      expect(evaluator.calculateDesirability()).toBeGreaterThan(0.8);
+    });
   });
 });

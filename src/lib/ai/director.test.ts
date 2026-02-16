@@ -103,6 +103,100 @@ describe('AIDirector', () => {
     });
   });
 
+  describe('State Transitions', () => {
+    it('BuildingState should transition to RELIEVING if panic is high', () => {
+      director.fsm.changeTo('BUILDING');
+      director.performance.panic = 85; // > 80
+
+      director.update(0.1);
+
+      expect(director.fsm.currentState?.constructor.name).toBe('RelievingState');
+    });
+
+    it('BuildingState should transition to SUSTAINING if panic is moderate', () => {
+      director.fsm.changeTo('BUILDING');
+      director.performance.panic = 65; // > 60
+
+      director.update(0.1);
+
+      expect(director.fsm.currentState?.constructor.name).toBe('SustainingState');
+    });
+
+    it('BuildingState should transition to SURGING if tension and skill are high', () => {
+      director.fsm.changeTo('BUILDING');
+      director.tension = 0.8;
+      director.performance.accuracy = 1.0;
+      director.performance.combo = 15; // Max skill
+      director.stateTimer = 4; // > 3s
+
+      director.update(0.1);
+
+      expect(director.fsm.currentState?.constructor.name).toBe('SurgingState');
+    });
+
+    it('SustainingState should transition to BUILDING if player recovers', () => {
+      director.fsm.changeTo('SUSTAINING');
+      director.performance.panic = 30; // < 40
+      director.performance.accuracy = 1.0;
+      director.performance.combo = 15; // High skill > 0.6
+      director.stateTimer = 5; // > 4s
+
+      director.update(0.1);
+
+      expect(director.fsm.currentState?.constructor.name).toBe('BuildingState');
+    });
+
+    it('SustainingState should transition to RELIEVING if panic gets high', () => {
+      director.fsm.changeTo('SUSTAINING');
+      director.performance.panic = 80; // > 75
+
+      director.update(0.1);
+
+      expect(director.fsm.currentState?.constructor.name).toBe('RelievingState');
+    });
+
+    it('RelievingState should transition to BUILDING after recovery', () => {
+      director.fsm.changeTo('RELIEVING');
+      director.performance.panic = 40; // < 50
+      director.performance.accuracy = 1.0;
+      director.performance.combo = 10; // Skill > 0.4
+      director.stateTimer = 6; // > 5s
+
+      director.update(0.1);
+
+      expect(director.fsm.currentState?.constructor.name).toBe('BuildingState');
+    });
+
+    it('SurgingState should transition to RELIEVING if panic critical', () => {
+      director.fsm.changeTo('SURGING');
+      director.performance.panic = 90; // > 85
+
+      director.update(0.1);
+
+      expect(director.fsm.currentState?.constructor.name).toBe('RelievingState');
+    });
+
+    it('SurgingState should transition after timeout (to RELIEVING if panic high)', () => {
+      director.fsm.changeTo('SURGING');
+      director.stateTimer = 5; // > 4s
+      director.performance.panic = 60; // > 50
+
+      director.update(0.1);
+
+      expect(director.fsm.currentState?.constructor.name).toBe('RelievingState');
+    });
+
+    it('SurgingState should transition after timeout (to SUSTAINING if panic low)', () => {
+      director.fsm.changeTo('SURGING');
+      director.stateTimer = 5; // > 4s
+      director.performance.panic = 40; // < 50
+
+      director.update(0.1);
+
+      expect(director.fsm.currentState?.constructor.name).toBe('SustainingState');
+    });
+  });
+
   describe('Skill Estimate', () => {
     it('should calculate skill estimate', () => {
       director.performance.accuracy = 1.0;

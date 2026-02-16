@@ -148,6 +148,21 @@ describe('SFX Audio System', () => {
     expect(createOscillatorSpy).toHaveBeenCalled();
   });
 
+  it('should play melody on higher waves', () => {
+    sfx.init();
+    sfx.startMusic(2);
+
+    // Advance enough time to trigger melody notes
+    // 130 + 2*14 = 158 BPM. ms = 60000/158/2 ~= 190ms.
+    // Advance 200ms to hit first beat.
+    vi.advanceTimersByTime(200);
+
+    // Should create oscillators for Bass + Kick + Melody
+    // We expect 3 calls if all trigger.
+    // Mock counts are cumulative so we check >= 3
+    expect(createOscillatorSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
+  });
+
   it('should close context on destroy', () => {
     sfx.init();
     sfx.destroy();
