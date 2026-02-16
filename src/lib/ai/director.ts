@@ -228,7 +228,7 @@ class SustainingState extends State<AIDirector> {
 
   override execute(director: AIDirector): void {
     // Gently nudge tension toward 0.5 (delta-scaled so it's frame-rate independent)
-    // Use 0.5 factor to close half the gap per second (approx)
+    // With factor 0.5 this closes ~40% of the gap per second at 60fps
     director.targetTension += (0.5 - director.targetTension) * 0.5 * director.lastDelta;
 
     const skill = director.getSkillEstimate();
