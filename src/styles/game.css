@@ -24,10 +24,10 @@ body {
 #game-container {
   width: 800px;
   height: 600px;
-  background: #0a0a18;
+  background: #0e0e28;
   position: relative;
   overflow: hidden;
-  border: 3px solid #1a1a3a;
+  border: 3px solid #2a2a4a;
 }
 
 /* CRT scanlines */

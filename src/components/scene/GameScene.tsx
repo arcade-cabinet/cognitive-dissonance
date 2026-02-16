@@ -42,6 +42,12 @@ export const GameScene = forwardRef<GameSceneHandle>(function GameScene(_, ref) 
   const shakeRef = useRef(0);
   const flashRef = useRef({ alpha: 0, color: '#ffffff' });
 
+  // Set scene background to a visible dark blue (not pure black)
+  const { scene } = useThree();
+  useEffect(() => {
+    scene.background = new THREE.Color('#0e0e28');
+  }, [scene]);
+
   useImperativeHandle(ref, () => ({
     updateState(state: GameState) {
       stateRef.current = state;
