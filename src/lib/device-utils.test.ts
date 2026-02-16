@@ -9,10 +9,8 @@ import {
 } from './device-utils';
 
 describe('device-utils', () => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _originalWindow = { ...window };
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _originalNavigator = { ...navigator };
+describe('device-utils', () => {
+  beforeEach(() => {
 
   beforeEach(() => {
     // Reset window dimensions
