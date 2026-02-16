@@ -264,32 +264,10 @@ export default function Game() {
 
     window.addEventListener('keydown', handleKeyDown);
 
-    // Resize handler
-    const resizeGame = () => {
-      const scaler = document.getElementById('game-scaler');
-      if (scaler) {
-        // Enforce contain logic for mobile
-        const winW = window.innerWidth;
-        const winH = window.innerHeight;
-        const scale = Math.min(winW / 800, winH / 600);
-        scaler.style.transform = `scale(${scale})`;
-
-        // Center the game on larger screens
-        if (winW > 800 * scale) {
-          scaler.style.left = `${(winW - 800 * scale) / 2}px`;
-        } else {
-          scaler.style.left = '0px';
-        }
-      }
-    };
-    window.addEventListener('resize', resizeGame);
-    resizeGame();
-
     return () => {
       worker.terminate();
       rendererRef.current?.destroy();
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('resize', resizeGame);
     };
   }, [handleStartLogic]);
 
