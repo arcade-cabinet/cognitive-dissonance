@@ -87,13 +87,14 @@ export async function getCanvasBoundingBox(
   let resultBox: { x: number; y: number; width: number; height: number } | null = null;
   await expect(async () => {
     const box = await canvas.boundingBox();
-    expect(box).toBeTruthy();
-    expect(box!.width).toBeGreaterThan(0);
-    expect(box!.height).toBeGreaterThan(0);
+    if (!box) throw new Error('Canvas bounding box is null');
+    expect(box.width).toBeGreaterThan(0);
+    expect(box.height).toBeGreaterThan(0);
     resultBox = box;
   }).toPass({ timeout: 10000 });
 
-  return resultBox!;
+  if (!resultBox) throw new Error('Failed to get canvas bounding box');
+  return resultBox;
 }
 
 // ─── Screenshots ─────────────────────────────────────────────
