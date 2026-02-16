@@ -106,7 +106,6 @@ test.describe('Automated Playthrough with Governor', () => {
     // Wait for worker to initialize and send first state update
     // The time display should change from initial 0 to the wave duration (e.g., 28)
     const timeDisplay = page.locator('#time-display');
-    await expect(async () => {
     await verifyGamePlaying(page);
 
     // Let governor play
