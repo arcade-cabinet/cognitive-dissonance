@@ -20,12 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
-      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - run: pnpm lint
 
   typecheck:
@@ -33,12 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
-      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - run: pnpm exec tsc --noEmit
 
   unit:
@@ -46,12 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
-      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - run: pnpm test:coverage
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
@@ -67,12 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
-      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - run: pnpm build
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
@@ -111,12 +91,7 @@ jobs:
     needs: [build]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
-      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - name: Download build artifact
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
@@ -133,48 +108,55 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  e2e-comprehensive:
-    name: E2E Comprehensive - All Tests - ${{ matrix.project }}
+  # Unified E2E matrix: runs every Playwright project exactly once
+  e2e-matrix:
+    name: E2E - ${{ matrix.project }}
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: [build]
     strategy:
       fail-fast: false
       matrix:
-        # Representative devices from each category that run all test suites
-        project: 
-          - 'Desktop Chrome'
-          - 'iPhone 12 Portrait'
-          - 'iPhone 12 Landscape'
-          - 'iPad Pro 11 Portrait'
-          - 'iPad Pro 11 Landscape'
-          - 'Pixel 5 Portrait'
-          - 'Pixel 5 Landscape'
-          - 'Samsung Galaxy Fold Folded Portrait'
-          - 'Samsung Galaxy Fold Folded Landscape'
-          - 'Samsung Galaxy Fold Unfolded Portrait'
-          - 'Samsung Galaxy Fold Unfolded Landscape'
+        include:
+          # Chromium-based projects
+          - { project: 'Desktop Chrome',                          browsers: 'chromium' }
+          - { project: 'iPad Pro 11 Portrait',                    browsers: 'chromium' }
+          - { project: 'iPad Pro 11 Landscape',                   browsers: 'chromium' }
+          - { project: 'iPad Pro 12.9 Portrait',                  browsers: 'chromium' }
+          - { project: 'Pixel 5 Portrait',                        browsers: 'chromium' }
+          - { project: 'Pixel 5 Landscape',                       browsers: 'chromium' }
+          - { project: 'Galaxy S21 Portrait',                     browsers: 'chromium' }
+          - { project: 'Samsung Galaxy Fold Folded Portrait',     browsers: 'chromium' }
+          - { project: 'Samsung Galaxy Fold Folded Landscape',    browsers: 'chromium' }
+          - { project: 'Samsung Galaxy Fold Unfolded Portrait',   browsers: 'chromium' }
+          - { project: 'Samsung Galaxy Fold Unfolded Landscape',  browsers: 'chromium' }
+          - { project: 'Surface Duo Portrait',                    browsers: 'chromium' }
+          - { project: 'Surface Duo Landscape',                   browsers: 'chromium' }
+          # WebKit-based projects (iOS devices)
+          - { project: 'Desktop Safari',         browsers: 'webkit' }
+          - { project: 'iPhone 12 Portrait',     browsers: 'webkit' }
+          - { project: 'iPhone 12 Pro Portrait', browsers: 'webkit' }
+          - { project: 'iPhone 13 Portrait',     browsers: 'webkit' }
+          - { project: 'iPhone 14 Portrait',     browsers: 'webkit' }
+          - { project: 'iPhone 12 Landscape',    browsers: 'webkit' }
+          # Firefox
+          - { project: 'Desktop Firefox',        browsers: 'firefox' }
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
-      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - name: Download build artifact
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: dist
           path: dist/
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium webkit firefox
+        run: pnpm exec playwright install --with-deps ${{ matrix.browsers }}
       - name: Set project slug
         id: slug
         run: |
           PROJECT_SLUG=$(echo "${{ matrix.project }}" | sed 's/ /-/g')
           echo "project_slug=${PROJECT_SLUG}" >> $GITHUB_OUTPUT
-      - name: Run E2E comprehensive tests
+      - name: Run E2E tests
         run: pnpm exec playwright test --project="${{ matrix.project }}" --workers=1 --reporter=junit,line
         env:
           PLAYWRIGHT_JUNIT_OUTPUT_NAME: junit-${{ steps.slug.outputs.project_slug }}.xml
@@ -182,236 +164,102 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
-          name: e2e-comprehensive-junit-${{ steps.slug.outputs.project_slug }}
+          name: e2e-junit-${{ steps.slug.outputs.project_slug }}
           path: junit-${{ steps.slug.outputs.project_slug }}.xml
           retention-days: 7
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: failure()
         with:
-          name: e2e-comprehensive-reports-${{ steps.slug.outputs.project_slug }}
+          name: e2e-reports-${{ steps.slug.outputs.project_slug }}
           path: playwright-report/
           retention-days: 7
 
-  e2e-comprehensive-collector:
-    name: E2E Comprehensive - Collector
+  e2e-collector:
+    name: E2E Collector
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [e2e-comprehensive]
+    needs: [e2e-matrix]
     steps:
       - name: Download all JUnit artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          pattern: e2e-comprehensive-junit-*
+          pattern: e2e-junit-*
           path: junit-results/
           merge-multiple: true
       - name: Combine JUnit reports
         run: |
           mkdir -p combined-junit
-          # Check if any XML files exist
           if [ -d "junit-results" ] && compgen -G "junit-results/*.xml" > /dev/null; then
             echo '<?xml version="1.0" encoding="UTF-8"?>' > combined-junit/junit-combined.xml
             echo '<testsuites>' >> combined-junit/junit-combined.xml
             for file in junit-results/*.xml; do
-              # Extract testsuite elements (skip XML declaration and testsuites wrapper)
               sed -n '/<testsuite[> ]/,/<\/testsuite>/p' "$file" >> combined-junit/junit-combined.xml
             done
             echo '</testsuites>' >> combined-junit/junit-combined.xml
-            echo "✅ Combined JUnit reports successfully"
-            echo "Reports found:"
+            echo "Combined JUnit reports successfully"
             ls -la junit-results/
           else
-            echo "⚠️ No JUnit reports found to combine"
+            echo "No JUnit reports found to combine"
           fi
       - name: Upload combined JUnit results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
-          name: e2e-comprehensive-junit-combined
+          name: e2e-junit-combined
           path: combined-junit/
           retention-days: 7
-      - name: Check E2E comprehensive results
+      - name: Check E2E results
         run: |
-          echo "E2E Comprehensive Test Results:"
-          echo "Matrix job result: ${{ needs.e2e-comprehensive.result }}"
-          
-          # Check if any matrix job failed
-          if [[ "${{ needs.e2e-comprehensive.result }}" == "failure" ]]; then
-            echo "❌ One or more E2E comprehensive tests failed"
-            echo "Check individual matrix job results for details"
+          echo "E2E Test Results: ${{ needs.e2e-matrix.result }}"
+          if [[ "${{ needs.e2e-matrix.result }}" == "failure" ]]; then
+            echo "One or more E2E tests failed"
             exit 1
-          elif [[ "${{ needs.e2e-comprehensive.result }}" == "cancelled" ]]; then
-            echo "⚠️ E2E comprehensive tests were cancelled"
+          elif [[ "${{ needs.e2e-matrix.result }}" == "cancelled" ]]; then
+            echo "E2E tests were cancelled"
             exit 1
           fi
-          
-          echo "✅ All E2E comprehensive matrix tests passed"
+          echo "All E2E matrix tests passed"
 
-  e2e-device-responsive:
-    name: E2E Device Responsive - ${{ matrix.project }}
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    needs: [build]
-    strategy:
-      fail-fast: false
-      matrix:
-        # All device profiles for responsive testing
-        project: 
-          - 'Desktop Chrome'
-          - 'Desktop Firefox'
-          - 'Desktop Safari'
-          - 'iPhone 12 Portrait'
-          - 'iPhone 12 Pro Portrait'
-          - 'iPhone 13 Portrait'
-          - 'iPhone 14 Portrait'
-          - 'iPhone 12 Landscape'
-          - 'iPad Pro 11 Portrait'
-          - 'iPad Pro 11 Landscape'
-          - 'iPad Pro 12.9 Portrait'
-          - 'Pixel 5 Portrait'
-          - 'Pixel 5 Landscape'
-          - 'Galaxy S21 Portrait'
-          - 'Samsung Galaxy Fold Folded'
-          - 'Samsung Galaxy Fold Unfolded'
-          - 'Surface Duo Portrait'
-          - 'Surface Duo Landscape'
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
-      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
-      - name: Download build artifact
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          name: dist
-          path: dist/
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium webkit firefox
-      - name: Set project slug
-        id: slug
-        run: |
-          PROJECT_SLUG=$(echo "${{ matrix.project }}" | sed 's/ /-/g')
-          echo "project_slug=${PROJECT_SLUG}" >> $GITHUB_OUTPUT
-      - name: Run device-responsive tests
-        run: pnpm exec playwright test --project="${{ matrix.project }}" --workers=1 --reporter=junit,line
-        env:
-          PLAYWRIGHT_JUNIT_OUTPUT_NAME: junit-device-responsive-${{ steps.slug.outputs.project_slug }}.xml
-      - name: Upload JUnit test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: always()
-        with:
-          name: e2e-device-responsive-junit-${{ steps.slug.outputs.project_slug }}
-          path: junit-device-responsive-${{ steps.slug.outputs.project_slug }}.xml
-          retention-days: 7
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: failure()
-        with:
-          name: e2e-device-responsive-reports-${{ steps.slug.outputs.project_slug }}
-          path: playwright-report/
-          retention-days: 7
-
-  e2e-device-responsive-collector:
-    name: E2E Device Responsive - Collector
-    runs-on: ubuntu-latest
-    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [e2e-device-responsive]
-    steps:
-      - name: Download all JUnit artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          pattern: e2e-device-responsive-junit-*
-          path: junit-results/
-          merge-multiple: true
-      - name: Combine JUnit reports
-        run: |
-          mkdir -p combined-junit
-          # Check if any XML files exist
-          if [ -d "junit-results" ] && compgen -G "junit-results/*.xml" > /dev/null; then
-            echo '<?xml version="1.0" encoding="UTF-8"?>' > combined-junit/junit-combined.xml
-            echo '<testsuites>' >> combined-junit/junit-combined.xml
-            for file in junit-results/*.xml; do
-              # Extract testsuite elements (skip XML declaration and testsuites wrapper)
-              sed -n '/<testsuite[> ]/,/<\/testsuite>/p' "$file" >> combined-junit/junit-combined.xml
-            done
-            echo '</testsuites>' >> combined-junit/junit-combined.xml
-            echo "✅ Combined JUnit reports successfully"
-            echo "Reports found:"
-            ls -la junit-results/
-          else
-            echo "⚠️ No JUnit reports found to combine"
-          fi
-      - name: Upload combined JUnit results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: always()
-        with:
-          name: e2e-device-responsive-junit-combined
-          path: combined-junit/
-          retention-days: 7
-      - name: Check E2E device-responsive results
-        run: |
-          echo "E2E Device Responsive Test Results:"
-          echo "Matrix job result: ${{ needs.e2e-device-responsive.result }}"
-          
-          # Check if any matrix job failed
-          if [[ "${{ needs.e2e-device-responsive.result }}" == "failure" ]]; then
-            echo "❌ One or more E2E device-responsive tests failed"
-            echo "Check individual matrix job results for details"
-            exit 1
-          elif [[ "${{ needs.e2e-device-responsive.result }}" == "cancelled" ]]; then
-            echo "⚠️ E2E device-responsive tests were cancelled"
-            exit 1
-          fi
-          
-          echo "✅ All E2E device-responsive matrix tests passed"
-
-  # Collector job that ensures all checks pass
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
     if: always()
-    needs: [lint, typecheck, unit, build, sonarcloud, e2e-smoke, e2e-comprehensive-collector, e2e-device-responsive-collector]
+    needs: [lint, typecheck, unit, build, sonarcloud, e2e-smoke, e2e-collector]
     steps:
       - name: Check CI status
         run: |
           if [[ "${{ needs.lint.result }}" != "success" ]]; then
-            echo "❌ Lint failed"
+            echo "Lint failed"
             exit 1
           fi
           if [[ "${{ needs.typecheck.result }}" != "success" ]]; then
-            echo "❌ Type check failed"
+            echo "Type check failed"
             exit 1
           fi
           if [[ "${{ needs.unit.result }}" != "success" ]]; then
-            echo "❌ Unit tests failed"
+            echo "Unit tests failed"
             exit 1
           fi
           if [[ "${{ needs.build.result }}" != "success" ]]; then
-            echo "❌ Build failed"
+            echo "Build failed"
             exit 1
           fi
           # SonarCloud runs on PRs only, allow skipped or success
           if [[ "${{ needs.sonarcloud.result }}" != "success" && "${{ needs.sonarcloud.result }}" != "skipped" ]]; then
-            echo "❌ SonarCloud analysis failed"
+            echo "SonarCloud analysis failed"
             exit 1
           fi
-          # E2E smoke runs on PRs, comprehensive runs on main pushes
+          # E2E smoke runs on PRs, matrix runs on main pushes
           if [[ "${{ needs.e2e-smoke.result }}" != "success" && "${{ needs.e2e-smoke.result }}" != "skipped" ]]; then
-            echo "❌ E2E smoke tests failed"
+            echo "E2E smoke tests failed"
             exit 1
           fi
-          if [[ "${{ needs.e2e-comprehensive-collector.result }}" != "success" && "${{ needs.e2e-comprehensive-collector.result }}" != "skipped" ]]; then
-            echo "❌ E2E comprehensive tests failed"
+          if [[ "${{ needs.e2e-collector.result }}" != "success" && "${{ needs.e2e-collector.result }}" != "skipped" ]]; then
+            echo "E2E tests failed"
             exit 1
           fi
-          if [[ "${{ needs.e2e-device-responsive-collector.result }}" != "success" && "${{ needs.e2e-device-responsive-collector.result }}" != "skipped" ]]; then
-            echo "❌ E2E device-responsive tests failed"
-            exit 1
-          fi
-          echo "✅ All CI checks passed"
+          echo "All CI checks passed"
 
-  # Post PR comment with CI results
   pr-comment:
     name: Update PR with CI Results
     runs-on: ubuntu-latest
@@ -423,50 +271,42 @@ jobs:
       - name: Generate CI summary
         id: summary
         run: |
-          # Determine overall status
           if [[ "${{ needs.ci-success.result }}" == "success" ]]; then
-            STATUS="✅ **CI Passed**"
-            EMOJI="🎉"
+            STATUS="**CI Passed**"
           else
-            STATUS="❌ **CI Failed**"
-            EMOJI="⚠️"
+            STATUS="**CI Failed**"
           fi
-          
-          # Build detailed results
+
           {
-            echo "## ${EMOJI} CI Results for PR #${{ github.event.pull_request.number }}"
+            echo "## CI Results for PR #${{ github.event.pull_request.number }}"
             echo ""
             echo "${STATUS}"
             echo ""
             echo "### Job Results"
             echo "| Job | Status |"
             echo "|-----|--------|"
-            echo "| Lint | ${{ (needs.lint.result == 'success' && '✅ Passed') || (needs.lint.result == 'skipped' && '⏭️ Skipped') || (needs.lint.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |"
-            echo "| Type Check | ${{ (needs.typecheck.result == 'success' && '✅ Passed') || (needs.typecheck.result == 'skipped' && '⏭️ Skipped') || (needs.typecheck.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |"
-            echo "| Unit Tests | ${{ (needs.unit.result == 'success' && '✅ Passed') || (needs.unit.result == 'skipped' && '⏭️ Skipped') || (needs.unit.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |"
-            echo "| Build | ${{ (needs.build.result == 'success' && '✅ Passed') || (needs.build.result == 'skipped' && '⏭️ Skipped') || (needs.build.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |"
-            echo "| E2E Smoke Tests | ${{ (needs.e2e-smoke.result == 'success' && '✅ Passed') || (needs.e2e-smoke.result == 'skipped' && '⏭️ Skipped') || (needs.e2e-smoke.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |"
+            echo "| Lint | ${{ (needs.lint.result == 'success' && 'Passed') || (needs.lint.result == 'skipped' && 'Skipped') || (needs.lint.result == 'cancelled' && 'Cancelled') || 'Failed' }} |"
+            echo "| Type Check | ${{ (needs.typecheck.result == 'success' && 'Passed') || (needs.typecheck.result == 'skipped' && 'Skipped') || (needs.typecheck.result == 'cancelled' && 'Cancelled') || 'Failed' }} |"
+            echo "| Unit Tests | ${{ (needs.unit.result == 'success' && 'Passed') || (needs.unit.result == 'skipped' && 'Skipped') || (needs.unit.result == 'cancelled' && 'Cancelled') || 'Failed' }} |"
+            echo "| Build | ${{ (needs.build.result == 'success' && 'Passed') || (needs.build.result == 'skipped' && 'Skipped') || (needs.build.result == 'cancelled' && 'Cancelled') || 'Failed' }} |"
+            echo "| E2E Smoke Tests | ${{ (needs.e2e-smoke.result == 'success' && 'Passed') || (needs.e2e-smoke.result == 'skipped' && 'Skipped') || (needs.e2e-smoke.result == 'cancelled' && 'Cancelled') || 'Failed' }} |"
             echo ""
             echo "### Quick Actions"
           } > summary.md
-          
-          # Add failure-specific guidance
+
           if [[ "${{ needs.lint.result }}" != "success" ]]; then
-            echo "- 🔧 Run \`pnpm lint:fix\` to auto-fix linting issues" >> summary.md
+            echo "- Run \`pnpm lint:fix\` to auto-fix linting issues" >> summary.md
           fi
-          
           if [[ "${{ needs.typecheck.result }}" != "success" ]]; then
-            echo "- 🔍 Run \`pnpm exec tsc --noEmit\` to check types locally" >> summary.md
+            echo "- Run \`pnpm exec tsc --noEmit\` to check types locally" >> summary.md
           fi
-          
           if [[ "${{ needs.unit.result }}" != "success" ]]; then
-            echo "- 🧪 Run \`pnpm test\` to reproduce unit test failures" >> summary.md
+            echo "- Run \`pnpm test\` to reproduce unit test failures" >> summary.md
           fi
-          
           if [[ "${{ needs.e2e-smoke.result }}" == "failure" ]]; then
-            echo "- 🎭 Run \`pnpm exec playwright test --project=\"Desktop Chrome\"\` to debug E2E tests" >> summary.md
+            echo "- Run \`pnpm exec playwright test --project=\"Desktop Chrome\"\` to debug E2E tests" >> summary.md
           fi
-          
+
           if [[ "${{ needs.ci-success.result }}" == "success" ]]; then
             {
               echo ""
@@ -480,8 +320,6 @@ jobs:
               echo "_Please fix the failing checks before requesting review._"
             } >> summary.md
           fi
-          
-          echo "summary_file=summary.md" >> $GITHUB_OUTPUT
 
       - name: Post or update PR comment
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
@@ -489,35 +327,30 @@ jobs:
           script: |
             const fs = require('fs');
             const summary = fs.readFileSync('summary.md', 'utf8');
-            
-            // Find existing comment
+
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-            
-            const botComment = comments.find(comment => 
-              comment.user.type === 'Bot' && 
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
               comment.body.includes('CI Results for PR')
             );
-            
+
             if (botComment) {
-              // Update existing comment
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: botComment.id,
                 body: summary
               });
-              console.log('Updated existing PR comment');
             } else {
-              // Create new comment
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
                 body: summary
               });
-              console.log('Created new PR comment');
             }
