@@ -22,6 +22,8 @@ import {
  */
 test.describe('Complete Game Playthrough', () => {
   test('should complete a full game playthrough from start to wave 1', async ({ page }) => {
+    test.setTimeout(90000); // Allow sufficient time for screenshots and gameplay
+
     await navigateToGame(page);
     await screenshot(page, 'playthrough', '01-start-screen');
 
@@ -34,6 +36,10 @@ test.describe('Complete Game Playthrough', () => {
 
     // ── Start game via spacebar ───────────────────────
     await startGame(page);
+
+    // Check wave announcement immediately (it has a 5s duration)
+    await expect(page.locator('#wave-announce')).toHaveClass(/show/, { timeout: 5000 });
+
     await screenshot(page, 'playthrough', '02-game-started');
 
     // Verify transition: overlay hidden, UI visible
@@ -42,7 +48,7 @@ test.describe('Complete Game Playthrough', () => {
 
     // ── Wave announcement ─────────────────────────────
     await expect(page.locator('#wave-display')).toContainText('WAVE 1');
-    await expect(page.locator('#wave-announce')).toHaveClass(/show/, { timeout: 5000 });
+    // Already checked wave-announce above
     await screenshot(page, 'playthrough', '03-wave-announcement');
 
     // ── HUD elements ──────────────────────────────────
