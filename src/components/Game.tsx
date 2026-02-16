@@ -388,16 +388,31 @@ export default function Game() {
           {/* Controls are now 3D keyboard F-keys in the scene.
               Hidden HTML buttons kept for accessibility and e2e test IDs. */}
           <div id="controls" className="sr-only">
-            <button type="button" id="btn-reality" onClick={() => handleAbility('reality')}>
+            <button
+              type="button"
+              id="btn-reality"
+              data-testid="btn-reality"
+              onClick={() => handleAbility('reality')}
+            >
               REALITY
             </button>
-            <button type="button" id="btn-history" onClick={() => handleAbility('history')}>
+            <button
+              type="button"
+              id="btn-history"
+              data-testid="btn-history"
+              onClick={() => handleAbility('history')}
+            >
               HISTORY
             </button>
-            <button type="button" id="btn-logic" onClick={() => handleAbility('logic')}>
+            <button
+              type="button"
+              id="btn-logic"
+              data-testid="btn-logic"
+              onClick={() => handleAbility('logic')}
+            >
               LOGIC
             </button>
-            <button type="button" id="btn-special" onClick={handleNuke}>
+            <button type="button" id="btn-special" data-testid="btn-special" onClick={handleNuke}>
               NUKE
             </button>
           </div>

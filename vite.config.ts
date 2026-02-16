@@ -36,13 +36,7 @@ export default defineConfig({
             '@capacitor/status-bar',
           ],
 
-          // Game logic chunks
-          'game-logic': [
-            './src/lib/game-logic.ts',
-            './src/lib/constants.ts',
-            './src/lib/events.ts',
-          ],
-          'game-ecs': ['./src/ecs/world.ts', './src/ecs/react.ts', './src/ecs/state-sync.ts'],
+          // Game utils chunk
           'game-utils': [
             './src/lib/audio.ts',
             './src/lib/storage.ts',

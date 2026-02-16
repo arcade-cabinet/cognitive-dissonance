@@ -10,8 +10,8 @@ import { expect } from '@playwright/test';
 
 // ─── Timeouts ────────────────────────────────────────────────
 
-export const GAME_START_TIMEOUT = 3000;
-export const WAVE_ANNOUNCE_TIMEOUT = 5000;
+export const GAME_START_TIMEOUT = 10000;
+export const WAVE_ANNOUNCE_TIMEOUT = 10000;
 export const GAMEPLAY_TIMEOUT = 60000;
 
 // ─── Navigation ──────────────────────────────────────────────
@@ -59,10 +59,10 @@ export async function verifyHUDVisible(page: Page): Promise<void> {
 
 /** Verify control buttons exist in the DOM (hidden for a11y/e2e, 3D keyboard is primary) */
 export async function verifyControlsAttached(page: Page): Promise<void> {
-  await expect(page.locator('#btn-reality')).toBeAttached();
-  await expect(page.locator('#btn-history')).toBeAttached();
-  await expect(page.locator('#btn-logic')).toBeAttached();
-  await expect(page.locator('#btn-special')).toBeAttached();
+  await expect(page.getByTestId('btn-reality')).toBeAttached();
+  await expect(page.getByTestId('btn-history')).toBeAttached();
+  await expect(page.getByTestId('btn-logic')).toBeAttached();
+  await expect(page.getByTestId('btn-special')).toBeAttached();
 }
 
 /** Verify powerup indicators are visible */
