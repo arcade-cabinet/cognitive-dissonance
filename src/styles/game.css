@@ -82,9 +82,9 @@ body {
 
 canvas {
   display: block;
-  /* biome-ignore lint/complexity/noImportantStyles: Override inline styles from PixiJS */
+  /* biome-ignore lint/complexity/noImportantStyles: Override inline styles from R3F canvas */
   width: 100% !important; /* NOSONAR */
-  /* biome-ignore lint/complexity/noImportantStyles: Override inline styles from PixiJS */
+  /* biome-ignore lint/complexity/noImportantStyles: Override inline styles from R3F canvas */
   height: 100% !important; /* NOSONAR */
   max-width: 100%;
 }

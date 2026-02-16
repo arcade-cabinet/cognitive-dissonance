@@ -112,7 +112,7 @@ export default function Landing() {
           <div className="features-quick">
             <div className="feature-badge">
               <span className="badge-icon">⚡</span>
-              <span className="badge-text">60 FPS WebGL</span>
+              <span className="badge-text">3D WebGL</span>
             </div>
             <div className="feature-badge">
               <span className="badge-icon">📱</span>
@@ -253,8 +253,8 @@ export default function Landing() {
 
         <div className="tech-stack">
           <div className="tech-item">
-            <span className="tech-name">PixiJS 8</span>
-            <span className="tech-desc">WebGL Rendering</span>
+            <span className="tech-name">React Three Fiber</span>
+            <span className="tech-desc">3D Rendering</span>
           </div>
           <div className="tech-item">
             <span className="tech-name">React 19</span>
@@ -273,7 +273,7 @@ export default function Landing() {
             <span className="tech-desc">60 FPS Game Loop</span>
           </div>
           <div className="tech-item">
-            <span className="tech-name">Vite 5</span>
+            <span className="tech-name">Vite 7</span>
             <span className="tech-desc">Lightning Build</span>
           </div>
         </div>
