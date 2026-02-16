@@ -129,15 +129,15 @@ describe('Panic System', () => {
       expect(getTransformState(60, 'psyduck').state).toBe('panic');
     });
 
-    it('should handle direct jump to psyduck (if possible)', () => {
-      // If somehow we are normal and jump to 80 panic
-      expect(getTransformState(80, 'normal').state).toBe('panic'); // Logic says normal -> panic first?
+    it('should transition to panic before psyduck when jumping from normal to high panic', () => {
+      // If somehow we are normal and jump directly to 80 panic
+      expect(getTransformState(80, 'normal').state).toBe('panic'); // normal -> panic first
 
       // Logic check:
       // if (previousState === 'normal') { state = panic >= 33 ? 'panic' : 'normal'; }
       // So it goes to 'panic', not 'psyduck' immediately.
-      // This is intentional? The code doesn't check for psyduck threshold if previous was normal.
-      // Assuming gradual transition.
+      // This is intentional: the code does not check the psyduck threshold when the previous state was 'normal',
+      // enforcing a gradual transition normal -> panic -> psyduck even on large panic jumps.
     });
 
     it('should calculate intensity correctly', () => {
