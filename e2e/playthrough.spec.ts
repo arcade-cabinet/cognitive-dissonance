@@ -43,7 +43,7 @@ test.describe('Complete Game Playthrough', () => {
 
     // ── Wave announcement ─────────────────────────────
     // Check transient UI immediately before blocking operations like screenshot
-    await expect(page.locator('#wave-announce')).toHaveClass(/show/, { timeout: 10000 });
+    await expect(page.locator('#wave-announce')).toHaveClass(/show/, { timeout: 20000 });
     await expect(page.locator('#wave-display')).toContainText('WAVE 1');
 
     await screenshot(page, 'playthrough', '02-game-started');

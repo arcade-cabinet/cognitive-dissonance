@@ -32,16 +32,17 @@ test.describe('Psyduck Panic Game', () => {
     await expect(container).toBeVisible();
 
     // R3F wraps the actual canvas inside a container div
-    const box = await container.boundingBox();
-    expect(box).not.toBeNull();
-    if (box) {
+    // Use polling to handle potential layout shifts/hydration
+    await expect(async () => {
+      const box = await container.boundingBox();
+      if (!box) throw new Error('Canvas container bounding box is null');
       expect(box.width).toBeGreaterThanOrEqual(100);
       expect(box.height).toBeGreaterThanOrEqual(75);
-    }
+    }).toPass({ timeout: 10000 });
 
     // Verify an actual WebGL canvas exists inside the R3F container
-    const canvasCount = await container.locator('canvas').count();
-    expect(canvasCount).toBeGreaterThanOrEqual(1);
+    // Use retrying assertion for robust check
+    await expect(container.locator('canvas')).toHaveCount(1, { timeout: 10000 });
   });
 
   test('should have control buttons', async ({ page }) => {
