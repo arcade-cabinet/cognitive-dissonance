@@ -149,7 +149,7 @@ jobs:
         run: |
           if [[ "${{ matrix.project }}" == *"Firefox"* ]]; then
             pnpm exec playwright install --with-deps firefox
-          elif [[ "${{ matrix.project }}" == *"Safari"* || "${{ matrix.project }}" == *"iPhone"* ]]; then
+          elif [[ "${{ matrix.project }}" == *"Safari"* || "${{ matrix.project }}" == *"iPhone"* || "${{ matrix.project }}" == *"iPad"* ]]; then
             pnpm exec playwright install --with-deps webkit
           else
             pnpm exec playwright install --with-deps chromium
