@@ -362,3 +362,281 @@ jobs:
               });
               console.log('Created new PR comment');
             }
+
+  # Post detailed SonarCloud analysis as PR comment (single pane of glass)
+  sonar-pr-comment:
+    name: SonarCloud PR Report
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    needs: [sonarcloud]
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Check if SonarCloud ran
+        id: check
+        run: |
+          if [[ "${{ needs.sonarcloud.result }}" != "success" ]]; then
+            echo "SonarCloud did not succeed (result: ${{ needs.sonarcloud.result }}), skipping report."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Wait for SonarCloud processing
+        if: steps.check.outputs.skip != 'true'
+        id: wait-sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "Waiting for SonarCloud to process PR #${PR_NUMBER} analysis..."
+          MAX_ATTEMPTS=30
+          SLEEP_SECONDS=10
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            STATUS=$(curl -sf -H "Authorization: Bearer ${SONAR_TOKEN}" \
+              "https://sonarcloud.io/api/qualitygates/project_status?projectKey=arcade-cabinet_psyduck-panic&pullRequest=${PR_NUMBER}" \
+              | jq -r '.projectStatus.status // empty' 2>/dev/null || true)
+
+            if [[ -n "$STATUS" && "$STATUS" != "null" ]]; then
+              echo "SonarCloud analysis ready. Quality Gate: ${STATUS}"
+              echo "quality_gate_status=${STATUS}" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            echo "Attempt ${i}/${MAX_ATTEMPTS}: not ready, waiting ${SLEEP_SECONDS}s..."
+            sleep $SLEEP_SECONDS
+          done
+
+          echo "::warning::SonarCloud analysis did not complete within timeout"
+          echo "quality_gate_status=TIMEOUT" >> $GITHUB_OUTPUT
+
+      - name: Fetch SonarCloud analysis results
+        if: steps.check.outputs.skip != 'true' && steps.wait-sonar.outputs.quality_gate_status != 'TIMEOUT'
+        id: fetch-sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          PROJECT="arcade-cabinet_psyduck-panic"
+          BASE="https://sonarcloud.io"
+          AUTH="Authorization: Bearer ${SONAR_TOKEN}"
+
+          # Quality Gate conditions
+          echo "Fetching quality gate..."
+          curl -sf -H "${AUTH}" \
+            "${BASE}/api/qualitygates/project_status?projectKey=${PROJECT}&pullRequest=${PR_NUMBER}" \
+            -o quality_gate.json
+
+          # Measures
+          echo "Fetching measures..."
+          curl -sf -H "${AUTH}" \
+            "${BASE}/api/measures/component?component=${PROJECT}&pullRequest=${PR_NUMBER}&metricKeys=new_coverage,new_code_smells,new_bugs,new_vulnerabilities,new_security_hotspots,new_duplicated_lines_density,new_technical_debt" \
+            -o measures.json
+
+          # Issues (paginated)
+          echo "Fetching issues..."
+          PAGE=1
+          TOTAL=0
+          echo '[]' > all_issues.json
+          while true; do
+            curl -sf -H "${AUTH}" \
+              "${BASE}/api/issues/search?componentKeys=${PROJECT}&pullRequest=${PR_NUMBER}&ps=500&p=${PAGE}&issueStatuses=OPEN,CONFIRMED&additionalFields=effort" \
+              -o issues_page.json
+
+            ISSUES_IN_PAGE=$(jq '.issues | length' issues_page.json)
+            TOTAL_AVAILABLE=$(jq '.total' issues_page.json)
+            jq -s '.[0] + .[1].issues' all_issues.json issues_page.json > tmp_issues.json
+            mv tmp_issues.json all_issues.json
+            TOTAL=$((TOTAL + ISSUES_IN_PAGE))
+            echo "  Page ${PAGE}: ${ISSUES_IN_PAGE} issues (${TOTAL}/${TOTAL_AVAILABLE})"
+
+            if [[ $TOTAL -ge $TOTAL_AVAILABLE ]] || [[ $ISSUES_IN_PAGE -lt 500 ]]; then
+              break
+            fi
+            PAGE=$((PAGE + 1))
+            if [[ $PAGE -gt 5 ]]; then
+              echo "::warning::Truncated at 2500 issues (${TOTAL_AVAILABLE} total)"
+              break
+            fi
+          done
+
+          # Security Hotspots
+          echo "Fetching hotspots..."
+          curl -sf -H "${AUTH}" \
+            "${BASE}/api/hotspots/search?projectKey=${PROJECT}&pullRequest=${PR_NUMBER}&ps=500" \
+            -o hotspots.json 2>/dev/null || echo '{"hotspots":[],"paging":{"total":0}}' > hotspots.json
+
+          # Combine
+          jq -n \
+            --slurpfile qg quality_gate.json \
+            --slurpfile measures measures.json \
+            --slurpfile issues all_issues.json \
+            --slurpfile hotspots hotspots.json \
+            '{quality_gate:$qg[0],measures:$measures[0],issues:$issues[0],hotspots:$hotspots[0]}' > sonar_results.json
+
+          echo "Done. $(jq '.issues | length' sonar_results.json) issues, $(jq '.hotspots.hotspots | length' sonar_results.json) hotspots"
+
+      - name: Post SonarCloud PR comment
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          QUALITY_GATE_STATUS: ${{ steps.wait-sonar.outputs.quality_gate_status }}
+        with:
+          script: |
+            const fs = require('fs');
+            const MARKER = '<!-- sonarcloud-detailed-results -->';
+            const MAX_BODY = 65000;
+            const prNumber = context.issue.number;
+            const dashboardUrl = `https://sonarcloud.io/summary/new_code?id=arcade-cabinet_psyduck-panic&pullRequest=${prNumber}`;
+
+            let body;
+
+            if (process.env.QUALITY_GATE_STATUS === 'TIMEOUT') {
+              body = [MARKER, `## :hourglass: SonarCloud Analysis`, '', `Analysis did not complete in time. [View on SonarCloud](${dashboardUrl}).`].join('\n');
+            } else {
+              let data;
+              try { data = JSON.parse(fs.readFileSync('sonar_results.json', 'utf8')); } catch (e) {
+                body = [MARKER, '## :warning: SonarCloud Analysis', '', `Failed to read results: ${e.message}`].join('\n');
+              }
+              if (data) body = formatReport(data);
+            }
+
+            // Truncate if needed
+            if (body.length > MAX_BODY) {
+              const msg = `\n\n---\n:warning: **Truncated** — [view full results on SonarCloud](${dashboardUrl})\n`;
+              body = body.substring(0, MAX_BODY - msg.length) + msg;
+            }
+
+            // Post or update
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber,
+            });
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes(MARKER));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: prNumber, body,
+              });
+            }
+
+            function formatReport(data) {
+              const L = [MARKER];
+              const qgStatus = data.quality_gate?.projectStatus?.status || 'UNKNOWN';
+              const qgEmoji = qgStatus === 'OK' ? ':white_check_mark:' : qgStatus === 'ERROR' ? ':x:' : ':grey_question:';
+              const qgLabel = qgStatus === 'OK' ? 'PASSED' : qgStatus === 'ERROR' ? 'FAILED' : qgStatus;
+              L.push(`## ${qgEmoji} SonarCloud Quality Gate: **${qgLabel}**`, '');
+
+              // Quality Gate conditions
+              const conditions = data.quality_gate?.projectStatus?.conditions || [];
+              if (conditions.length) {
+                L.push('<details>', '<summary>Quality Gate Conditions</summary>', '',
+                  '| Metric | Status | Value | Threshold |', '|--------|--------|-------|-----------|');
+                for (const c of conditions) {
+                  const e = c.status === 'OK' ? ':white_check_mark:' : ':x:';
+                  const name = c.metricKey.replace(/_/g, ' ');
+                  L.push(`| ${name} | ${e} | ${c.actualValue || '-'} | ${c.comparator || ''} ${c.errorThreshold || c.warningThreshold || '-'} |`);
+                }
+                L.push('', '</details>', '');
+              }
+
+              // Measures
+              const measures = {};
+              for (const m of (data.measures?.component?.measures || [])) {
+                measures[m.metric] = m.period?.value ?? m.value ?? '-';
+              }
+              L.push('### Metrics on New Code', '', '| Metric | Value |', '|--------|-------|');
+              if (measures.new_coverage !== undefined) {
+                const cov = parseFloat(measures.new_coverage);
+                const ce = cov >= 80 ? ':green_circle:' : cov >= 50 ? ':yellow_circle:' : ':red_circle:';
+                L.push(`| ${ce} Coverage | ${isNaN(cov) ? measures.new_coverage : cov.toFixed(1) + '%'} |`);
+              }
+              if (measures.new_duplicated_lines_density !== undefined)
+                L.push(`| Duplication | ${parseFloat(measures.new_duplicated_lines_density).toFixed(1)}% |`);
+              if (measures.new_bugs !== undefined) L.push(`| Bugs | ${measures.new_bugs} |`);
+              if (measures.new_vulnerabilities !== undefined) L.push(`| Vulnerabilities | ${measures.new_vulnerabilities} |`);
+              if (measures.new_code_smells !== undefined) L.push(`| Code Smells | ${measures.new_code_smells} |`);
+              if (measures.new_security_hotspots !== undefined) L.push(`| Security Hotspots | ${measures.new_security_hotspots} |`);
+              if (measures.new_technical_debt !== undefined) L.push(`| Technical Debt | ${measures.new_technical_debt} |`);
+              L.push('');
+
+              // Issues
+              const issues = data.issues || [];
+              if (issues.length === 0) {
+                L.push('### :tada: No Issues Found', '');
+              } else {
+                const sevOrder = ['BLOCKER','CRITICAL','MAJOR','MINOR','INFO'];
+                const sevEmoji = {BLOCKER:':no_entry:',CRITICAL:':rotating_light:',MAJOR:':warning:',MINOR:':information_source:',INFO:':speech_balloon:'};
+                const bySev = {};
+                let totalEffort = 0;
+                for (const i of issues) {
+                  const s = i.severity || 'INFO';
+                  (bySev[s] = bySev[s] || []).push(i);
+                  if (i.effort) {
+                    const hm = i.effort.match(/(\d+)h/); const mm = i.effort.match(/(\d+)min/);
+                    if (hm) totalEffort += parseInt(hm[1]) * 60;
+                    if (mm) totalEffort += parseInt(mm[1]);
+                  }
+                }
+
+                L.push(`### Issues (${issues.length} total)`, '');
+                if (totalEffort > 0) {
+                  const h = Math.floor(totalEffort/60), m = totalEffort%60;
+                  L.push(`**Estimated debt:** ${h > 0 ? h+'h ':''}${m}m`, '');
+                }
+                L.push('| Severity | Count |', '|----------|-------|');
+                for (const s of sevOrder) if (bySev[s]) L.push(`| ${sevEmoji[s]||''} ${s} | ${bySev[s].length} |`);
+                L.push('');
+
+                // Detailed per severity
+                for (const s of sevOrder) {
+                  const si = bySev[s];
+                  if (!si || !si.length) continue;
+                  L.push(`<details>`, `<summary>${sevEmoji[s]||''} ${s} (${si.length})</summary>`, '');
+
+                  // Group by file
+                  const byFile = {};
+                  for (const i of si) {
+                    const comp = i.component || '';
+                    const fp = comp.includes(':') ? comp.split(':').slice(1).join(':') : comp;
+                    (byFile[fp] = byFile[fp] || []).push(i);
+                  }
+                  for (const [fp, fi] of Object.entries(byFile).sort()) {
+                    L.push(`**\`${fp}\`**`);
+                    for (const i of fi) {
+                      const ln = i.line || i.textRange?.startLine || '?';
+                      const t = i.type === 'BUG' ? 'Bug' : i.type === 'VULNERABILITY' ? 'Vuln' : i.type === 'CODE_SMELL' ? 'Smell' : (i.type || '');
+                      const eff = i.effort ? ` (${i.effort})` : '';
+                      L.push(`- L${ln}: ${i.message} [\`${t}\`] \`${i.rule||''}\`${eff}`);
+                    }
+                    L.push('');
+                  }
+                  L.push('</details>', '');
+                }
+              }
+
+              // Security Hotspots
+              const hotspots = data.hotspots?.hotspots || [];
+              if (hotspots.length) {
+                L.push(`### Security Hotspots (${hotspots.length})`, '', '<details>', '<summary>View hotspots</summary>', '',
+                  '| File | Line | Category | Probability | Description |', '|------|------|----------|-------------|-------------|');
+                for (const h of hotspots) {
+                  const comp = h.component || '';
+                  const fp = comp.includes(':') ? comp.split(':').slice(1).join(':') : comp;
+                  const ln = h.line || h.textRange?.startLine || '?';
+                  const cat = h.securityCategory || '-';
+                  const prob = h.vulnerabilityProbability || '-';
+                  const msg = (h.message || '').replace(/\|/g, '\\|').substring(0, 120);
+                  L.push(`| \`${fp}\` | ${ln} | ${cat} | ${prob} | ${msg} |`);
+                }
+                L.push('', '</details>', '');
+              }
+
+              L.push('---', `[:link: View on SonarCloud](${dashboardUrl})`);
+              return L.join('\n');
+            }
