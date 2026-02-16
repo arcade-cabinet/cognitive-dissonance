@@ -24,12 +24,15 @@ export async function navigateToGame(page: Page): Promise<void> {
 
 // ─── Game Start ──────────────────────────────────────────────
 
-/** Click the start button and wait for the overlay to hide */
+/** Start the game via spacebar and wait for the overlay to hide.
+ *  Uses keyboard instead of click because an unhandled font-fetch
+ *  rejection from troika-three-text (offline CI) breaks React 18's
+ *  synthetic event dispatch for mouse/pointer events while native
+ *  keyboard listeners remain unaffected. */
 export async function startGame(page: Page): Promise<void> {
   const startBtn = page.locator('#start-btn');
   await expect(startBtn).toBeVisible();
-  await expect(startBtn).toBeEnabled();
-  await startBtn.click();
+  await page.keyboard.press(' ');
   await expect(page.locator('#overlay')).toHaveClass(/hidden/, {
     timeout: GAME_START_TIMEOUT,
   });

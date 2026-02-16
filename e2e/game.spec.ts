@@ -52,6 +52,7 @@ test.describe('Psyduck Panic Game', () => {
   test('should display HUD elements', async ({ page }) => {
     await navigateToGame(page);
     await expect(page.locator('.meter-container')).toBeAttached();
+    await startGame(page);
     await verifyHUDVisible(page);
   });
 

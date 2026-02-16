@@ -78,19 +78,23 @@ export default function Game() {
     };
   }, []);
 
-  // Start logic
+  // Start logic — dispatch the screen transition, then notify the worker.
+  // The worker message is delayed via setTimeout to ensure React has time
+  // to commit the screen change before worker state updates arrive.
   const handleStartLogic = useCallback((currentState: UIState) => {
     sfxRef.current?.resume();
     musicRef.current?.resume();
     sceneRef.current?.reset();
 
-    if (currentState.win && currentState.screen === 'gameover') {
-      dispatch({ type: 'START_ENDLESS' });
-      workerRef.current?.postMessage({ type: 'START', endless: true });
-    } else {
-      dispatch({ type: 'START_GAME' });
-      workerRef.current?.postMessage({ type: 'START', endless: false });
-    }
+    const endless = currentState.win && currentState.screen === 'gameover';
+    dispatch(endless ? { type: 'START_ENDLESS' } : { type: 'START_GAME' });
+
+    // Delay worker start to let React commit the screen transition first.
+    // Without this delay, the worker's rapid STATE messages can race with
+    // React 18's concurrent rendering and prevent the commit.
+    setTimeout(() => {
+      workerRef.current?.postMessage({ type: 'START', endless });
+    }, 50);
   }, []);
 
   const handleStartButton = () => {
