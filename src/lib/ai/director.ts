@@ -255,7 +255,7 @@ class RelievingState extends State<AIDirector> {
 
   override execute(director: AIDirector): void {
     // Slowly reduce tension further
-    director.targetTension = Math.max(0.1, director.targetTension - 0.01 * director.frameDelta);
+    director.targetTension = Math.max(0.1, director.targetTension - 0.01 * director.lastDelta);
     // Once panic drops and player stabilizes, start building again
     if (
       director.performance.panic < 50 &&
