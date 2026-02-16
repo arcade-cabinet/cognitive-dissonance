@@ -25,16 +25,13 @@ test.describe('Psyduck Panic Game', () => {
     const canvas = page.locator('#gameCanvas');
     await expect(canvas).toBeVisible();
 
-    // Check dimensions and aspect ratio (poll for R3F hydration)
-    await expect(async () => {
-      const box = await canvas.boundingBox();
-      if (!box) throw new Error('Canvas bounding box is null');
+    // Check dimensions and aspect ratio
+    const width = Number(await canvas.getAttribute('width'));
+    const height = Number(await canvas.getAttribute('height'));
 
-      // Check for non-zero dimensions (responsive, so exact size varies)
-      expect(box.width).toBeGreaterThan(100);
-      expect(box.height).toBeGreaterThan(100);
-      expect(box.width / box.height).toBeCloseTo(4 / 3, 1);
-    }).toPass();
+    expect(width).toBeGreaterThanOrEqual(800);
+    expect(height).toBeGreaterThanOrEqual(600);
+    expect(width / height).toBeCloseTo(4 / 3, 1);
   });
 
   test('should have control buttons', async ({ page }) => {
