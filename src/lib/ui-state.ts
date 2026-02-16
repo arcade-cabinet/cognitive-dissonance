@@ -80,6 +80,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
         wave: action.state.wave,
         panic: action.state.panic,
         combo: action.state.combo,
+        maxCombo: Math.max(state.maxCombo, action.state.combo),
         time: action.state.waveTime,
         nukeCd: action.state.nukeCd,
         nukeMax: action.state.nukeMax,

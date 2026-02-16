@@ -238,7 +238,7 @@ export class GameLogic {
       totalM: this.totalM,
       maxCombo: this.maxCombo,
       nukesUsed: this.nukesUsed,
-      wavesCleared: win ? 5 : this.wave + 1,
+      wavesCleared: win ? WAVES.length : this.wave + 1,
     });
   }
 
