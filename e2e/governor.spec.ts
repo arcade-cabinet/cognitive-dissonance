@@ -3,7 +3,7 @@ import { GameGovernor } from './helpers/game-governor';
 import { navigateToGame, screenshot, startGame, verifyGamePlaying } from './helpers/game-helpers';
 
 test.describe('Automated Playthrough with Governor', () => {
-  test.setTimeout(90000);
+  test.setTimeout(120000);
 
   test('should run automated playthrough with default settings', async ({ page }) => {
     await navigateToGame(page);

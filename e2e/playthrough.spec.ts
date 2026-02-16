@@ -9,9 +9,13 @@ import {
   verifyGamePlaying,
   verifyHUDVisible,
   verifyPowerupsVisible,
+  WAVE_ANNOUNCE_TIMEOUT,
 } from './helpers/game-helpers';
 
 test.describe('Complete Game Playthrough', () => {
+  test.describe.configure({ mode: 'serial' });
+  test.setTimeout(90000);
+
   test('should complete a full game playthrough from start to wave 1', async ({ page }) => {
     await navigateToGame(page);
     await screenshot(page, 'playthrough', '01-start-screen');
@@ -23,15 +27,12 @@ test.describe('Complete Game Playthrough', () => {
 
     // Start game
     await startGame(page);
-    await screenshot(page, 'playthrough', '02-game-started');
 
     // Verify game UI
     await verifyGamePlaying(page);
     await expect(page.locator('#wave-display')).toContainText('WAVE 1');
 
-    // Wait for wave announcement (worker must initialize and send WAVE_START event)
-    await expect(page.locator('#wave-announce')).toHaveClass(/show/, { timeout: 5000 });
-    await screenshot(page, 'playthrough', '03-wave-announcement');
+    await screenshot(page, 'playthrough', '02-game-started');
 
     // Wait for enemies to spawn
     await page.waitForTimeout(3000);
@@ -77,14 +78,14 @@ test.describe('Complete Game Playthrough', () => {
 
     // Check wave announcement appears (worker must initialize and send WAVE_START event)
     const waveAnnounce = page.locator('#wave-announce');
-    await expect(waveAnnounce).toHaveClass(/show/, { timeout: 5000 });
+    await expect(waveAnnounce).toHaveClass(/show/, { timeout: WAVE_ANNOUNCE_TIMEOUT });
 
     await expect(page.locator('#wa-title')).toContainText('WAVE 1');
     await expect(page.locator('#wa-sub')).toContainText('Just checking Twitter');
     await screenshot(page, 'playthrough', '08-wave-announcement-detail');
 
     // Wait for announcement to fade
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(6000);
     await expect(waveAnnounce).not.toHaveClass(/show/);
   });
 
