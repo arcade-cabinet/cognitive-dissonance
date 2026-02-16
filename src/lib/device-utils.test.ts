@@ -54,7 +54,7 @@ describe('device-utils', () => {
     });
 
     // Ensure ontouchstart is undefined for desktop tests
-    // @ts-ignore
+    // @ts-expect-error
     delete window.ontouchstart;
   });
 
