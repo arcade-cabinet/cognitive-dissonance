@@ -338,48 +338,6 @@ export function createResizeObserver(
 }
 
 /**
-      callback(viewport, deviceInfo);
-    }, 100);
-  };
-
-  // Listen for various resize events
-  window.addEventListener('resize', handleResize);
-  window.addEventListener('orientationchange', handleOrientationChange);
-
-  // Also listen for visual viewport changes (important for mobile browsers)
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', handleResize);
-  }
-
-  // Foldable-specific events
-  // @ts-expect-error experimental API
-  if (window.screen?.orientation) {
-    // @ts-expect-error experimental API
-    window.screen.orientation.addEventListener('change', handleOrientationChange);
-  }
-
-  // Initial call
-  handleResize();
-
-  // Return cleanup function
-  return () => {
-    clearTimeout(resizeTimeout);
-    window.removeEventListener('resize', handleResize);
-    window.removeEventListener('orientationchange', handleOrientationChange);
-
-    if (window.visualViewport) {
-      window.visualViewport.removeEventListener('resize', handleResize);
-    }
-
-    // @ts-expect-error experimental API
-    if (window.screen?.orientation) {
-      // @ts-expect-error experimental API
-      window.screen.orientation.removeEventListener('change', handleOrientationChange);
-    }
-  };
-}
-
-/**
  * Get recommended UI scale for different device types
  */
 export function getUIScale(deviceInfo: DeviceInfo): number {

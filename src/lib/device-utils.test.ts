@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { calculateViewport, type DeviceInfo, detectDevice } from './device-utils';
+import {
+  calculateViewport,
+  createResizeObserver,
+  detectDevice,
+  gameToViewport,
+  getUIScale,
+  viewportToGame,
+} from './device-utils';
 
 describe('device-utils', () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -114,7 +121,7 @@ describe('device-utils', () => {
     test('safely handles missing visualViewport', () => {
       // Ensure visualViewport is undefined
       // @ts-expect-error
-      window.visualViewport = undefined;
+      Object.defineProperty(window, 'visualViewport', { value: undefined });
 
       // Should not throw
       const info = detectDevice();
@@ -124,9 +131,12 @@ describe('device-utils', () => {
     test('detects foldable via window segments if available', () => {
       const getWindowSegments = vi.fn().mockReturnValue([{ x: 0 }, { x: 100 }]);
       // @ts-expect-error
-      window.visualViewport = {
-        getWindowSegments,
-      };
+      Object.defineProperty(window, 'visualViewport', {
+        value: {
+          getWindowSegments,
+        },
+        writable: true,
+      });
 
       const info = detectDevice();
       expect(info.isFoldable).toBe(true);
@@ -201,6 +211,83 @@ describe('device-utils', () => {
       // Since we can't easily mock getComputedStyle here for env(), we rely on the hardcoded fallback in calculateSafeInsets
       // top notch is 44px
       expect(vp.offsetY).toBeGreaterThanOrEqual(44);
+    });
+  });
+
+  describe('getUIScale', () => {
+    test('returns correct scale for phone', () => {
+      const info = { type: 'phone', screenWidth: 375, pixelRatio: 2 } as any;
+      expect(getUIScale(info)).toBe(0.8); // 375*2 = 750 < 1000
+    });
+
+    test('returns correct scale for tablet', () => {
+      const info = { type: 'tablet', screenWidth: 768, pixelRatio: 2 } as any;
+      expect(getUIScale(info)).toBe(1.0);
+    });
+
+    test('returns correct scale for foldable', () => {
+      const folded = { type: 'foldable', foldState: 'folded' } as any;
+      expect(getUIScale(folded)).toBe(0.85);
+
+      const unfolded = { type: 'foldable', foldState: 'unfolded' } as any;
+      expect(getUIScale(unfolded)).toBe(1.0);
+    });
+
+    test('returns correct scale for desktop', () => {
+      const info = { type: 'desktop' } as any;
+      expect(getUIScale(info)).toBe(1.1);
+    });
+  });
+
+  describe('coordinate conversion', () => {
+    const viewport = {
+      width: 800,
+      height: 600,
+      scale: 0.5,
+      offsetX: 100,
+      offsetY: 50,
+      aspectRatio: 1.33,
+    };
+
+    test('viewportToGame converts correctly', () => {
+      // (150 - 100) / 0.5 = 50 / 0.5 = 100
+      // (100 - 50) / 0.5 = 50 / 0.5 = 100
+      const gamePos = viewportToGame(150, 100, viewport);
+      expect(gamePos.x).toBe(100);
+      expect(gamePos.y).toBe(100);
+    });
+
+    test('gameToViewport converts correctly', () => {
+      // 100 * 0.5 + 100 = 50 + 100 = 150
+      // 100 * 0.5 + 50 = 50 + 50 = 100
+      const viewPos = gameToViewport(100, 100, viewport);
+      expect(viewPos.x).toBe(150);
+      expect(viewPos.y).toBe(100);
+    });
+  });
+
+  describe('createResizeObserver', () => {
+    test('sets up and cleans up listeners', () => {
+      vi.useFakeTimers();
+      const addEventListener = vi.spyOn(window, 'addEventListener');
+      const removeEventListener = vi.spyOn(window, 'removeEventListener');
+      const callback = vi.fn();
+
+      const cleanup = createResizeObserver(callback);
+
+      expect(addEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
+      expect(addEventListener).toHaveBeenCalledWith('orientationchange', expect.any(Function));
+
+      // Initial call triggers after debounce
+      expect(callback).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(200);
+      expect(callback).toHaveBeenCalled();
+
+      cleanup();
+      vi.useRealTimers();
+
+      expect(removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
+      expect(removeEventListener).toHaveBeenCalledWith('orientationchange', expect.any(Function));
     });
   });
 });
