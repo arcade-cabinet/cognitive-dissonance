@@ -82,8 +82,10 @@ body {
 
 canvas {
   display: block;
-  width: 100% !important;
-  height: 100% !important;
+  /* biome-ignore lint/complexity/noImportantStyles: Override inline styles from PixiJS */
+  width: 100% !important; /* NOSONAR */
+  /* biome-ignore lint/complexity/noImportantStyles: Override inline styles from PixiJS */
+  height: 100% !important; /* NOSONAR */
   max-width: 100%;
 }
 

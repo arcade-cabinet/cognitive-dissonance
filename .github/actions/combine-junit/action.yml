@@ -1,0 +1,44 @@
+name: 'Combine JUnit Reports'
+description: 'Downloads, combines, and uploads JUnit XML reports'
+inputs:
+  artifact-pattern:
+    description: 'Pattern to match artifact names (e.g. "junit-*")'
+    required: true
+  output-name:
+    description: 'Name of the output artifact'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Download all JUnit artifacts
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      with:
+        pattern: ${{ inputs.artifact-pattern }}
+        path: junit-results/
+        merge-multiple: true
+    - name: Combine JUnit reports
+      shell: bash
+      run: |
+        mkdir -p combined-junit
+        # Check if any XML files exist
+        if [ -d "junit-results" ] && compgen -G "junit-results/*.xml" > /dev/null; then
+          echo '<?xml version="1.0" encoding="UTF-8"?>' > combined-junit/junit-combined.xml
+          echo '<testsuites>' >> combined-junit/junit-combined.xml
+          for file in junit-results/*.xml; do
+            # Extract testsuite elements (skip XML declaration and testsuites wrapper)
+            sed -n '/<testsuite[> ]/,/<\/testsuite>/p' "$file" >> combined-junit/junit-combined.xml
+          done
+          echo '</testsuites>' >> combined-junit/junit-combined.xml
+          echo "✅ Combined JUnit reports successfully"
+          echo "Reports found:"
+          ls -la junit-results/
+        else
+          echo "⚠️ No JUnit reports found to combine"
+        fi
+    - name: Upload combined JUnit results
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      if: always()
+      with:
+        name: ${{ inputs.output-name }}
+        path: combined-junit/
+        retention-days: 7

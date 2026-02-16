@@ -220,7 +220,7 @@ test.describe('Foldable-Specific Tests', () => {
       expect(box).not.toBeNull();
       // Allow a small margin of error for borders/scaling
       expect(box!.width).toBeLessThanOrEqual(viewport.width + 2);
-    }).toPass();
+    }).toPass({ timeout: 5000 });
   });
 
   test('should utilize unfolded screen space', async ({ page, viewport }) => {
