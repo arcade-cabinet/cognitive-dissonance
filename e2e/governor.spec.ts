@@ -2,6 +2,12 @@ import { expect, test } from '@playwright/test';
 import { GameGovernor } from './helpers/game-governor';
 import { navigateToGame, screenshot, startGame, verifyGamePlaying } from './helpers/game-helpers';
 
+/**
+ * AI Governor-driven playthrough.
+ *
+ * Smoke suite (PRs): runs only the default playthrough.
+ * Full matrix (CD): runs all variants (aggressive, defensive, verify-running).
+ */
 test.describe('Automated Playthrough with Governor', () => {
   test.setTimeout(90000);
 
@@ -34,7 +40,8 @@ test.describe('Automated Playthrough with Governor', () => {
     console.log(`Playthrough completed with result: ${result.result}, score: ${result.score}`);
   });
 
-  test('should play aggressively with high accuracy', async ({ page }) => {
+  // Extended governor tests — only run in full matrix (CD), tagged with @matrix
+  test('should play aggressively with high accuracy @matrix', async ({ page }) => {
     await navigateToGame(page);
 
     const governor = new GameGovernor(page, {
@@ -64,7 +71,7 @@ test.describe('Automated Playthrough with Governor', () => {
     console.log(`Aggressive playthrough: ${result.result}, score: ${result.score}`);
   });
 
-  test('should play defensively with lower accuracy', async ({ page }) => {
+  test('should play defensively with lower accuracy @matrix', async ({ page }) => {
     await navigateToGame(page);
 
     const governor = new GameGovernor(page, {
@@ -94,17 +101,13 @@ test.describe('Automated Playthrough with Governor', () => {
     console.log(`Defensive playthrough: ${result.result}, score: ${result.score}`);
   });
 
-  test('should verify game continues running during automated play', async ({ page }) => {
+  test('should verify game continues running during automated play @matrix', async ({ page }) => {
     await navigateToGame(page);
 
     const governor = new GameGovernor(page);
 
-    // Start game
     await startGame(page);
 
-    // Wait for worker to initialize and send first state update.
-    // The time display should change from initial 0 to the wave duration (e.g., 28).
-    // Use a bounded timeout — in offline CI the worker may not fully initialize.
     const timeDisplay = page.locator('#time-display');
     let workerActive = false;
     try {
@@ -114,26 +117,20 @@ test.describe('Automated Playthrough with Governor', () => {
       }).toPass({ timeout: 10000 });
       workerActive = true;
     } catch {
-      // Worker did not send state updates — skip time-dependent assertions
       console.log('Worker did not send state updates within timeout, skipping time assertions');
     }
 
     await verifyGamePlaying(page);
 
-    // Let governor play
     governor.start().catch((err) => console.error('Governor start failed:', err));
     await page.waitForTimeout(5000);
 
-    // Verify game is still running
     await verifyGamePlaying(page);
 
     if (workerActive) {
-      // Verify HUD elements are updating (time counts down each second)
       const time1 = await timeDisplay.textContent();
       await page.waitForTimeout(3000);
       const time2 = await timeDisplay.textContent();
-
-      // Time should be counting down
       expect(time1).not.toBe(time2);
     }
 
