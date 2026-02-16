@@ -191,7 +191,7 @@ src/
 
 ### Current Focus
 
-All three spinal systems are implemented: Panic Escalation (logarithmic curves), AI Director (Yuka FSM), and Boss AI (Yuka goal-driven). The game needs visual polish and gameplay testing.
+All core systems implemented. Scene has bright, clear lighting. PR #46 findings addressed (PixiJS refs cleaned, e2e tests fixed for R3F, lighting overhauled). Game needs playtesting and AI tuning.
 
 ### Recent Changes (This Session)
 
@@ -203,10 +203,16 @@ All three spinal systems are implemented: Panic Escalation (logarithmic curves),
 - Removed all PixiJS dependencies and dead code
 - Implemented dynamic eye pupil tracking (speed increases with panic)
 - Added point light glow to enemy bubbles
-- **NEW: Panic Escalation System** — sigmoid damage curve, combo-based decay, panic zones, hysteresis on character state transitions, dynamic difficulty modifiers
-- **NEW: AI Director** — Yuka StateMachine (Building/Sustaining/Relieving/Surging) that governs spawn rate, speed, max enemies, and boss aggression based on player performance
-- **NEW: Boss AI** — Yuka Vehicle + Think + GoalEvaluators with 6 attack goals (Burst, Sweep, Spiral, Reposition, Summon, Rage), dynamic pattern selection
+- **Panic Escalation System** — sigmoid damage curve, combo-based decay, panic zones, hysteresis on character state transitions, dynamic difficulty modifiers
+- **AI Director** — Yuka StateMachine (Building/Sustaining/Relieving/Surging) that governs spawn rate, speed, max enemies, and boss aggression based on player performance
+- **Boss AI** — Yuka Vehicle + Think + GoalEvaluators with 6 attack goals (Burst, Sweep, Spiral, Reposition, Summon, Rage), dynamic pattern selection
 - Updated tests for logarithmic panic damage
+- **Fixed PR #46 findings:**
+  - Landing page: "PixiJS 8" → "React Three Fiber", "Vite 5" → "Vite 7"
+  - All PixiJS references removed from code, CSS comments, e2e helpers
+  - E2E screenshot-utils: Fixed for R3F (WebGL context check, nested canvas targeting)
+  - game.spec.ts: Fixed canvas test for R3F div wrapper (boundingBox + nested canvas)
+  - **Scene lighting overhaul**: Ambient 0.15→0.8, monitor glow 2→5, added fill/key/rim lights, moon glow, brightened all materials. Atmosphere through color, not darkness.
 
 ### Next Steps
 
@@ -261,7 +267,6 @@ All three spinal systems are implemented: Panic Escalation (logarithmic curves),
 - Three.js vendor chunk is ~1.2MB (gzipped ~334KB) — consider code-splitting or lazy loading
 - E2E tests need reorganization (DRY refactor)
 - No React Testing Library component tests yet
-- Boss patterns are currently fixed, not AI-driven
 
 ### Architecture Decisions Log
 
