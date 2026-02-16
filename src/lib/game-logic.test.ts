@@ -164,19 +164,27 @@ describe('GameLogic', () => {
   });
 
   describe('Panic System', () => {
-    it('should add panic', () => {
+    it('should add panic with logarithmic damage curve', () => {
       game.addPanic(10);
-      expect(game.panic).toBe(10);
+      // At 0 panic, sigmoid curve softens damage (~0.5x multiplier)
+      expect(game.panic).toBeGreaterThan(0);
+      expect(game.panic).toBeLessThan(10); // Softened at low panic
     });
 
     it('should not exceed 100 panic', () => {
-      game.addPanic(150);
-      expect(game.panic).toBe(100);
+      // Need multiple hits to reach 100 due to curve + invuln
+      for (let i = 0; i < 30; i++) {
+        game.panicInvuln = 0; // Reset invuln for testing
+        game.addPanic(50);
+      }
+      expect(game.panic).toBeLessThanOrEqual(100);
     });
 
     it('should end game at 100 panic', () => {
       game.running = true;
-      game.addPanic(100);
+      // Force panic to near-max then hit with large damage
+      game.panic = 95;
+      game.addPanic(50); // Amplified at high panic, should push over 100
       expect(game.running).toBe(false);
       expect(game.events).toContainEqual(expect.objectContaining({ type: 'GAME_OVER' }));
     });
@@ -189,10 +197,11 @@ describe('GameLogic', () => {
 
     it('should have invulnerability frames', () => {
       game.addPanic(10);
+      const panicAfterFirstHit = game.panic;
       expect(game.panicInvuln).toBeGreaterThan(0);
 
       game.addPanic(10);
-      expect(game.panic).toBe(10); // Should not add more during i-frames
+      expect(game.panic).toBe(panicAfterFirstHit); // Should not add more during i-frames
     });
   });
 
