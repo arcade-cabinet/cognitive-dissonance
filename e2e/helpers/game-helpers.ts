@@ -77,19 +77,23 @@ export async function verifyGamePlaying(page: Page): Promise<void> {
 
 // ─── Canvas ──────────────────────────────────────────────────
 
-/** Get canvas bounding box, throwing if null */
+/** Get canvas bounding box with polling for WebGL init */
 export async function getCanvasBoundingBox(
   page: Page
 ): Promise<{ x: number; y: number; width: number; height: number }> {
   const canvas = page.locator('#gameCanvas');
-  await expect(canvas).toBeVisible();
-  const box = await canvas.boundingBox();
-  if (!box) {
-    throw new Error('Canvas bounding box is null');
-  }
-  expect(box.width).toBeGreaterThan(0);
-  expect(box.height).toBeGreaterThan(0);
-  return box;
+  await expect(canvas).toBeVisible({ timeout: 10000 });
+
+  let resultBox: { x: number; y: number; width: number; height: number } | null = null;
+  await expect(async () => {
+    const box = await canvas.boundingBox();
+    expect(box).toBeTruthy();
+    expect(box!.width).toBeGreaterThan(0);
+    expect(box!.height).toBeGreaterThan(0);
+    resultBox = box;
+  }).toPass({ timeout: 10000 });
+
+  return resultBox!;
 }
 
 // ─── Screenshots ─────────────────────────────────────────────
