@@ -8,8 +8,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['node_modules', 'dist', 'e2e'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'e2e/helpers/governor/__tests__/*.test.ts'],
+    exclude: ['node_modules', 'dist'],
     reporters: [
       'default',
       ['vitest-sonar-reporter', { outputFile: 'test-results/sonar-report.xml' }],

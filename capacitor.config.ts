@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.arcadecabinet.psyduckpanic',
-  appName: 'Psyduck Panic',
+  appId: 'com.arcadecabinet.cognitivedissonance',
+  appName: 'Cognitive Dissonance',
   webDir: 'dist',
   server: {
     androidScheme: 'https',

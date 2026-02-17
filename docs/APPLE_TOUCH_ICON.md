@@ -39,10 +39,9 @@ Visit https://cloudconvert.com/svg-to-png and convert at 180x180px.
 ## Icon Design
 
 The icon features:
-- **Brand Colors**: Yellow (#ffcc00) for Psyduck, dark background (#0a0a18)
-- **Character**: Simplified Psyduck with panic/confusion expression
-- **Thought Bubble**: Question mark representing AI hype confusion  
-- **Stress Marks**: Red lines showing panic state
-- **Retro Border**: Pixel-style rounded rectangle for gaming aesthetic
+- **Brand Colors**: Brushed steel (#c0c8d8) on dark background (#0a0a18)
+- **Theme**: Cognitive distortion / neural fracture motif
+- **Stress Marks**: RGB chromatic aberration accents
+- **Border**: Metallic rounded rectangle for technopunk aesthetic
 
-The design aligns with the game's branding: retro gaming + Psyduck + AI panic theme.
+The design aligns with the game's branding: metallic technopunk + AI hallucination theme.

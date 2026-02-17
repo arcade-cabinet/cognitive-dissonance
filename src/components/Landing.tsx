@@ -7,7 +7,7 @@ export default function Landing() {
   const navigate = useNavigate();
   const bubblesRef = useRef<HTMLDivElement>(null);
 
-  // Stabilize random bubble values using useMemo
+  // Stabilize random bubble values using useMemo — all randomness precomputed
   const bubbleData = useMemo(
     () =>
       Array.from({ length: 20 }, (_, i) => ({
@@ -17,6 +17,11 @@ export default function Landing() {
         duration: 15000 + Math.random() * 10000,
         rotationDuration: 8000 + Math.random() * 4000,
         delay: i * 800 + Math.random() * 2000,
+        driftX: [
+          (Math.random() - 0.5) * 200,
+          (Math.random() - 0.5) * 200,
+          (Math.random() - 0.5) * 200,
+        ],
       })),
     []
   );
@@ -30,35 +35,42 @@ export default function Landing() {
     if (!bubblesRef.current) return;
 
     const bubbles = bubblesRef.current.querySelectorAll('.bubble');
+    const animations: ReturnType<typeof animate>[] = [];
 
     // Animate each bubble independently using stable data
     bubbles.forEach((bubble, index) => {
       const data = bubbleData[index];
 
       // Set initial position using animate with duration 0
-      animate(bubble as HTMLElement, {
-        left: `${data.initialLeft}%`,
-        bottom: '-5%',
-        opacity: 0,
-        duration: 0,
-      });
+      animations.push(
+        animate(bubble as HTMLElement, {
+          left: `${data.initialLeft}%`,
+          bottom: '-5%',
+          opacity: 0,
+          duration: 0,
+        })
+      );
 
-      // Create floating animation with anime.js
-      animate(bubble as HTMLElement, {
-        translateY: -window.innerHeight - 100,
-        translateX: [
-          () => (Math.random() - 0.5) * 200,
-          () => (Math.random() - 0.5) * 200,
-          () => (Math.random() - 0.5) * 200,
-        ],
-        rotate: 360,
-        opacity: [0.4, 0.4, 0],
-        scale: [1, 1.2, 0.8],
-        loop: true,
-        delay: data.delay,
-        duration: data.duration,
-      });
+      // Create floating animation with anime.js — translateX uses precomputed offsets
+      animations.push(
+        animate(bubble as HTMLElement, {
+          translateY: -window.innerHeight - 100,
+          translateX: data.driftX,
+          rotate: 360,
+          opacity: [0.4, 0.4, 0],
+          scale: [1, 1.2, 0.8],
+          loop: true,
+          delay: data.delay,
+          duration: data.duration,
+        })
+      );
     });
+
+    return () => {
+      for (const anim of animations) {
+        anim?.revert();
+      }
+    };
   }, [bubbleData]);
 
   return (
@@ -92,7 +104,7 @@ export default function Landing() {
             <p className="tagline-text">
               <span className="accent">Counter AI hype</span> thought bubbles before your brother's
               brain
-              <span className="highlight"> transforms into Psyduck</span>
+              <span className="highlight"> explodes from panic</span>
             </p>
           </div>
 
@@ -112,7 +124,7 @@ export default function Landing() {
           <div className="features-quick">
             <div className="feature-badge">
               <span className="badge-icon">⚡</span>
-              <span className="badge-text">60 FPS WebGL</span>
+              <span className="badge-text">3D WebGL</span>
             </div>
             <div className="feature-badge">
               <span className="badge-icon">📱</span>
@@ -148,9 +160,9 @@ export default function Landing() {
             <div className="arrow" aria-hidden="true">
               →
             </div>
-            <div className="character psyduck">
-              <div className="character-label">PSYDUCK</div>
-              <div className="emoji-character evolved">🦆</div>
+            <div className="character meltdown">
+              <div className="character-label">MELTDOWN</div>
+              <div className="emoji-character evolved">🤯</div>
               <div className="panic-indicator">
                 <div className="panic-bar danger" style={{ width: '100%' }}></div>
               </div>
@@ -181,7 +193,7 @@ export default function Landing() {
             <h3>The Problem</h3>
             <p>
               His brain can't handle it. The panic meter rises. Reality distorts. Logic crumbles.
-              He's transforming... into a Psyduck.
+              He's reaching meltdown... his head is going to explode.
             </p>
           </div>
 
@@ -215,7 +227,9 @@ export default function Landing() {
           <div className="feature-card">
             <div className="feature-icon">👾</div>
             <h3>Epic Boss Battles</h3>
-            <p>Face THE HYPE TRAIN and THE SINGULARITY in challenging multi-phase encounters.</p>
+            <p>
+              Face THE ECHO CHAMBER and THE GRAND DELUSION in challenging multi-phase encounters.
+            </p>
           </div>
 
           <div className="feature-card">
@@ -253,8 +267,8 @@ export default function Landing() {
 
         <div className="tech-stack">
           <div className="tech-item">
-            <span className="tech-name">PixiJS 8</span>
-            <span className="tech-desc">WebGL Rendering</span>
+            <span className="tech-name">React Three Fiber</span>
+            <span className="tech-desc">3D Rendering</span>
           </div>
           <div className="tech-item">
             <span className="tech-name">React 19</span>
@@ -273,7 +287,7 @@ export default function Landing() {
             <span className="tech-desc">60 FPS Game Loop</span>
           </div>
           <div className="tech-item">
-            <span className="tech-name">Vite 5</span>
+            <span className="tech-name">Vite 7</span>
             <span className="tech-desc">Lightning Build</span>
           </div>
         </div>

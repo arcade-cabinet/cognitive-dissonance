@@ -1,0 +1,619 @@
+name: Weekly Maintenance
+
+# Comprehensive weekly deep-dive combining SonarCloud analysis, Gemini CLI
+# assessment, Jules implementation, and open issue reconciliation.
+#
+# Stage 1 — Gather signals:
+#   SonarCloud main branch analysis, coverage data, open issues, recent commits
+#
+# Stage 2 — Gemini assessment:
+#   Analyzes all signals, produces maintenance report, identifies actionable items
+#
+# Stage 3 — Jules implementation:
+#   Picks up Gemini's findings and implements cleanup/performance/coverage fixes
+#
+# Stage 4 — Issue reconciliation:
+#   Detects untriaged merged work and stale issues, applies triage labels
+#
+# Schedule: Every Monday 3:00 AM UTC (before the workweek begins)
+# Also triggerable via workflow_dispatch for ad-hoc deep dives.
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      skip_jules:
+        description: 'Skip Jules implementation (assessment only)'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════
+  # Stage 1: Gather Signals
+  # Runs SonarCloud analysis on main, collects coverage, open
+  # issues, and recent commit history for Gemini's assessment.
+  # ═══════════════════════════════════════════════════════════════
+  gather-signals:
+    name: Gather Signals
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      sonar_metrics: ${{ steps.sonar.outputs.metrics }}
+      open_issues: ${{ steps.issues.outputs.summary }}
+      recent_commits: ${{ steps.commits.outputs.log }}
+      coverage_summary: ${{ steps.coverage.outputs.summary }}
+      has_sonar: ${{ steps.sonar.outputs.has_data }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup
+
+      # ── Run tests with coverage ──────────────────────────────
+      - name: Run unit tests with coverage
+        id: tests
+        continue-on-error: true
+        run: pnpm test:coverage
+
+      - name: Summarize coverage
+        id: coverage
+        run: |
+          if [ -f coverage/lcov.info ]; then
+            # Extract summary from lcov
+            LINES_HIT=$(grep -c "^DA:" coverage/lcov.info || echo "0")
+            LINES_FOUND=$(grep "^LF:" coverage/lcov.info | awk -F: '{sum+=$2} END {print sum}')
+            LINES_COVERED=$(grep "^LH:" coverage/lcov.info | awk -F: '{sum+=$2} END {print sum}')
+
+            if [ "$LINES_FOUND" -gt 0 ]; then
+              PCT=$(echo "scale=1; $LINES_COVERED * 100 / $LINES_FOUND" | bc)
+            else
+              PCT="0.0"
+            fi
+
+            SUMMARY="Line coverage: ${PCT}% (${LINES_COVERED}/${LINES_FOUND} lines)"
+
+            # Find low-coverage game-state files
+            LOW_COV=""
+            for f in src/lib/game-logic.ts src/lib/ai/boss-ai.ts src/lib/ai/director.ts src/lib/panic-system.ts src/lib/music.ts src/worker/game.worker.ts; do
+              if [ -f "$f" ]; then
+                FILE_LINES=$(grep -A1 "^SF:.*${f}$" coverage/lcov.info | grep "^LF:" | awk -F: '{print $2}' || echo "0")
+                FILE_HIT=$(grep -A1 "^SF:.*${f}$" coverage/lcov.info | grep "^LH:" | awk -F: '{print $2}' || echo "0")
+                if [ "$FILE_LINES" -gt 0 ]; then
+                  FILE_PCT=$(echo "scale=0; $FILE_HIT * 100 / $FILE_LINES" | bc)
+                  if [ "$FILE_PCT" -lt 60 ]; then
+                    LOW_COV="${LOW_COV}\n- ${f}: ${FILE_PCT}% (${FILE_HIT}/${FILE_LINES})"
+                  fi
+                fi
+              fi
+            done
+
+            if [ -n "$LOW_COV" ]; then
+              SUMMARY="${SUMMARY}\n\nLow coverage game-state files (<60%):${LOW_COV}"
+            fi
+          else
+            SUMMARY="Coverage data not available (tests may have failed)"
+          fi
+
+          echo "summary<<EOF" >> "$GITHUB_OUTPUT"
+          echo -e "$SUMMARY" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      # ── SonarCloud analysis on main ──────────────────────────
+      - name: SonarCloud Scan
+        id: sonar-scan
+        continue-on-error: true
+        uses: sonarsource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >
+            -Dsonar.branch.name=main
+
+      - name: Fetch SonarCloud metrics
+        id: sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          PROJECT="arcade-cabinet_cognitive-dissonance"
+          BASE="https://sonarcloud.io"
+          AUTH="Authorization: Bearer ${SONAR_TOKEN}"
+
+          # Wait for analysis to be processed
+          for i in $(seq 1 20); do
+            STATUS=$(curl -sf -H "${AUTH}" \
+              "${BASE}/api/qualitygates/project_status?projectKey=${PROJECT}" \
+              | jq -r '.projectStatus.status // empty' 2>/dev/null || true)
+            if [ -n "$STATUS" ] && [ "$STATUS" != "null" ]; then
+              break
+            fi
+            echo "Waiting for SonarCloud (attempt ${i}/20)..."
+            sleep 10
+          done
+
+          if [ -z "$STATUS" ] || [ "$STATUS" = "null" ]; then
+            echo "has_data=false" >> "$GITHUB_OUTPUT"
+            echo "metrics=SonarCloud analysis not available" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_data=true" >> "$GITHUB_OUTPUT"
+
+          # Fetch comprehensive metrics
+          METRICS_JSON=$(curl -sf -H "${AUTH}" \
+            "${BASE}/api/measures/component?component=${PROJECT}&metricKeys=coverage,ncloc,bugs,vulnerabilities,code_smells,security_hotspots,duplicated_lines_density,sqale_debt_ratio,sqale_index,reliability_rating,security_rating,sqale_rating,ncloc_language_distribution" \
+            2>/dev/null || echo '{}')
+
+          # Fetch issue breakdown
+          ISSUES_JSON=$(curl -sf -H "${AUTH}" \
+            "${BASE}/api/issues/search?componentKeys=${PROJECT}&issueStatuses=OPEN,CONFIRMED&ps=1&facets=severities,types" \
+            2>/dev/null || echo '{}')
+
+          # Build readable summary
+          {
+            echo "Quality Gate: ${STATUS}"
+            echo ""
+            echo "Metrics:"
+            echo "$METRICS_JSON" | jq -r '.component.measures[]? | "  \(.metric): \(.value)"' 2>/dev/null || true
+            echo ""
+            echo "Issue Breakdown:"
+            echo "$ISSUES_JSON" | jq -r '.facets[]? | "  \(.property):" + (.values[]? | "    \(.val): \(.count)")' 2>/dev/null || true
+            echo ""
+            echo "Total Open Issues: $(echo "$ISSUES_JSON" | jq -r '.total // 0' 2>/dev/null)"
+          } > sonar_summary.txt
+
+          METRICS=$(cat sonar_summary.txt)
+          echo "metrics<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$METRICS" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      # ── Collect open GitHub issues ───────────────────────────
+      - name: Collect open issues
+        id: issues
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const issues = [];
+            for await (const response of github.paginate.iterator(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            })) {
+              issues.push(...response.data.filter(i => !i.pull_request));
+            }
+
+            const summary = issues.map(i => {
+              const labels = i.labels.map(l => l.name).join(', ');
+              const age = Math.floor((Date.now() - new Date(i.created_at)) / (1000 * 60 * 60 * 24));
+              const lastActivity = Math.floor((Date.now() - new Date(i.updated_at)) / (1000 * 60 * 60 * 24));
+              return `#${i.number}: ${i.title} [${labels}] (age: ${age}d, last activity: ${lastActivity}d ago)`;
+            }).join('\n');
+
+            core.setOutput('summary', summary || 'No open issues');
+            core.info(`Found ${issues.length} open issues`);
+
+      # ── Recent commit log ────────────────────────────────────
+      - name: Collect recent commits
+        id: commits
+        run: |
+          LOG=$(git log --oneline --since="7 days ago" --no-merges -- src/ | head -50)
+          if [ -z "$LOG" ]; then
+            LOG="No commits to src/ in the last 7 days"
+          fi
+          echo "log<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$LOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Upload coverage for later stages
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: maintenance-coverage
+          path: coverage/
+          retention-days: 1
+
+  # ═══════════════════════════════════════════════════════════════
+  # Stage 2: Gemini Assessment
+  # Comprehensive AI analysis of all gathered signals.
+  # Produces a maintenance report and identifies actionable items.
+  # ═══════════════════════════════════════════════════════════════
+  gemini-assessment:
+    name: Gemini Assessment
+    needs: gather-signals
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      maintenance_findings: ${{ env.MAINTENANCE_FINDINGS }}
+      has_findings: ${{ steps.check.outputs.has_findings }}
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run Gemini maintenance assessment
+        uses: google-github-actions/run-gemini-cli@b7c22b00bd5a02e52eec973dc4b3bd391eb31512 # v0.1.20
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_METRICS: ${{ needs.gather-signals.outputs.sonar_metrics }}
+          OPEN_ISSUES: ${{ needs.gather-signals.outputs.open_issues }}
+          RECENT_COMMITS: ${{ needs.gather-signals.outputs.recent_commits }}
+          COVERAGE_SUMMARY: ${{ needs.gather-signals.outputs.coverage_summary }}
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_model: ${{ vars.GEMINI_MODEL }}
+          upload_artifacts: 'false'
+          workflow_name: gemini-maintenance
+          settings: |-
+            {
+              "model": {
+                "maxSessionTurns": 30
+              },
+              "tools": {
+                "core": [
+                  "run_shell_command(cat)",
+                  "run_shell_command(echo)",
+                  "run_shell_command(grep)",
+                  "run_shell_command(head)",
+                  "run_shell_command(tail)",
+                  "run_shell_command(wc)",
+                  "run_shell_command(find)"
+                ]
+              }
+            }
+          prompt: /gemini-maintenance
+
+      - name: Check for findings
+        id: check
+        run: |
+          if [ -n "${MAINTENANCE_FINDINGS:-}" ]; then
+            echo "has_findings=true" >> "$GITHUB_OUTPUT"
+            echo "Gemini identified findings: ${MAINTENANCE_FINDINGS}"
+          else
+            echo "has_findings=false" >> "$GITHUB_OUTPUT"
+            echo "No actionable findings from Gemini"
+          fi
+
+      - name: Post maintenance report as issue comment
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            // Find or create the recurring maintenance tracking issue
+            const MARKER = '<!-- weekly-maintenance-tracker -->';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'maintenance',
+              per_page: 10,
+            });
+
+            let trackingIssue = issues.find(i => i.body?.includes(MARKER));
+
+            if (!trackingIssue) {
+              // Create the tracking issue
+              const { data: created } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: 'Weekly Maintenance Reports',
+                body: [
+                  MARKER,
+                  '',
+                  'This issue tracks weekly automated maintenance assessments.',
+                  'Each Monday, Gemini CLI analyzes the codebase against SonarCloud metrics,',
+                  'coverage data, and open issues to produce an actionable report.',
+                  '',
+                  'Reports are posted as comments on this issue.',
+                  '',
+                  '---',
+                  '_Auto-created by maintenance.yml_',
+                ].join('\n'),
+                labels: ['maintenance'],
+              });
+              trackingIssue = created;
+              core.info(`Created tracking issue #${trackingIssue.number}`);
+            }
+
+            // Post the report as a comment with signal summary
+            const date = new Date().toISOString().split('T')[0];
+            const findings = process.env.MAINTENANCE_FINDINGS || 'No actionable findings';
+            const sonarStatus = process.env.HAS_SONAR === 'true' ? 'Available' : 'Not available';
+
+            const body = [
+              `## Maintenance Run — ${date}`,
+              '',
+              `**Workflow:** [Run #${context.runNumber}](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              `**SonarCloud:** ${sonarStatus}`,
+              `**Findings for Jules:** ${findings}`,
+              '',
+              '_Full Gemini assessment is in the workflow logs._',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: trackingIssue.number,
+              body,
+            });
+
+            core.info(`Posted maintenance report to issue #${trackingIssue.number}`);
+        env:
+          MAINTENANCE_FINDINGS: ${{ env.MAINTENANCE_FINDINGS }}
+          HAS_SONAR: ${{ needs.gather-signals.outputs.has_sonar }}
+
+  # ═══════════════════════════════════════════════════════════════
+  # Stage 3: Jules Implementation
+  # Acts on Gemini's findings: cleanup, performance, coverage.
+  # ═══════════════════════════════════════════════════════════════
+  jules-implement:
+    name: Jules Maintenance Fix
+    needs: [gather-signals, gemini-assessment]
+    if: >-
+      needs.gemini-assessment.outputs.has_findings == 'true' &&
+      (github.event_name == 'schedule' || inputs.skip_jules != true)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Invoke Jules for maintenance
+        uses: google-labs-code/jules-action@bff7875eaa123cac6742b7cfc51005b95ba4d566 # v1.0.0
+        with:
+          prompt: |
+            ## Weekly Maintenance — Automated Fix
+
+            You are performing scheduled maintenance on the Cognitive Dissonance codebase.
+            Gemini CLI has analyzed the codebase and identified the following findings.
+
+            ### Gemini Findings
+            ${{ needs.gemini-assessment.outputs.maintenance_findings }}
+
+            ### SonarCloud Metrics
+            ${{ needs.gather-signals.outputs.sonar_metrics }}
+
+            ### Coverage Summary
+            ${{ needs.gather-signals.outputs.coverage_summary }}
+
+            ### Instructions
+
+            Pick the **single highest-impact finding** from the list above and implement a fix.
+            Do NOT try to fix everything at once — one focused PR per finding.
+
+            **Priority order:**
+            1. Security vulnerabilities (SonarCloud BLOCKER/CRITICAL)
+            2. Bugs (logic errors, resource leaks, race conditions)
+            3. Performance (Three.js resource leaks, unnecessary re-renders, O(n²) in game loop)
+            4. Coverage gaps (add tests for uncovered game-state files)
+            5. Cleanup (dead code, unused exports, stale TODOs)
+
+            **For each fix:**
+            1. Identify the specific file(s) and line(s) to change
+            2. Implement a minimal, targeted fix (under 100 lines changed)
+            3. Add or update tests to cover the fix
+            4. Run `pnpm lint && pnpm exec tsc --noEmit && pnpm build && pnpm test` to verify
+            5. Do NOT modify CI/CD workflow files
+            6. Title your PR: "maint: [description of fix]"
+
+            **Rules:**
+            - Only fix if there's clear, measurable impact
+            - Don't sacrifice readability for micro-optimizations
+            - Preserve existing functionality — run tests before submitting
+            - If no clear fix exists for any finding, do NOT create a PR
+
+            ### Project Context
+            <!-- SYNC: Keep in sync with CLAUDE.md and docs/ARCHITECTURE.md -->
+            - **Stack:** React 19 + TypeScript 5 + React Three Fiber 9 + Miniplex ECS + Tone.js + Yuka.js
+            - **Build:** Vite 7, pnpm, Biome linter
+            - **Tests:** Vitest (unit), Playwright (E2E across 20 device configs)
+            - **Game logic:** Runs in Web Worker (`src/worker/game.worker.ts`)
+            - **AI:** Yuka.js boss AI (`src/lib/ai/boss-ai.ts`), Director FSM (`src/lib/ai/director.ts`)
+            - **Music:** Tone.js adaptive layers (`src/lib/music.ts`)
+            - **State:** useReducer + refs (zustand migration planned, see #104)
+            - **Key constraint:** No bare `Math.random()` in game-state paths (seedrandom migration planned, see #100)
+          jules_api_key: ${{ secrets.GOOGLE_JULES_API_KEY }}
+          starting_branch: main
+          include_last_commit: true
+
+  # ═══════════════════════════════════════════════════════════════
+  # Stage 4: Issue Reconciliation
+  # Detects untriaged merged work and stale issues.
+  # Applies triage labels and posts notifications.
+  # ═══════════════════════════════════════════════════════════════
+  issue-reconciliation:
+    name: Issue Reconciliation
+    needs: gather-signals
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Detect untriaged merged work
+        id: untriaged
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const { execSync } = require('child_process');
+
+            // Get PRs merged in the last 7 days
+            const { data: closedPRs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 50,
+            });
+
+            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            const mergedPRs = closedPRs.filter(pr =>
+              pr.merged_at && new Date(pr.merged_at) > sevenDaysAgo
+            );
+
+            // Check each merged PR for linked issues
+            const untriaged = [];
+            for (const pr of mergedPRs) {
+              // Look for "Closes #N", "Fixes #N", "Resolves #N" in PR body
+              const body = pr.body || '';
+              const issueRefs = body.match(/(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi) || [];
+
+              if (issueRefs.length === 0 && !pr.user.login.includes('dependabot')) {
+                // PR merged without linking an issue
+                untriaged.push({
+                  number: pr.number,
+                  title: pr.title,
+                  author: pr.user.login,
+                  merged: pr.merged_at,
+                });
+              }
+            }
+
+            if (untriaged.length > 0) {
+              core.info(`Found ${untriaged.length} PRs merged without linked issues`);
+              for (const pr of untriaged) {
+                core.info(`  PR #${pr.number}: ${pr.title} by ${pr.author}`);
+              }
+            }
+
+            core.setOutput('untriaged_count', untriaged.length.toString());
+            core.setOutput('untriaged', JSON.stringify(untriaged));
+
+      - name: Detect stale issues
+        id: stale
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+            const issues = [];
+            for await (const response of github.paginate.iterator(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              sort: 'updated',
+              direction: 'asc',
+              per_page: 100,
+            })) {
+              issues.push(...response.data.filter(i => !i.pull_request));
+            }
+
+            const stale = issues.filter(i => new Date(i.updated_at) < thirtyDaysAgo);
+
+            if (stale.length > 0) {
+              core.info(`Found ${stale.length} stale issues (no activity >30 days)`);
+              for (const i of stale) {
+                const age = Math.floor((Date.now() - new Date(i.updated_at)) / (1000 * 60 * 60 * 24));
+                core.info(`  #${i.number}: ${i.title} (${age} days since last activity)`);
+              }
+            }
+
+            core.setOutput('stale_count', stale.length.toString());
+            core.setOutput('stale', JSON.stringify(stale.map(i => ({
+              number: i.number,
+              title: i.title,
+              labels: i.labels.map(l => l.name),
+              daysSinceUpdate: Math.floor((Date.now() - new Date(i.updated_at)) / (1000 * 60 * 60 * 24)),
+            }))));
+
+      - name: Post reconciliation summary
+        if: >-
+          steps.untriaged.outputs.untriaged_count != '0' ||
+          steps.stale.outputs.stale_count != '0'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          UNTRIAGED: ${{ steps.untriaged.outputs.untriaged }}
+          STALE: ${{ steps.stale.outputs.stale }}
+        with:
+          script: |
+            const untriaged = JSON.parse(process.env.UNTRIAGED || '[]');
+            const stale = JSON.parse(process.env.STALE || '[]');
+
+            // Find or create the maintenance tracking issue
+            const MARKER = '<!-- weekly-maintenance-tracker -->';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'maintenance',
+              per_page: 10,
+            });
+            const trackingIssue = issues.find(i => i.body?.includes(MARKER));
+            if (!trackingIssue) return; // Created by Stage 2
+
+            const lines = ['## Issue Reconciliation', ''];
+
+            if (untriaged.length > 0) {
+              lines.push(`### Untriaged Merged PRs (${untriaged.length})`);
+              lines.push('These PRs were merged in the last 7 days without linking to an issue:');
+              lines.push('');
+              for (const pr of untriaged) {
+                lines.push(`- PR #${pr.number}: **${pr.title}** (by @${pr.author}, merged ${pr.merged.split('T')[0]})`);
+              }
+              lines.push('');
+              lines.push('> Consider creating retroactive issues for tracking, or adding "Closes #N" to PR descriptions.');
+              lines.push('');
+            }
+
+            if (stale.length > 0) {
+              lines.push(`### Stale Issues (${stale.length})`);
+              lines.push('These issues have had no activity for 30+ days:');
+              lines.push('');
+              for (const i of stale) {
+                const labels = i.labels.length ? ` [${i.labels.join(', ')}]` : '';
+                lines.push(`- #${i.number}: **${i.title}**${labels} — ${i.daysSinceUpdate} days idle`);
+              }
+              lines.push('');
+              lines.push('> Consider closing resolved issues, adding `triage` label for re-assessment, or updating with current status.');
+              lines.push('');
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: trackingIssue.number,
+              body: lines.join('\n'),
+            });
+
+      - name: Label stale issues for re-triage
+        if: steps.stale.outputs.stale_count != '0'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          STALE: ${{ steps.stale.outputs.stale }}
+        with:
+          script: |
+            const stale = JSON.parse(process.env.STALE || '[]');
+
+            // Only re-triage issues that don't already have the triage label
+            // and have been stale for 60+ days (severe staleness)
+            const severe = stale.filter(i =>
+              i.daysSinceUpdate >= 60 && !i.labels.includes('triage')
+            );
+
+            for (const i of severe) {
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: i.number,
+                  labels: ['triage'],
+                });
+                core.info(`Applied triage label to stale issue #${i.number} (${i.daysSinceUpdate} days idle)`);
+              } catch (e) {
+                core.warning(`Failed to label issue #${i.number}: ${e.message}`);
+              }
+            }
+
+            if (severe.length > 0) {
+              core.info(`Re-triaged ${severe.length} severely stale issues`);
+            }

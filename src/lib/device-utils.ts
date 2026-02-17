@@ -48,23 +48,30 @@ export function detectDevice(): DeviceInfo {
   const isTouchDevice =
     'ontouchstart' in window ||
     navigator.maxTouchPoints > 0 ||
-    // @ts-expect-error - some browsers
-    navigator.msMaxTouchPoints > 0;
+    (navigator.msMaxTouchPoints ?? 0) > 0;
 
   // Platform detection
   const userAgent = navigator.userAgent.toLowerCase();
   const isIOS = /iphone|ipad|ipod/.test(userAgent);
   const isAndroid = /android/.test(userAgent);
 
-  // Notch detection (approximate)
-  const hasNotch =
-    isIOS &&
-    pixelRatio >= 3 &&
-    ((width === 375 && height === 812) || // iPhone X/XS/11 Pro
-      (width === 414 && height === 896) || // iPhone XR/XS Max/11/11 Pro Max
-      (width === 390 && height === 844) || // iPhone 12/13/14
-      (width === 393 && height === 852) || // iPhone 14 Pro
-      (width === 428 && height === 926)); // iPhone 12/13/14 Pro Max
+  // Notch/Dynamic Island detection via CSS env() safe-area-inset
+  // Works for all iPhone models (X through 16+) without hardcoded dimensions
+  let hasNotch = false;
+  if (
+    typeof CSS !== 'undefined' &&
+    typeof document !== 'undefined' &&
+    CSS.supports?.('padding-top: env(safe-area-inset-top)')
+  ) {
+    const root = document.body ?? document.documentElement;
+    if (root) {
+      const testDiv = document.createElement('div');
+      testDiv.style.paddingTop = 'env(safe-area-inset-top)';
+      root.appendChild(testDiv);
+      hasNotch = parseFloat(getComputedStyle(testDiv).paddingTop) > 0;
+      root.removeChild(testDiv);
+    }
+  }
 
   // Foldable detection
   const isFoldable = detectFoldable();
@@ -110,8 +117,7 @@ export function detectDevice(): DeviceInfo {
  */
 function detectFoldable(): boolean {
   // Check for Window Segments API (foldable devices)
-  if (window.visualViewport && 'getWindowSegments' in window.visualViewport) {
-    // @ts-expect-error
+  if (window.visualViewport?.getWindowSegments) {
     const segments = window.visualViewport.getWindowSegments();
     return segments && segments.length > 1;
   }
@@ -133,8 +139,7 @@ function detectFoldable(): boolean {
  */
 function detectFoldState(): 'folded' | 'unfolded' | 'tent' | 'book' {
   // Try to use Device Posture API if available
-  if ('devicePosture' in navigator) {
-    // @ts-expect-error experimental API
+  if (navigator.devicePosture) {
     const posture = navigator.devicePosture.type;
     if (posture === 'folded') return 'folded';
     if (posture === 'continuous') return 'unfolded';
@@ -202,16 +207,31 @@ export function calculateViewport(
 
     scale = width / baseWidth;
   }
-  // Phone landscape - maximize screen usage
+  // Phone landscape - maximize screen usage (match original: use full constraining dimension)
   else if (type === 'phone' && orientation === 'landscape') {
     // Try to use full width
     width = availableWidth * 0.98;
     height = width / baseAspectRatio;
 
-    // Constrain by height if needed
-    if (height > availableHeight * 0.95) {
-      height = availableHeight * 0.95;
+    // Constrain by height — use 0.98 to match width utilization
+    if (height > availableHeight * 0.98) {
+      height = availableHeight * 0.98;
       width = height * baseAspectRatio;
+    }
+
+    scale = width / baseWidth;
+  }
+  // Foldable unfolded/tent/book - treat like a small tablet
+  else if (
+    type === 'foldable' &&
+    (foldState === 'unfolded' || foldState === 'tent' || foldState === 'book')
+  ) {
+    if (screenAspectRatio > baseAspectRatio) {
+      height = availableHeight * 0.92;
+      width = height * baseAspectRatio;
+    } else {
+      width = availableWidth * 0.92;
+      height = width / baseAspectRatio;
     }
 
     scale = width / baseWidth;
@@ -294,6 +314,7 @@ export function createResizeObserver(
   callback: (viewport: ViewportDimensions, deviceInfo: DeviceInfo) => void
 ): () => void {
   let resizeTimeout: number;
+  let orientationTimeout: number;
 
   const handleResize = () => {
     // Debounce rapid resize events
@@ -307,7 +328,8 @@ export function createResizeObserver(
 
   const handleOrientationChange = () => {
     // Orientation change often needs a slight delay to get correct dimensions
-    setTimeout(() => {
+    clearTimeout(orientationTimeout);
+    orientationTimeout = window.setTimeout(() => {
       const deviceInfo = detectDevice();
       const viewport = calculateViewport(GAME_WIDTH, GAME_HEIGHT, deviceInfo);
       callback(viewport, deviceInfo);
@@ -329,6 +351,7 @@ export function createResizeObserver(
   // Return cleanup function
   return () => {
     clearTimeout(resizeTimeout);
+    clearTimeout(orientationTimeout);
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('orientationchange', handleOrientationChange);
     if (window.visualViewport) {

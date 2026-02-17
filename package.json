@@ -1,9 +1,15 @@
 {
-  "name": "psyduck-panic",
+  "name": "cognitive-dissonance",
   "version": "1.0.0",
-  "description": "Psyduck Panic: Evolution Deluxe - Native mobile game with Capacitor",
+  "description": "Cognitive Dissonance - Defeat the hallucinations before your AI's head explodes",
   "type": "module",
   "packageManager": "pnpm@10.13.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -32,7 +38,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/arcade-cabinet/psyduck-panic.git"
+    "url": "git+https://github.com/arcade-cabinet/cognitive-dissonance.git"
   },
   "keywords": [
     "game",
@@ -45,9 +51,9 @@
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/arcade-cabinet/psyduck-panic/issues"
+    "url": "https://github.com/arcade-cabinet/cognitive-dissonance/issues"
   },
-  "homepage": "https://github.com/arcade-cabinet/psyduck-panic#readme",
+  "homepage": "https://github.com/arcade-cabinet/cognitive-dissonance#readme",
   "dependencies": {
     "@capacitor/android": "^8.1.0",
     "@capacitor/app": "^8.0.1",
@@ -58,12 +64,22 @@
     "@capacitor/keyboard": "^8.0.0",
     "@capacitor/screen-orientation": "^8.0.1",
     "@capacitor/status-bar": "^8.0.1",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "@react-three/postprocessing": "^3.0.4",
+    "@splinetool/react-spline": "^4.1.0",
+    "@splinetool/runtime": "^1.12.57",
     "animejs": "4.3.6",
     "idb": "^8.0.3",
-    "pixi.js": "^8.16.0",
+    "miniplex": "^2.0.0",
+    "miniplex-react": "^2.0.1",
+    "postprocessing": "^6.38.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.0"
+    "react-router-dom": "^7.13.0",
+    "three": "^0.182.0",
+    "tone": "^15.1.22",
+    "yuka": "^0.7.8"
   },
   "devDependencies": {
     "@bdellegrazie/playwright-sonar-reporter": "^0.4.0",
@@ -72,10 +88,13 @@
     "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/animejs": "^3.1.13",
     "@types/node": "^25.2.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.182.0",
+    "@types/yuka": "^0.7.4",
     "@vitejs/plugin-react": "^5.1.4",
     "@vitest/coverage-v8": "^4.0.18",
     "@vitest/ui": "^4.0.18",

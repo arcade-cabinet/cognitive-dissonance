@@ -1,6 +1,6 @@
 # Game Governor - Automated Testing
 
-The Game Governor is an automated playthrough controller that simulates realistic player behavior for E2E testing of the Psyduck Panic game.
+The Game Governor is an automated playthrough controller that simulates realistic player behavior for E2E testing of the Cognitive Dissonance game.
 
 ## Overview
 
@@ -19,7 +19,7 @@ import { test } from '@playwright/test';
 import { GameGovernor } from './helpers/game-governor';
 
 test('automated playthrough', async ({ page }) => {
-  await page.goto('/psyduck-panic/');
+  await page.goto('/');
   
   const governor = new GameGovernor(page);
   const result = await governor.playthrough();
@@ -111,7 +111,7 @@ interface GovernorConfig {
 ### Visual Verification Test
 ```typescript
 test('verify gameplay with screenshots', async ({ page }) => {
-  await page.goto('/psyduck-panic/');
+  await page.goto('/');
   
   const governor = new GameGovernor(page);
   const playthroughPromise = governor.playthrough();
@@ -131,7 +131,7 @@ test('verify gameplay with screenshots', async ({ page }) => {
 ### Performance Testing
 ```typescript
 test('measure game performance', async ({ page }) => {
-  await page.goto('/psyduck-panic/');
+  await page.goto('/');
   
   const startTime = Date.now();
   const governor = new GameGovernor(page, {
@@ -151,7 +151,7 @@ test('measure game performance', async ({ page }) => {
 ### Regression Testing
 ```typescript
 test('verify consistent gameplay behavior', async ({ page }) => {
-  await page.goto('/psyduck-panic/');
+  await page.goto('/');
   
   const results = [];
   

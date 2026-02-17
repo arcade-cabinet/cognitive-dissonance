@@ -1,0 +1,485 @@
+name: Issue Triage
+
+# Multi-system automated issue triage pipeline.
+#
+# Flow:
+#   1. Issue opened → Gemini CLI triages + CodeRabbit labels/plans + `triage` label
+#   2. `triage` label triggers GitHub AI assessment → evaluates quality/risk →
+#      posts assessment comment + `ai:*` labels → removes `triage` label
+#   3. Functional label triggers dependency check → if unblocked, Jules implements
+#   4. Jules opens PR → dispatch.yml routes to review.yml → Gemini reviews →
+#      auto-merge gate decides → PR merges → issue closes
+#   5. on-unblocked finds newly eligible issues → repeat from step 3
+#
+# Systems:
+#   - Gemini CLI: issue triage + labeling (.gemini/prompts/gemini-triage.toml)
+#   - CodeRabbit: auto-labeling + planning (.coderabbit.yaml)
+#   - GitHub AI Models: issue quality assessment (.github/prompts/)
+#   - Jules: automated implementation (google-labs-code/jules-action)
+#   - on-unblocked: dependency cascade (BeksOmega/on-unblocked)
+#
+# PR-side automation (review, auto-merge) is handled by:
+#   - dispatch.yml → review.yml → automerge.yml
+#
+# Dependencies are configured via GitHub's native "Blocked by" relationships
+# (Settings > Features > Issue Dependencies). The workflow uses the GraphQL
+# blockedBy field to check if all blockers are resolved.
+
+on:
+  issues:
+    types: [opened, reopened, labeled, closed]
+
+permissions:
+  contents: read
+  issues: read
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+jobs:
+
+  # ── Gemini Issue Triage ────────────────────────────────────────────
+  # When a new issue is opened/reopened, Gemini CLI analyzes it and
+  # applies labels. This runs alongside CodeRabbit's auto-labeling to
+  # provide redundant classification from multiple AI systems.
+  gemini-triage:
+    name: Gemini Triage
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.action == 'opened' ||
+      github.event.action == 'reopened'
+    outputs:
+      available_labels: ${{ steps.get_labels.outputs.available_labels }}
+      selected_labels: ${{ env.SELECTED_LABELS }}
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - name: Get repository labels
+        id: get_labels
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const labels = [];
+            for await (const response of github.paginate.iterator(github.rest.issues.listLabelsForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            })) {
+              labels.push(...response.data);
+            }
+
+            if (!labels || labels.length === 0) {
+              core.setFailed('There are no issue labels in this repository.');
+              return;
+            }
+
+            const labelNames = labels.map(l => l.name).sort();
+            core.setOutput('available_labels', labelNames.join(','));
+            core.info(`Found ${labelNames.length} labels: ${labelNames.join(', ')}`);
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run Gemini issue analysis
+        if: steps.get_labels.outputs.available_labels != ''
+        uses: google-github-actions/run-gemini-cli@b7c22b00bd5a02e52eec973dc4b3bd391eb31512 # v0.1.20
+        env:
+          GITHUB_TOKEN: '' # Do NOT pass auth tokens — runs on untrusted input
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          AVAILABLE_LABELS: ${{ steps.get_labels.outputs.available_labels }}
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_model: ${{ vars.GEMINI_MODEL }}
+          upload_artifacts: 'false'
+          workflow_name: gemini-triage
+          settings: |-
+            {
+              "model": {
+                "maxSessionTurns": 25
+              },
+              "tools": {
+                "core": [
+                  "run_shell_command(echo)"
+                ]
+              }
+            }
+          prompt: /gemini-triage
+
+  # ── Apply Gemini labels ────────────────────────────────────────────
+  apply-gemini-labels:
+    name: Apply Gemini Labels
+    needs: gemini-triage
+    if: needs.gemini-triage.outputs.selected_labels != ''
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Apply labels
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          AVAILABLE_LABELS: ${{ needs.gemini-triage.outputs.available_labels }}
+          SELECTED_LABELS: ${{ needs.gemini-triage.outputs.selected_labels }}
+        with:
+          script: |
+            const availableLabels = (process.env.AVAILABLE_LABELS || '').split(',')
+              .map(l => l.trim())
+              .sort();
+
+            // Validate against available labels to prevent prompt injection
+            const selectedLabels = (process.env.SELECTED_LABELS || '').split(',')
+              .map(l => l.trim())
+              .filter(l => availableLabels.includes(l))
+              .sort();
+
+            const issueNumber = parseInt(process.env.ISSUE_NUMBER, 10);
+            if (selectedLabels.length > 0) {
+              // Use addLabels to merge with CodeRabbit's labels (not replace)
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: selectedLabels,
+              });
+              core.info(`Applied Gemini labels: ${selectedLabels.join(', ')}`);
+            } else {
+              core.info('No valid labels selected by Gemini');
+            }
+
+  # ── AI Quality Assessment ──────────────────────────────────────────
+  # When CodeRabbit (or a maintainer) applies the `triage` label,
+  # run AI assessment prompts matched to the issue's functional labels.
+  # Posts an assessment comment and adds `ai:<prompt>:<verdict>` labels.
+  # The `triage` label is removed automatically for idempotency.
+  ai-assessment:
+    name: AI Issue Assessment
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'triage'
+    permissions:
+      issues: write
+      models: read
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run AI assessment
+        id: assessment
+        uses: github/ai-assessment-comment-labeler@e3bedc38cfffa9179fe4cee8f7ecc93bffb3fee7 # v1.0.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ai_review_label: triage
+          issue_number: ${{ github.event.issue.number }}
+          issue_body: ${{ github.event.issue.body }}
+          prompts_directory: .github/prompts
+          # SYNC: Labels below must match .coderabbit.yaml labeling_instructions
+          labels_to_prompts_mapping: >-
+            bug,bug-review.prompt.yml|enhancement,issue-review.prompt.yml|determinism,issue-review.prompt.yml|performance,issue-review.prompt.yml|ai,issue-review.prompt.yml|state-management,issue-review.prompt.yml|old-index-parity,issue-review.prompt.yml|accessibility,issue-review.prompt.yml
+          model: openai/gpt-4o-mini
+          max_tokens: 500
+
+  # ── Label-triggered: Jules implements an unblocked issue ───────────
+  # When CodeRabbit (or a maintainer) applies a functional label,
+  # check GitHub's native dependency graph for open blockers, then
+  # invoke Jules to implement the issue using CodeRabbit's plan.
+  implement-labeled:
+    name: Implement Labeled Issue
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.action == 'labeled' &&
+      contains(fromJSON('["bug","enhancement","determinism","performance","ai","state-management","old-index-parity","accessibility"]'), github.event.label.name)
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - name: Check native dependency graph for blockers
+        id: issue
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const issueNumber = context.payload.issue.number;
+            const labels = context.payload.issue.labels.map(l => l.name);
+
+            // Use GraphQL to check GitHub's native blockedBy relationships
+            const result = await github.graphql(`
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  issue(number: $number) {
+                    id
+                    number
+                    title
+                    body
+                    blockedBy(first: 20) {
+                      nodes {
+                        number
+                        title
+                        state
+                      }
+                    }
+                    issueDependenciesSummary {
+                      blockedByCount
+                      blockedByOpenCount
+                    }
+                  }
+                }
+              }
+            `, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              number: issueNumber
+            });
+
+            const issue = result.repository.issue;
+            const deps = issue.issueDependenciesSummary;
+            const openBlockers = issue.blockedBy.nodes.filter(n => n.state === 'OPEN');
+            const blocked = openBlockers.length > 0;
+
+            core.setOutput('number', issue.number);
+            core.setOutput('title', issue.title);
+            core.setOutput('body', issue.body || '');
+            core.setOutput('labels', labels.join(', '));
+            core.setOutput('blocked', blocked.toString());
+            core.setOutput('blocker_count', (deps?.blockedByOpenCount || 0).toString());
+            core.setOutput('open_blockers', openBlockers.map(b => `#${b.number}: ${b.title}`).join('; '));
+
+            if (blocked) {
+              core.info(`Issue #${issue.number} is blocked by ${openBlockers.length} open issue(s): ${openBlockers.map(b => '#' + b.number).join(', ')}`);
+            } else {
+              core.info(`Issue #${issue.number} has no open blockers — eligible for Jules`);
+            }
+
+      - name: Skip — issue is blocked
+        if: steps.issue.outputs.blocked == 'true'
+        env:
+          ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
+          BLOCKER_COUNT: ${{ steps.issue.outputs.blocker_count }}
+          OPEN_BLOCKERS: ${{ steps.issue.outputs.open_blockers }}
+        run: |
+          echo "Issue #${ISSUE_NUMBER} is blocked by ${BLOCKER_COUNT} open issue(s):"
+          echo "${OPEN_BLOCKERS}"
+          echo "Skipping Jules invocation until blockers are resolved."
+
+      - name: Check for existing AI PRs
+        if: steps.issue.outputs.blocked == 'false'
+        id: existing_pr
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            // Skip Jules if there's already an open PR from Claude or Copilot
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            const issueNum = context.payload.issue.number;
+            const aiPrefixes = ['claude/', 'copilot/'];
+            const activePR = prs.find(pr => {
+              const branch = pr.head.ref;
+              const isAiBranch = aiPrefixes.some(p => branch.startsWith(p));
+              // Check if PR references this issue
+              const body = (pr.body || '').toLowerCase();
+              const title = (pr.title || '').toLowerCase();
+              const refersToIssue = body.includes(`#${issueNum}`) || title.includes(`#${issueNum}`);
+              return isAiBranch && refersToIssue;
+            });
+
+            if (activePR) {
+              core.info(`Skipping Jules — active AI PR #${activePR.number} (${activePR.head.ref}) already addresses issue #${issueNum}`);
+              core.setOutput('skip', 'true');
+            } else {
+              core.setOutput('skip', 'false');
+            }
+
+      - name: Invoke Jules
+        if: steps.issue.outputs.blocked == 'false' && steps.existing_pr.outputs.skip != 'true'
+        uses: google-labs-code/jules-action@bff7875eaa123cac6742b7cfc51005b95ba4d566 # v1.0.0
+        with:
+          prompt: |
+            ## Issue #${{ steps.issue.outputs.number }}: ${{ steps.issue.outputs.title }}
+
+            **Labels:** ${{ steps.issue.outputs.labels }}
+
+            ### Issue Description
+            ${{ steps.issue.outputs.body }}
+
+            ### Instructions
+            1. Read the issue description carefully — it contains a CodeRabbit-generated implementation plan.
+            2. Follow the plan step by step. If the plan is incomplete, analyze the codebase and fill in gaps.
+            3. For bug fixes: identify the root cause, implement a minimal fix, and add a regression test.
+            4. For enhancements: implement the feature following existing code patterns.
+            5. Run `pnpm lint && pnpm exec tsc --noEmit && pnpm build && pnpm test` to verify.
+            6. Do NOT modify CI/CD workflow files unless the issue specifically requires it.
+            7. Reference the issue number in your PR description so it auto-closes on merge.
+
+            ### Project Context
+            <!-- SYNC: Keep in sync with CLAUDE.md and docs/ARCHITECTURE.md -->
+            - **Stack:** React 19 + TypeScript 5 + React Three Fiber 9 + Miniplex ECS + Tone.js + Yuka.js
+            - **Build:** Vite 7, pnpm, Biome linter
+            - **Tests:** Vitest (unit), Playwright (E2E across 20 device configs)
+            - **Game logic:** Runs in Web Worker (`src/worker/game.worker.ts`)
+            - **AI:** Yuka.js boss AI (`src/lib/ai/boss-ai.ts`), Director FSM (`src/lib/ai/director.ts`)
+            - **Music:** Tone.js adaptive layers (`src/lib/music.ts`)
+            - **State:** useReducer + refs (zustand migration planned, see #104)
+            - **Key constraint:** No bare `Math.random()` in game-state paths (seedrandom migration planned, see #100)
+          jules_api_key: ${{ secrets.GOOGLE_JULES_API_KEY }}
+          starting_branch: main
+          include_last_commit: true
+
+  # ── Unblocked issue detection ──────────────────────────────────────
+  # When an issue closes (usually via PR merge), find issues that
+  # were blocked by it and are now ready for implementation.
+  detect-unblocked:
+    name: Find Unblocked Issues
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.issue.state_reason == 'completed'
+    permissions:
+      issues: read
+    outputs:
+      matrix: ${{ steps.finder.outputs.issues }}
+      found: ${{ steps.finder.outputs.has_issues }}
+    steps:
+      - name: Find issues unblocked by closure
+        id: finder
+        uses: BeksOmega/on-unblocked@0e54ef697940f67a5bc41efe624bf282889d105f # v1.0.0
+
+  # ── Implement each newly unblocked issue ───────────────────────────
+  implement-unblocked:
+    name: Implement Unblocked Issue
+    needs: detect-unblocked
+    if: needs.detect-unblocked.outputs.found == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        issue-number: ${{ fromJson(needs.detect-unblocked.outputs.matrix) }}
+    steps:
+      - name: Check if issue is fully unblocked via native dependencies
+        id: issue
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          ISSUE_NUMBER: ${{ matrix.issue-number }}
+        with:
+          script: |
+            const issueNumber = parseInt(process.env.ISSUE_NUMBER, 10);
+
+            const result = await github.graphql(`
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  issue(number: $number) {
+                    number
+                    title
+                    body
+                    state
+                    labels(first: 20) { nodes { name } }
+                    blockedBy(first: 20) {
+                      nodes { number state }
+                    }
+                  }
+                }
+              }
+            `, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              number: issueNumber
+            });
+
+            const issue = result.repository.issue;
+            if (issue.state !== 'OPEN') {
+              core.info(`Issue #${issueNumber} is already closed, skipping`);
+              core.setOutput('eligible', 'false');
+              return;
+            }
+
+            const labels = issue.labels.nodes.map(l => l.name);
+            const openBlockers = issue.blockedBy.nodes.filter(n => n.state === 'OPEN');
+            const allResolved = openBlockers.length === 0;
+
+            const actionableLabels = ['bug', 'enhancement', 'determinism', 'performance', 'ai', 'state-management', 'old-index-parity', 'accessibility'];
+            const hasActionableLabel = labels.some(l => actionableLabels.includes(l));
+
+            const eligible = allResolved && hasActionableLabel;
+
+            core.setOutput('number', issue.number);
+            core.setOutput('title', issue.title);
+            core.setOutput('body', issue.body || '');
+            core.setOutput('labels', labels.join(', '));
+            core.setOutput('eligible', eligible.toString());
+
+            if (!eligible) {
+              if (!allResolved) core.info(`Issue #${issueNumber} still has ${openBlockers.length} open blocker(s)`);
+              if (!hasActionableLabel) core.info(`Issue #${issueNumber} has no actionable label`);
+            } else {
+              core.info(`Issue #${issueNumber} is fully unblocked and has actionable label — invoking Jules`);
+            }
+
+      - name: Check for existing AI PRs
+        if: steps.issue.outputs.eligible == 'true'
+        id: existing_pr
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          ISSUE_NUMBER: ${{ matrix.issue-number }}
+        with:
+          script: |
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const issueNum = parseInt(process.env.ISSUE_NUMBER, 10);
+            const aiPrefixes = ['claude/', 'copilot/'];
+            const activePR = prs.find(pr => {
+              const branch = pr.head.ref;
+              const isAiBranch = aiPrefixes.some(p => branch.startsWith(p));
+              const body = (pr.body || '').toLowerCase();
+              const title = (pr.title || '').toLowerCase();
+              const refersToIssue = body.includes(`#${issueNum}`) || title.includes(`#${issueNum}`);
+              return isAiBranch && refersToIssue;
+            });
+            if (activePR) {
+              core.info(`Skipping Jules — active AI PR #${activePR.number} (${activePR.head.ref}) already addresses issue #${issueNum}`);
+              core.setOutput('skip', 'true');
+            } else {
+              core.setOutput('skip', 'false');
+            }
+
+      - name: Invoke Jules on unblocked issue
+        if: steps.issue.outputs.eligible == 'true' && steps.existing_pr.outputs.skip != 'true'
+        uses: google-labs-code/jules-action@bff7875eaa123cac6742b7cfc51005b95ba4d566 # v1.0.0
+        with:
+          prompt: |
+            ## Unblocked Issue #${{ steps.issue.outputs.number }}: ${{ steps.issue.outputs.title }}
+
+            **Labels:** ${{ steps.issue.outputs.labels }}
+            **Context:** This issue was previously blocked by a dependency that has now been resolved.
+
+            ### Issue Description
+            ${{ steps.issue.outputs.body }}
+
+            ### Instructions
+            1. This issue's blockers have been resolved. Read the description for the implementation plan.
+            2. Check recent commits on main for the blocker resolution — it may provide context.
+            3. Implement the fix following the plan. Run full validation before submitting.
+            4. Run `pnpm lint && pnpm exec tsc --noEmit && pnpm build && pnpm test` to verify.
+            5. Do NOT modify CI/CD workflow files unless the issue specifically requires it.
+            6. Reference the issue number in your PR description so it auto-closes on merge.
+
+            ### Project Context
+            <!-- SYNC: Keep in sync with CLAUDE.md and docs/ARCHITECTURE.md -->
+            - **Stack:** React 19 + TypeScript 5 + React Three Fiber 9 + Miniplex ECS + Tone.js + Yuka.js
+            - **Build:** Vite 7, pnpm, Biome linter
+            - **Tests:** Vitest (unit), Playwright (E2E across 20 device configs)
+            - **Game logic:** Runs in Web Worker (`src/worker/game.worker.ts`)
+            - **AI:** Yuka.js boss AI (`src/lib/ai/boss-ai.ts`), Director FSM (`src/lib/ai/director.ts`)
+            - **Music:** Tone.js adaptive layers (`src/lib/music.ts`)
+          jules_api_key: ${{ secrets.GOOGLE_JULES_API_KEY }}
+          starting_branch: main
+          include_last_commit: true

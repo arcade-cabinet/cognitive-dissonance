@@ -2,15 +2,19 @@
 
 ## Overview
 
-Psyduck Panic uses a comprehensive design system built on design tokens to ensure visual consistency, maintainability, and scalability across all platforms.
+Cognitive Dissonance uses a comprehensive design system built on design tokens to ensure visual consistency, maintainability, and scalability across all platforms.
+
+## Visual Target
+
+See **[DESIGN_VISION.md](./DESIGN_VISION.md)** for the full photorealistic procedural generation specification. The design system tokens below provide the color palette and spacing; the vision document defines the quality bar for 3D rendering.
 
 ## Brand Identity
 
 ### Personality
-- **Retro Gaming Aesthetic**: Inspired by 8-bit and 16-bit era games
+- **Photorealistic Procedural**: Fully immersive 3D — complex curves, PBR materials, procedural textures
 - **Playful**: Humorous take on AI hype and tech culture
 - **Satirical**: Commentary on tech industry trends
-- **Accessible**: Easy to understand, hard to master
+- **Visceral**: The tension escalation is visceral and mechanical, not cartoony
 
 ### Core Values
 1. **Consistency**: Unified visual language across all screens
@@ -26,12 +30,12 @@ Design tokens are centralized in `src/design/tokens.ts` and applied via CSS vari
 
 #### Primary Colors
 ```css
---color-primary-main: #f1c40f    /* Golden yellow (Psyduck) */
+--color-primary-main: #c0c8d8    /* Brushed steel (brand) */
 --color-primary-light: #f9e79f   /* Light yellow */
 --color-primary-dark: #d4ac0d    /* Dark yellow */
 ```
 
-**Usage**: Primary actions, accents, Psyduck character, highlights
+**Usage**: Primary actions, accents, brand highlights
 
 #### Secondary Colors
 ```css
@@ -83,7 +87,7 @@ Design tokens are centralized in `src/design/tokens.ts` and applied via CSS vari
 --font-emoji: Arial
 ```
 
-**Press Start 2P** provides the retro gaming aesthetic and is used for all text elements.
+System monospace fonts (Courier New, Lucida Console) provide the clinical technopunk aesthetic.
 
 #### Font Sizes
 ```css
@@ -313,7 +317,7 @@ outline-offset: 2px;
 
 ## Icon System
 
-Using emoji for icons to maintain retro aesthetic and ensure cross-platform consistency:
+Using raymarched SDF shapes for enemy types and procedural portraits on keycaps:
 
 - 🦠 Reality (virus, hype)
 - 📈 History (growth charts)
@@ -321,8 +325,8 @@ Using emoji for icons to maintain retro aesthetic and ensure cross-platform cons
 - ⏳ Time Warp power-up
 - 🛡️ Clarity (shield) power-up
 - ⭐ 2X Score power-up
-- 🚂 Boss: Hype Train
-- 🧠 Boss: The Singularity
+- THE ECHO CHAMBER
+- THE GRAND DELUSION
 
 ## Visual Effects
 

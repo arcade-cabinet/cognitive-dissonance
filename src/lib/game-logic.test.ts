@@ -89,7 +89,7 @@ describe('GameLogic', () => {
       game.spawnPowerUp();
       const powerup = game.powerups[0];
 
-      expect(['slow', 'shield', 'double']).toContain(powerup.id);
+      expect(powerup.id).toMatch(/^(slow|shield|double)-/);
       expect(powerup.x).toBeGreaterThan(0);
       expect(powerup.y).toBeDefined();
     });
@@ -152,31 +152,46 @@ describe('GameLogic', () => {
       expect(game.nukeCd).toBe(firstCd);
     });
 
-    it('should clear all enemies on nuke', () => {
-      game.spawnEnemy();
-      game.spawnEnemy();
-      game.spawnEnemy();
-      expect(game.enemies.length).toBe(3);
+    it('should clear all non-encrypted enemies on nuke', () => {
+      // Spawn several enemies — some may be randomly encrypted
+      for (let i = 0; i < 5; i++) {
+        game.spawnEnemy();
+      }
+      const totalBefore = game.enemies.length;
+      expect(totalBefore).toBe(5);
+
+      const encryptedBefore = game.enemies.filter((e) => e.encrypted).length;
 
       game.triggerNuke();
-      expect(game.enemies.length).toBe(0);
+
+      // Only encrypted enemies should survive
+      expect(game.enemies.length).toBe(encryptedBefore);
+      expect(game.enemies.every((e) => e.encrypted)).toBe(true);
     });
   });
 
   describe('Panic System', () => {
-    it('should add panic', () => {
+    it('should add panic with logarithmic damage curve', () => {
       game.addPanic(10);
-      expect(game.panic).toBe(10);
+      // At 0 panic, sigmoid curve softens damage (~0.5x multiplier)
+      expect(game.panic).toBeGreaterThan(0);
+      expect(game.panic).toBeLessThan(10); // Softened at low panic
     });
 
     it('should not exceed 100 panic', () => {
-      game.addPanic(150);
-      expect(game.panic).toBe(100);
+      // Need multiple hits to reach 100 due to curve + invuln
+      for (let i = 0; i < 30; i++) {
+        game.panicInvuln = 0; // Reset invuln for testing
+        game.addPanic(50);
+      }
+      expect(game.panic).toBeLessThanOrEqual(100);
     });
 
     it('should end game at 100 panic', () => {
       game.running = true;
-      game.addPanic(100);
+      // Force panic to near-max then hit with large damage
+      game.panic = 95;
+      game.addPanic(50); // Amplified at high panic, should push over 100
       expect(game.running).toBe(false);
       expect(game.events).toContainEqual(expect.objectContaining({ type: 'GAME_OVER' }));
     });
@@ -189,10 +204,11 @@ describe('GameLogic', () => {
 
     it('should have invulnerability frames', () => {
       game.addPanic(10);
+      const panicAfterFirstHit = game.panic;
       expect(game.panicInvuln).toBeGreaterThan(0);
 
       game.addPanic(10);
-      expect(game.panic).toBe(10); // Should not add more during i-frames
+      expect(game.panic).toBe(panicAfterFirstHit); // Should not add more during i-frames
     });
   });
 
@@ -292,6 +308,264 @@ describe('GameLogic', () => {
       expect(game.momPerks.spawnDelay).toBe(0);
       expect(game.momPerks.scoreBonus).toBe(0);
       expect(game.momPerks.cdReduction).toBe(0);
+    });
+  });
+
+  describe('Game Loop Update', () => {
+    beforeEach(() => {
+      game.start();
+    });
+
+    it('should reduce cooldowns', () => {
+      game.abilityCd.reality = 100;
+      game.nukeCd = 100;
+      game.pu.shield = 100;
+
+      game.update(1.0, 1000); // 1 frame (~16ms)
+
+      expect(game.abilityCd.reality).toBeLessThan(100);
+      expect(game.nukeCd).toBeLessThan(100);
+      expect(game.pu.shield).toBeLessThan(100);
+    });
+
+    it('should spawn enemies over time', () => {
+      const initial = game.enemies.length;
+      // Advance time significantly
+      // Spawn delay is around 1000ms usually
+      for (let i = 0; i < 120; i++) {
+        game.update(1.0, i * 16.67);
+      }
+      expect(game.enemies.length).toBeGreaterThan(initial);
+    });
+
+    it('should update enemies position', () => {
+      game.spawnEnemy();
+      const enemy = game.enemies[0];
+      const initialX = enemy.x;
+      const initialY = enemy.y;
+
+      game.update(1.0, 1000);
+
+      const distance = Math.sqrt((enemy.x - initialX) ** 2 + (enemy.y - initialY) ** 2);
+      expect(distance).toBeGreaterThan(0);
+    });
+
+    it('should remove enemies out of bounds and penalize', () => {
+      game.spawnEnemy();
+      const enemy = game.enemies[0];
+      // Move enemy out of bounds
+      enemy.x = -100;
+
+      const initialPanic = game.panic;
+      game.update(1.0, 1000);
+
+      expect(game.enemies).not.toContain(enemy);
+      expect(game.panic).toBeGreaterThan(initialPanic);
+    });
+
+    it('should decay panic over time if combo > 3', () => {
+      game.panic = 50;
+      game.combo = 10;
+
+      game.update(1.0, 1000);
+
+      expect(game.panic).toBeLessThan(50);
+    });
+
+    it('should transition to next wave', () => {
+      game.waveTime = 1; // 1 second left
+      game.secondAccumulator = 990; // almost a second
+
+      game.update(2.0, 1000); // Push over threshold
+
+      // Should trigger next wave
+      expect(game.events).toContainEqual(expect.objectContaining({ type: 'WAVE_START' }));
+    });
+
+    it('should update boss when active', () => {
+      const bossConfig = {
+        name: 'Test Boss',
+        hp: 100,
+        pats: ['burst'],
+      };
+      game.startBoss(bossConfig);
+      if (!game.boss) throw new Error('Boss not started');
+      const boss = game.boss;
+      const initialTimer = boss.timer;
+      const initialX = boss.x;
+
+      game.update(1.0, 1000);
+
+      expect(boss.timer).toBeGreaterThan(initialTimer);
+      // Boss AI always produces a 'move' action, so position should change
+      expect(boss.x).not.toBe(initialX);
+    });
+
+    it('should process boss hit with nuke', () => {
+      const bossConfig = {
+        name: 'Test Boss',
+        hp: 100,
+        pats: ['burst'],
+      };
+      game.startBoss(bossConfig);
+      game.nukeCd = 0;
+      game.running = true;
+
+      game.triggerNuke();
+
+      expect(game.boss?.hp).toBeLessThan(100);
+      expect(game.events).toContainEqual(expect.objectContaining({ type: 'BOSS_HIT' }));
+    });
+
+    it('should kill boss if HP drops to 0', () => {
+      const bossConfig = {
+        name: 'Test Boss',
+        hp: 3,
+        pats: ['burst'],
+      };
+      game.startBoss(bossConfig);
+      game.nukeCd = 0;
+
+      game.triggerNuke(); // 3 damage
+
+      expect(game.boss).toBeNull(); // Boss dead
+      expect(game.events).toContainEqual(expect.objectContaining({ type: 'BOSS_DIE' }));
+      expect(game.bossPhase).toBe(false);
+    });
+  });
+
+  describe('Advanced Logic Coverage', () => {
+    it('should reset combo on ability miss', () => {
+      game.running = true;
+      game.combo = 10;
+      game.enemies = []; // No enemies to hit
+
+      game.triggerAbility('reality');
+
+      expect(game.combo).toBe(0);
+      expect(game.events).toContainEqual(expect.objectContaining({ type: 'SFX', name: 'miss' }));
+    });
+
+    it('should transition to endless mode', () => {
+      game.running = true;
+      game.wave = 4; // Last normal wave (index 4 = wave 5)
+      // Trigger via boss wave transition logic
+      (game as unknown as { bossWaveTransitionTimer: number }).bossWaveTransitionTimer = 0.01;
+
+      // Mock nextWave behavior through update which is called when transition frames hit 0
+      // If !this.endless && wave >= WAVES.length - 1, it calls endGame(true).
+
+      game.update(1.0, 1000);
+
+      // Should win the game
+      expect(game.running).toBe(false);
+      expect(game.events).toContainEqual(expect.objectContaining({ type: 'GAME_OVER', win: true }));
+    });
+
+    it('should start endless mode explicitly', () => {
+      game.startEndlessMode();
+      expect(game.endless).toBe(true);
+      expect(game.running).toBe(true);
+      expect(game.wave).toBeGreaterThan(0);
+    });
+
+    it('should increment endless level', () => {
+      game.startEndlessMode();
+      const initialLevel = game.endlessLevel;
+      game.waveTime = 0;
+      game.secondAccumulator = 1000;
+
+      game.update(1.0, 1000);
+
+      expect(game.endlessLevel).toBe(initialLevel + 1);
+    });
+
+    it('should spawn boss when wave time ends if configured', () => {
+      game.start();
+      game.wave = 4; // Wave 5 has a boss
+      game.waveTime = 1;
+      game.secondAccumulator = 990;
+
+      game.update(2.0, 1000);
+
+      expect(game.bossPhase).toBe(true);
+      expect(game.boss).not.toBeNull();
+    });
+
+    it('should execute boss actions (spawn enemies)', () => {
+      // Setup boss phase manually to test private method execution via update/AI
+      const bossConfig = { name: 'Test', hp: 100, pats: ['burst'] };
+      game.running = true;
+      game.startBoss(bossConfig);
+
+      // Mock bossAI to return specific actions
+      const mockAction = { type: 'spawn_enemies', enemies: [{ type: undefined }] };
+      // biome-ignore lint/suspicious/noExplicitAny: access private for test
+      (game as any).bossAI.update = () => [mockAction];
+
+      const initialEnemies = game.enemies.length;
+      game.update(1.0, 1000);
+
+      expect(game.enemies.length).toBeGreaterThan(initialEnemies);
+    });
+
+    it('should execute boss actions (flash and shake)', () => {
+      const bossConfig = { name: 'Test', hp: 100, pats: ['burst'] };
+      game.running = true;
+      game.startBoss(bossConfig);
+
+      const mockAction1 = { type: 'flash', intensity: 0.8 };
+      const mockAction2 = { type: 'shake', intensity: 15 };
+      // biome-ignore lint/suspicious/noExplicitAny: access private for test
+      (game as any).bossAI.update = () => [mockAction1, mockAction2];
+
+      game.update(1.0, 1000);
+
+      // Values decay during update:
+      // fl: 0.8 - 0.02 = 0.78
+      // shake: 15 - 0.5 = 14.5
+      expect(game.fl).toBeCloseTo(0.78);
+      expect(game.shake).toBeCloseTo(14.5);
+    });
+
+    it('should execute boss actions (move)', () => {
+      const bossConfig = { name: 'Test', hp: 100, pats: ['burst'] };
+      game.running = true;
+      game.startBoss(bossConfig);
+
+      const mockAction = { type: 'move', x: 123, y: 456 };
+      // biome-ignore lint/suspicious/noExplicitAny: access private for test
+      (game as any).bossAI.update = () => [mockAction];
+
+      game.update(1.0, 1000);
+
+      expect(game.boss?.x).toBe(123);
+      expect(game.boss?.y).toBe(456);
+    });
+
+    it('should add feed items periodically', () => {
+      game.start();
+      game.feedTimer = 2990;
+
+      game.update(2.0, 1000); // Push over 3000ms threshold
+
+      const feedEvent = game.events.find((e) => e.type === 'FEED');
+      expect(feedEvent).toBeDefined();
+    });
+
+    it('should return full state object', () => {
+      game.start();
+      const state = game.getState();
+
+      expect(state).toHaveProperty('enemies');
+      expect(state).toHaveProperty('powerups');
+      expect(state).toHaveProperty('score');
+      expect(state).toHaveProperty('panic');
+      expect(state).toHaveProperty('combo');
+      expect(state).toHaveProperty('wave');
+      expect(state).toHaveProperty('events');
+      // Events should be cleared after getState
+      expect(game.events.length).toBe(0);
     });
   });
 });

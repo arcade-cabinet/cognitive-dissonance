@@ -1,44 +1,199 @@
-name: Auto-merge Dependabot PRs
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+name: Auto-merge
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled]
+  push:
+    branches-ignore: [main]
 
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 jobs:
+  # ── Dependabot auto-merge ──────────────────────────
+  # CI is skipped for Dependabot PRs — CD's comprehensive
+  # E2E matrix catches dependency issues on merge to main.
   dependabot-automerge:
     name: Auto-merge Dependabot PR
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
     steps:
-      - name: Wait for CI to complete
-        uses: fountainhead/action-wait-for-check@5a908a24814494009c4bb27c242ea38c93c593be # v1.2.0
-        id: wait-for-ci
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          checkName: CI Success
-          ref: ${{ github.event.pull_request.head.sha }}
-          timeoutSeconds: 1800
-          intervalSeconds: 30
-
-      - name: Check CI result
-        if: steps.wait-for-ci.outputs.conclusion != 'success'
-        run: |
-          echo "❌ CI workflow did not succeed: ${{ steps.wait-for-ci.outputs.conclusion }}"
-          echo "::notice title=Auto-merge skipped::CI checks must pass before auto-merge can be enabled"
-          echo "Skipping auto-merge"
-          exit 1
-
-      - name: Enable auto-merge for Dependabot PRs
-        if: steps.wait-for-ci.outputs.conclusion == 'success'
-        run: gh pr merge --auto --squash "$PR_URL"
+      - name: Auto-approve Dependabot PR
+        run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge Dependabot PR
+        run: gh pr merge --squash --auto "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Auto-merge bot fix PRs ─────────────────────────
+  # Handles Jules and other bot-created fix PRs targeting
+  # non-main branches (i.e., sub-PRs fixing a parent PR).
+  # Flow: label → rebase onto base → merge or close on conflict.
+  auto-merge-fix-pr:
+    name: Auto-merge Fix PR
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' &&
+      github.actor != 'dependabot[bot]' &&
+      (
+        (github.event.action == 'opened' && github.event.pull_request.base.ref != 'main' && github.event.pull_request.user.type == 'Bot') ||
+        contains(github.event.pull_request.labels.*.name, 'auto-merge')
+      )
+    steps:
+      - name: Create auto-merge label if missing
+        if: github.event.action == 'opened'
+        run: |
+          gh label create "auto-merge" --repo "${{ github.repository }}" \
+            --description "PR will be auto-rebased and merged or closed on conflict" \
+            --color "0E8A16" 2>/dev/null || true
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --add-label "auto-merge"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Try rebase onto base branch
+        id: rebase
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          echo "Rebasing ${HEAD_REF} onto origin/${BASE_REF}..."
+          git fetch origin "${BASE_REF}"
+
+          if git rebase "origin/${BASE_REF}"; then
+            echo "status=success" >> $GITHUB_OUTPUT
+
+            CURRENT_SHA=$(git rev-parse HEAD)
+            REMOTE_SHA=$(git rev-parse "origin/${HEAD_REF}")
+            if [ "$CURRENT_SHA" != "$REMOTE_SHA" ]; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "Rebase changed HEAD from ${REMOTE_SHA} to ${CURRENT_SHA}"
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "Already up to date"
+            fi
+          else
+            echo "status=conflict" >> $GITHUB_OUTPUT
+            git rebase --abort
+            echo "Rebase failed due to conflicts"
+          fi
+
+      - name: Push rebased branch
+        if: steps.rebase.outputs.status == 'success' && steps.rebase.outputs.changed == 'true'
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git push --force-with-lease origin "HEAD:${HEAD_REF}"
+
+      - name: Close PR on conflict
+        if: steps.rebase.outputs.status == 'conflict'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr close ${{ github.event.pull_request.number }} \
+            --comment "$(cat <<'COMMENT'
+          **Auto-closed: merge conflicts detected**
+
+          This PR could not be rebased onto `${{ github.event.pull_request.base.ref }}` due to conflicts.
+
+          The base branch has new changes that conflict with this fix. Since this is an auto-fix PR, it has been closed automatically. If the underlying issue persists, a new fix will be generated on the next CI run.
+          COMMENT
+          )"
+
+      - name: Merge PR
+        if: steps.rebase.outputs.status == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} \
+            --squash \
+            --delete-branch
+
+  # ── Rebase auto-merge PRs when base branch is updated ──
+  # When a branch gets new commits (e.g., parent PR branch),
+  # find all open auto-merge PRs targeting it, rebase each,
+  # and close any with conflicts.
+  rebase-on-push:
+    name: Rebase Auto-merge PRs on Push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find and rebase auto-merge PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          echo "Checking for auto-merge PRs targeting ${BRANCH}..."
+
+          # Find all open PRs with auto-merge label targeting this branch
+          PRS=$(gh pr list --base "${BRANCH}" --label "auto-merge" --state open \
+            --json number,headRefName --jq '.[] | "\(.number) \(.headRefName)"' 2>/dev/null || true)
+
+          if [ -z "$PRS" ]; then
+            echo "No auto-merge PRs found targeting ${BRANCH}"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          echo "$PRS" | while read -r PR_NUM HEAD_REF; do
+            echo ""
+            echo "=== Processing PR #${PR_NUM} (${HEAD_REF}) ==="
+
+            git fetch origin "${HEAD_REF}" 2>/dev/null || {
+              echo "Could not fetch ${HEAD_REF}, skipping"
+              continue
+            }
+
+            # Create a temporary branch for the rebase
+            git checkout -B "rebase-tmp-${PR_NUM}" "origin/${HEAD_REF}"
+
+            if git rebase "origin/${BRANCH}"; then
+              CURRENT_SHA=$(git rev-parse HEAD)
+              REMOTE_SHA=$(git rev-parse "origin/${HEAD_REF}")
+
+              if [ "$CURRENT_SHA" != "$REMOTE_SHA" ]; then
+                echo "PR #${PR_NUM}: rebased successfully, pushing..."
+                git push --force-with-lease origin "HEAD:${HEAD_REF}"
+              else
+                echo "PR #${PR_NUM}: already up to date"
+              fi
+            else
+              echo "PR #${PR_NUM}: conflicts detected, closing..."
+              git rebase --abort
+
+              gh pr close "${PR_NUM}" \
+                --comment "**Auto-closed: merge conflicts detected**
+
+          This PR could not be rebased onto \`${BRANCH}\` due to conflicts with recent changes.
+
+          Since this is an auto-fix PR, it has been closed automatically. If the underlying issue persists, a new fix will be generated on the next CI run."
+            fi
+
+            git checkout - 2>/dev/null || git checkout "${BRANCH}" 2>/dev/null || true
+          done

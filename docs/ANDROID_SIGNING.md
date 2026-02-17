@@ -27,7 +27,7 @@ Until then, the auto-generated keystores work fine for development.
 If you don't have a keystore yet, create one using `keytool`:
 
 ```bash
-keytool -genkey -v -keystore release.keystore -alias psyduck-panic \
+keytool -genkey -v -keystore release.keystore -alias cognitive-dissonance \
   -keyalg RSA -keysize 2048 -validity 10000
 
 # You'll be prompted for:
@@ -53,7 +53,7 @@ keytool -genkey -v -keystore release.keystore -alias psyduck-panic \
    
    - **KEYSTORE_BASE64**: Contents of `keystore.base64.txt`
    - **KEYSTORE_PASSWORD**: The keystore password you entered
-   - **KEY_ALIAS**: Your key alias (e.g., `psyduck-panic`)
+   - **KEY_ALIAS**: Your key alias (e.g., `cognitive-dissonance`)
    - **KEY_PASSWORD**: The key password you entered
 
 ## How It Works
@@ -64,9 +64,9 @@ Without GitHub secrets configured, the workflow:
 
 1. Logs: "No signing secrets configured - generating throwaway keystore"
 2. Runs `keytool -genkey` to create a temporary keystore
-3. Uses throwaway credentials (keystore password: "android", alias: "psyduck-panic-test")
+3. Uses throwaway credentials (keystore password: "android", alias: "cognitive-dissonance-test")
 4. Runs `./gradlew assembleRelease` to build signed APKs
-5. Uploads APKs as `psyduck-panic-{version}-{arch}.apk`
+5. Uploads APKs as `cognitive-dissonance-{version}-{arch}.apk`
 6. **Warning**: Each build has a different signature (cannot update existing installations)
 
 ### With Production Secrets Configured
@@ -79,7 +79,7 @@ When all four secrets are present, the workflow:
 4. Generates `android/gradle.properties` with your signing config
 5. Updates `android/app/build.gradle` to use the signing config
 6. Runs `./gradlew assembleRelease` to build **production-signed** APKs
-7. Uploads APKs as `psyduck-panic-{version}-{arch}.apk`
+7. Uploads APKs as `cognitive-dissonance-{version}-{arch}.apk`
 8. **Success**: Consistent signature, can publish to Play Store and update existing installs
 
 ## Development vs Production

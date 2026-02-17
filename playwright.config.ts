@@ -4,6 +4,9 @@ import { defineConfig, devices } from '@playwright/test';
 const isCopilotCI = process.env.GITHUB_ACTIONS && process.env.RUNNER_NAME?.includes('copilot');
 const isCI = !!process.env.CI || isCopilotCI;
 
+// Allow overriding the base URL (e.g., from CD pipeline deploying to GitHub Pages)
+const baseURL = process.env.PAGE_URL || 'http://localhost:4173';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -20,7 +23,7 @@ export default defineConfig({
       ]
     : 'html',
   use: {
-    baseURL: 'http://localhost:4173', // Vite preview default port
+    baseURL,
     // Disable animations for stable E2E tests
     contextOptions: {
       reducedMotion: 'reduce',
@@ -45,6 +48,7 @@ export default defineConfig({
     {
       name: 'iPad Pro 11 Portrait',
       use: {
+        browserName: 'webkit',
         viewport: { width: 834, height: 1194 },
         userAgent:
           'Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
@@ -114,6 +118,7 @@ export default defineConfig({
     {
       name: 'iPad Pro 12.9 Portrait',
       use: {
+        browserName: 'webkit',
         viewport: { width: 1024, height: 1366 },
         userAgent:
           'Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
@@ -126,6 +131,7 @@ export default defineConfig({
     {
       name: 'iPad Pro 11 Landscape',
       use: {
+        browserName: 'webkit',
         viewport: { width: 1194, height: 834 },
         userAgent:
           'Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
@@ -208,12 +214,17 @@ export default defineConfig({
       testMatch: /device-responsive\.spec\.ts/,
     },
   ],
-  webServer: {
-    command: 'pnpm exec vite preview --port 4173',
-    port: 4173,
-    reuseExistingServer: !isCI,
-    timeout: 120000,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  },
+  // Only start local webServer when no external PAGE_URL is provided
+  ...(process.env.PAGE_URL
+    ? {}
+    : {
+        webServer: {
+          command: 'pnpm exec vite preview --port 4173',
+          port: 4173,
+          reuseExistingServer: !isCI,
+          timeout: 120000,
+          stdout: 'pipe' as const,
+          stderr: 'pipe' as const,
+        },
+      }),
 });

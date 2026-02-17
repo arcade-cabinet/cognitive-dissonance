@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import { SFX } from '../lib/audio';
-import { GAME_HEIGHT, GAME_WIDTH, WAVES } from '../lib/constants';
+import { GAME_HEIGHT, GAME_WIDTH, WAVE_ANNOUNCEMENT_DURATION, WAVES } from '../lib/constants';
 import {
   calculateViewport,
   createResizeObserver,
@@ -8,121 +9,27 @@ import {
   type ViewportDimensions,
 } from '../lib/device-utils';
 import type { GameState } from '../lib/events';
-import { PixiRenderer } from '../lib/pixi-renderer';
+import { calculateAccuracy, calculateGrade } from '../lib/grading';
+import { AdaptiveMusic } from '../lib/music';
 import { saveScore } from '../lib/storage';
+import { initialUIState, type UIState, uiReducer } from '../lib/ui-state';
+import { GameScene, type GameSceneHandle } from './scene/GameScene';
+import { SPLINE_BUST_URL, SplineCharacter } from './scene/SplineCharacter';
 import '../styles/game.css';
 
 // Worker type definition
 import GameWorker from '../worker/game.worker.ts?worker';
 
-type UIState = {
-  screen: 'start' | 'playing' | 'gameover' | 'endless_transition';
-  score: number;
-  wave: number;
-  panic: number;
-  combo: number;
-  maxCombo: number;
-  time: number;
-  win: boolean;
-  nukeCd: number;
-  nukeMax: number;
-  abilityCd: { reality: number; history: number; logic: number };
-  abilityMax: { reality: number; history: number; logic: number };
-  pu: { slow: number; shield: number; double: number };
-  waveTitle: string;
-  waveSub: string;
-  showWave: boolean;
-  boss: { name: string; hp: number; maxHp: number } | null;
-  feed: { handle: string; text: string; stat: string; id: number }[];
-};
-
-const initialState: UIState = {
-  screen: 'start',
-  score: 0,
-  wave: 0,
-  panic: 0,
-  combo: 0,
-  maxCombo: 0,
-  time: 0,
-  win: false,
-  nukeCd: 0,
-  nukeMax: 1,
-  abilityCd: { reality: 0, history: 0, logic: 0 },
-  abilityMax: { reality: 1, history: 1, logic: 1 },
-  pu: { slow: 0, shield: 0, double: 0 },
-  waveTitle: '',
-  waveSub: '',
-  showWave: false,
-  boss: null,
-  feed: [],
-};
-
-type Action =
-  | { type: 'UPDATE_STATE'; state: GameState }
-  | { type: 'GAME_OVER'; score: number; win: boolean }
-  | { type: 'START_GAME' }
-  | { type: 'START_ENDLESS' }
-  | { type: 'WAVE_START'; title: string; sub: string }
-  | { type: 'HIDE_WAVE' }
-  | { type: 'ADD_FEED'; item: { handle: string; text: string; stat: string } }
-  | { type: 'BOSS_START'; name: string; hp: number }
-  | { type: 'BOSS_HIT'; hp: number; maxHp: number }
-  | { type: 'BOSS_DIE' };
-
-function uiReducer(state: UIState, action: Action): UIState {
-  switch (action.type) {
-    case 'UPDATE_STATE':
-      return {
-        ...state,
-        score: action.state.score,
-        wave: action.state.wave,
-        panic: action.state.panic,
-        combo: action.state.combo,
-        time: action.state.waveTime,
-        nukeCd: action.state.nukeCd,
-        nukeMax: action.state.nukeMax,
-        abilityCd: action.state.abilityCd,
-        abilityMax: action.state.abilityMax,
-        pu: action.state.pu,
-      };
-    case 'GAME_OVER':
-      return { ...state, screen: 'gameover', win: action.win, score: action.score };
-    case 'START_GAME':
-      return { ...initialState, screen: 'playing' };
-    case 'START_ENDLESS':
-      return { ...state, screen: 'playing' };
-    case 'WAVE_START':
-      return { ...state, showWave: true, waveTitle: action.title, waveSub: action.sub };
-    case 'HIDE_WAVE':
-      return { ...state, showWave: false };
-    case 'ADD_FEED':
-      return {
-        ...state,
-        feed: [{ ...action.item, id: Date.now() + Math.random() }, ...state.feed.slice(0, 2)],
-      };
-    case 'BOSS_START':
-      return { ...state, boss: { name: action.name, hp: action.hp, maxHp: action.hp } };
-    case 'BOSS_HIT':
-      return {
-        ...state,
-        boss: state.boss ? { ...state.boss, hp: action.hp, maxHp: action.maxHp } : null,
-      };
-    case 'BOSS_DIE':
-      return { ...state, boss: null };
-    default:
-      return state;
-  }
-}
-
 export default function Game() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sceneRef = useRef<GameSceneHandle>(null);
   const workerRef = useRef<Worker | null>(null);
-  const rendererRef = useRef<PixiRenderer | null>(null);
   const sfxRef = useRef<SFX | null>(null);
-  const [ui, dispatch] = useReducer(uiReducer, initialState);
+  const musicRef = useRef<AdaptiveMusic | null>(null);
+  const musicInitRef = useRef<Promise<void> | null>(null);
+  const waveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startInitiatedRef = useRef(false);
+  const [ui, dispatch] = useReducer(uiReducer, initialUIState);
   const [viewport, setViewport] = useState<ViewportDimensions>(() => {
-    // Initialize viewport immediately if window is available
-    // to prevent flash of wrong size (e.g., 800x600 on mobile)
     if (typeof window !== 'undefined') {
       const deviceInfo = detectDevice();
       return calculateViewport(GAME_WIDTH, GAME_HEIGHT, deviceInfo);
@@ -137,78 +44,193 @@ export default function Game() {
     };
   });
 
-  // Ref to hold the latest UI state for event handlers
   const uiRef = useRef(ui);
   useEffect(() => {
     uiRef.current = ui;
+    // Reset startInitiatedRef when not playing to allow restart.
+    // Don't reset during pause — that's still a "playing" session.
+    if (ui.screen !== 'playing' && ui.screen !== 'paused') {
+      startInitiatedRef.current = false;
+    }
   }, [ui]);
 
-  // Ref to hold the latest viewport for pointer events
   const viewportRef = useRef(viewport);
   useEffect(() => {
     viewportRef.current = viewport;
   }, [viewport]);
 
   // Initialize responsive viewport
-  useEffect(() => {
+  useLayoutEffect(() => {
     const deviceInfo = detectDevice();
     const initialViewport = calculateViewport(GAME_WIDTH, GAME_HEIGHT, deviceInfo);
     setViewport(initialViewport);
-
-    // Set up resize observer
     const cleanup = createResizeObserver((newViewport) => {
       setViewport(newViewport);
     });
-
     return cleanup;
   }, []);
 
-  // Initialize SFX
+  // Initialize SFX + Music
   useEffect(() => {
     sfxRef.current = new SFX();
     sfxRef.current.init();
+
+    const music = new AdaptiveMusic();
+    musicInitRef.current = music.init().catch((err) => {
+      console.warn('AdaptiveMusic init failed:', err);
+    });
+    musicRef.current = music;
+
+    return () => {
+      sfxRef.current?.destroy();
+      sfxRef.current = null;
+      music.destroy();
+    };
   }, []);
 
-  // Consolidate start logic
-  // This logic works for both Spacebar (via listener) and Click (via button)
-  // `currentState` arg allows the event listener to pass the ref value
+  // Start logic — dispatch the screen transition, then notify the worker.
+  // Includes start sequence animation delay (1000ms) before worker starts.
   const handleStartLogic = useCallback((currentState: UIState) => {
-    sfxRef.current?.resume();
-    if (currentState.win && currentState.screen === 'gameover') {
-      dispatch({ type: 'START_ENDLESS' });
-      workerRef.current?.postMessage({ type: 'START', endless: true });
-    } else {
-      dispatch({ type: 'START_GAME' });
-      workerRef.current?.postMessage({ type: 'START', endless: false });
+    if (startInitiatedRef.current) return;
+    startInitiatedRef.current = true;
+
+    // Safety timeout: release lock if game hasn't started after 3s
+    setTimeout(() => {
+      if (uiRef.current.screen !== 'playing') {
+        startInitiatedRef.current = false;
+      }
+    }, 3000);
+
+    try {
+      const endless = currentState.win && currentState.screen === 'gameover';
+      dispatch(endless ? { type: 'START_ENDLESS' } : { type: 'START_GAME' });
+
+      try {
+        sfxRef.current?.resume();
+        musicRef.current?.resume();
+        sceneRef.current?.reset();
+      } catch (e) {
+        console.warn('Failed to resume audio or reset scene:', e);
+        throw e;
+      }
+
+      // Trigger start sequence animation (android pivots, blinks, pivots back)
+      sceneRef.current?.triggerStartSequence();
+
+      // Delay worker start to let start sequence animation play (~1000ms)
+      const seed = endless ? undefined : Date.now();
+      const attemptStart = (retries = 0) => {
+        if (workerRef.current) {
+          workerRef.current.postMessage({ type: 'START', endless, seed });
+        } else if (retries < 50) {
+          setTimeout(() => attemptStart(retries + 1), 200);
+        }
+      };
+      setTimeout(() => attemptStart(), 1100);
+    } catch (e) {
+      console.error('Error starting game:', e);
+      startInitiatedRef.current = false;
     }
   }, []);
 
-  // Button click handler - uses current state from closure
-  const handleStartButton = () => {
-    handleStartLogic(ui);
-  };
+  const handleStartButton = useCallback(() => {
+    handleStartLogic(uiRef.current);
+  }, [handleStartLogic]);
 
-  // Initialize Game (Renderer & Worker)
+  // Pause/Resume
+  const handlePause = useCallback(() => {
+    dispatch({ type: 'PAUSE' });
+    workerRef.current?.postMessage({ type: 'PAUSE' });
+    musicRef.current?.stop();
+  }, []);
+
+  const handleResume = useCallback(() => {
+    dispatch({ type: 'RESUME' });
+    workerRef.current?.postMessage({ type: 'RESUME' });
+    musicRef.current?.resume();
+  }, []);
+
+  const handleAbility = useCallback((type: 'reality' | 'history' | 'logic') => {
+    workerRef.current?.postMessage({ type: 'ABILITY', ability: type });
+  }, []);
+
+  const handleNuke = useCallback(() => {
+    workerRef.current?.postMessage({ type: 'NUKE' });
+  }, []);
+
+  // Keyboard controls - decoupled from worker init to ensure immediate responsiveness
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      const currentUI = uiRef.current;
+      if (e.key === ' ') {
+        e.preventDefault();
+        if (currentUI.screen === 'start' || currentUI.screen === 'gameover') {
+          handleStartLogic(currentUI);
+        } else if (currentUI.screen === 'playing') {
+          handlePause();
+        } else if (currentUI.screen === 'paused') {
+          handleResume();
+        }
+      } else if (e.key === 'F1') {
+        e.preventDefault();
+        handleAbility('reality');
+      } else if (e.key === 'F2') {
+        e.preventDefault();
+        if (currentUI.screen === 'start') {
+          handleStartLogic(currentUI);
+        } else if (currentUI.screen === 'gameover') {
+          handleStartLogic(currentUI);
+        } else {
+          handleAbility('history');
+        }
+      } else if (e.key === 'F3') {
+        e.preventDefault();
+        if (currentUI.screen === 'gameover' && currentUI.win) {
+          handleStartLogic(currentUI);
+        } else {
+          handleAbility('logic');
+        }
+      } else if (e.key === 'F4') {
+        e.preventDefault();
+        handleNuke();
+      } else {
+        workerRef.current?.postMessage({ type: 'INPUT', key: e.key });
+      }
+    },
+    [handleStartLogic, handleAbility, handleNuke, handlePause, handleResume]
+  );
+
+  useLayoutEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
+  // Initialize Worker
   useEffect(() => {
-    if (!canvasRef.current) return;
-
-    // Initialize Renderer
-    const renderer = new PixiRenderer();
-    renderer.init(canvasRef.current).then(() => {
-      rendererRef.current = renderer;
-    });
-
-    // Initialize Worker
     const worker = new GameWorker();
     workerRef.current = worker;
 
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
+      if (msg.type === 'ERROR') {
+        console.error('[game.worker] Worker error:', msg.message);
+        return;
+      }
       if (msg.type === 'STATE') {
         const state = msg.state as GameState;
 
-        // Sync Renderer
-        rendererRef.current?.update(state);
+        // Expose enemy counters for E2E governor (no DOM elements in 3D scene)
+        (window as unknown as Record<string, unknown>).__gameEnemyCounters = state.enemies.map(
+          (e) => e.counter
+        );
+
+        // Update 3D scene via ref
+        sceneRef.current?.updateState(state);
+
+        // Update adaptive music panic level
+        musicRef.current?.setPanic(state.panic);
 
         // Sync UI
         dispatch({ type: 'UPDATE_STATE', state });
@@ -217,22 +239,80 @@ export default function Game() {
         for (const event of state.events) {
           switch (event.type) {
             case 'SFX':
-              // @ts-expect-error
-              sfxRef.current?.[event.name]?.(...(event.args || []));
+              if (event.name === 'startMusic') {
+                const wave = (event.args?.[0] as number) ?? 0;
+                if (musicInitRef.current) {
+                  musicInitRef.current.then(() => musicRef.current?.start(wave));
+                } else {
+                  musicRef.current?.start(wave);
+                }
+              } else if (event.name === 'stopMusic') {
+                musicRef.current?.stop();
+              } else if (sfxRef.current) {
+                const sfx = sfxRef.current;
+                const args = event.args || [];
+                switch (event.name) {
+                  case 'counter':
+                    sfx.counter(args[0] as number);
+                    break;
+                  case 'miss':
+                    sfx.miss();
+                    sceneRef.current?.triggerFlinch();
+                    break;
+                  case 'panicHit':
+                    sfx.panicHit();
+                    break;
+                  case 'powerup':
+                    sfx.powerup();
+                    break;
+                  case 'nuke':
+                    sfx.nuke();
+                    break;
+                  case 'bossHit':
+                    sfx.bossHit();
+                    break;
+                  case 'bossDie':
+                    sfx.bossDie();
+                    break;
+                  case 'waveStart':
+                    sfx.waveStart();
+                    break;
+                }
+              }
               break;
             case 'PARTICLE':
-              rendererRef.current?.spawnParticles(event.x, event.y, event.color);
+              sceneRef.current?.spawnParticles(event.x, event.y, event.color);
               break;
             case 'CONFETTI':
-              rendererRef.current?.spawnConfetti(event.x, event.y);
+              sceneRef.current?.spawnConfetti();
               break;
             case 'GAME_OVER':
-              dispatch({ type: 'GAME_OVER', score: event.score, win: event.win });
-              saveScore(event.score);
+              dispatch({
+                type: 'GAME_OVER',
+                score: event.score,
+                win: event.win,
+                stats: {
+                  totalC: event.totalC,
+                  totalM: event.totalM,
+                  maxCombo: event.maxCombo,
+                  nukesUsed: event.nukesUsed,
+                  wavesCleared: event.wavesCleared,
+                },
+              });
+              saveScore(event.score).catch((err) => console.warn('Failed to save score:', err));
+              if (event.win) {
+                sceneRef.current?.spawnConfetti();
+              } else {
+                sceneRef.current?.triggerHeadExplosion();
+              }
               break;
             case 'WAVE_START':
               dispatch({ type: 'WAVE_START', title: event.title, sub: event.sub });
-              setTimeout(() => dispatch({ type: 'HIDE_WAVE' }), 3000);
+              if (waveTimeoutRef.current) clearTimeout(waveTimeoutRef.current);
+              waveTimeoutRef.current = setTimeout(
+                () => dispatch({ type: 'HIDE_WAVE' }),
+                WAVE_ANNOUNCEMENT_DURATION
+              );
               break;
             case 'FEED':
               dispatch({
@@ -254,52 +334,29 @@ export default function Game() {
       }
     };
 
-    // Keyboard controls
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Use uiRef to access latest state
-      const currentUI = uiRef.current;
-
-      if (e.key === ' ') {
-        e.preventDefault();
-
-        if (currentUI.screen === 'start' || currentUI.screen === 'gameover') {
-          handleStartLogic(currentUI);
-        }
-      } else {
-        worker.postMessage({ type: 'INPUT', key: e.key });
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
     return () => {
       worker.terminate();
-      rendererRef.current?.destroy();
-      window.removeEventListener('keydown', handleKeyDown);
+      if (waveTimeoutRef.current) clearTimeout(waveTimeoutRef.current);
     };
-  }, [handleStartLogic]);
+  }, []);
 
-  const handleAbility = (type: 'reality' | 'history' | 'logic') => {
-    workerRef.current?.postMessage({ type: 'ABILITY', ability: type });
-  };
-
-  const handleNuke = () => {
-    workerRef.current?.postMessage({ type: 'NUKE' });
-  };
-
-  const handleCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-
-    // Get current viewport from ref to avoid closure issues
+  const handleCanvasPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (uiRef.current.screen !== 'playing') return;
+    const rect = e.currentTarget.getBoundingClientRect();
     const currentViewport = viewportRef.current;
-
-    // Convert viewport coordinates to game coordinates using responsive viewport
     const x = (e.clientX - rect.left) / currentViewport.scale;
     const y = (e.clientY - rect.top) / currentViewport.scale;
-
     workerRef.current?.postMessage({ type: 'CLICK', x, y });
   };
+
+  // Game-over grade calculation (accuracy is now normalized 0-1)
+  const accuracy = ui.gameOverStats
+    ? calculateAccuracy(ui.gameOverStats.totalC, ui.gameOverStats.totalM)
+    : 0;
+
+  const gradeInfo = ui.gameOverStats
+    ? calculateGrade(ui.win, accuracy, ui.gameOverStats.maxCombo)
+    : null;
 
   return (
     <div id="game-scaler" style={{ touchAction: 'none' }}>
@@ -311,25 +368,55 @@ export default function Game() {
           position: 'relative',
           margin: '0 auto',
         }}
+        onPointerDown={handleCanvasPointerDown}
       >
-        <canvas
-          ref={canvasRef}
+        {/* Spline Character Bust — photorealistic base layer (behind R3F) */}
+        {SPLINE_BUST_URL && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 0,
+              pointerEvents: 'none',
+            }}
+          >
+            <SplineCharacter />
+          </div>
+        )}
+
+        {/* R3F 3D Canvas — always visible, the primary visual layer */}
+        <Canvas
           id="gameCanvas"
-          width={GAME_WIDTH}
-          height={GAME_HEIGHT}
-          onPointerDown={handleCanvasPointerDown}
           style={{
             touchAction: 'none',
             width: '100%',
             height: '100%',
             display: 'block',
+            position: 'relative',
+            zIndex: 10,
           }}
+          camera={{ position: [0, 0.3, 4], fov: 45 }}
+          dpr={[1, 2]}
+          gl={{ antialias: true, alpha: !!SPLINE_BUST_URL }}
           tabIndex={0}
           aria-label="Game Area: Tap enemies to counter them"
-        ></canvas>
+        >
+          <GameScene
+            ref={sceneRef}
+            screenMode={ui.screen}
+            isWin={ui.win}
+            onAbility={handleAbility}
+            onNuke={handleNuke}
+            onStart={handleStartButton}
+            onPause={handlePause}
+            onResume={handleResume}
+            onRetry={handleStartButton}
+            onEndless={handleStartButton}
+          />
+        </Canvas>
 
-        {/* HUD Layer */}
-        <div id="ui-layer" className={ui.screen === 'playing' ? '' : 'hidden'}>
+        {/* HUD Layer — floating text over the 3D scene */}
+        <div id="ui-layer" className={ui.screen === 'start' ? 'hidden' : ''}>
           <div id="wave-announce" className={ui.showWave ? 'show' : ''}>
             <div className="wt" id="wa-title">
               {ui.waveTitle}
@@ -353,45 +440,48 @@ export default function Game() {
             </div>
           )}
 
-          <div id="hype-feed">
-            {ui.feed.map((item) => (
-              <div key={item.id} className="feed-item show">
-                <span className="feed-handle">{item.handle}</span>
-                <span className="feed-text">{item.text}</span>
-                <span className="feed-stat">{item.stat}</span>
-              </div>
-            ))}
-          </div>
+          {ui.screen === 'playing' && (
+            <div id="hype-feed">
+              {ui.feed.map((item) => (
+                <div key={item.id} className="feed-item show">
+                  <span className="feed-handle">{item.handle}</span>
+                  <span className="feed-text">{item.text}</span>
+                  <span className="feed-stat">{item.stat}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
-          <div id="powerup-hud">
-            <div className="pu-icon" id="pu-slow" style={{ opacity: ui.pu.slow > 0 ? 1 : 0.15 }}>
-              ⏳
+          {(ui.screen === 'playing' || ui.screen === 'paused') && (
+            <div id="powerup-hud">
+              <div className="pu-icon" id="pu-slow" style={{ opacity: ui.pu.slow > 0 ? 1 : 0.15 }}>
+                ⏳
+              </div>
+              <div
+                className="pu-icon"
+                id="pu-shield"
+                style={{ opacity: ui.pu.shield > 0 ? 1 : 0.15 }}
+              >
+                🛡️
+              </div>
+              <div
+                className="pu-icon"
+                id="pu-double"
+                style={{ opacity: ui.pu.double > 0 ? 1 : 0.15 }}
+              >
+                ⭐
+              </div>
             </div>
-            <div
-              className="pu-icon"
-              id="pu-shield"
-              style={{ opacity: ui.pu.shield > 0 ? 1 : 0.15 }}
-            >
-              🛡️
-            </div>
-            <div
-              className="pu-icon"
-              id="pu-double"
-              style={{ opacity: ui.pu.double > 0 ? 1 : 0.15 }}
-            >
-              ⭐
-            </div>
-          </div>
+          )}
 
           <div className="hud-top">
             <div className="hud-left">
-              <div>PANIC</div>
-              <div className="meter-container">
-                <div className="marker" style={{ left: '33%' }}></div>
-                <div className="marker" style={{ left: '66%' }}></div>
-                <div id="panic-bar" style={{ width: `${ui.panic}%` }}></div>
-              </div>
               <div id="combo-display">COMBO: x{ui.combo}</div>
+              {/* sr-only for E2E test compatibility */}
+              <span id="panic-bar" className="sr-only">
+                {Math.round(ui.panic)}%
+              </span>
+              <span className="meter-container sr-only" />
             </div>
             <div className="hud-center">
               <div id="wave-display">
@@ -410,130 +500,130 @@ export default function Game() {
             </div>
           </div>
 
-          <div id="controls">
-            <button
-              type="button"
-              className="btn reality"
-              id="btn-reality"
-              onClick={() => handleAbility('reality')}
-              aria-label="Counter Reality (Shortcut: 1)"
-              aria-keyshortcuts="1"
-              style={{ touchAction: 'manipulation' }}
-            >
-              <div className="key-hint">1</div>REALITY<span>🦠 HYPE</span>
-              <div
-                className="cooldown-bar"
-                id="cd-reality"
-                style={{ width: `${(ui.abilityCd.reality / ui.abilityMax.reality) * 100}%` }}
-              ></div>
+          {/* Game-over stats — floating HUD over the 3D scene */}
+          {ui.screen === 'gameover' && ui.gameOverStats && gradeInfo && (
+            <div className="gameover-stats">
+              <div className="gameover-title">{ui.win ? 'CRISIS AVERTED' : 'BRAIN MELTDOWN'}</div>
+              <div className={`grade ${gradeInfo.className}`}>{gradeInfo.grade}</div>
+              <div className="stat-row">
+                <span className="stat-label">FINAL SCORE</span>
+                <span className="stat-value">{ui.score.toLocaleString()}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">WAVES CLEARED</span>
+                <span className="stat-value">
+                  {ui.gameOverStats.wavesCleared} / {WAVES.length}
+                </span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">MAX COMBO</span>
+                <span className="stat-value">x{ui.gameOverStats.maxCombo}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">ACCURACY</span>
+                <span className="stat-value">{Math.round(accuracy * 100)}%</span>
+              </div>
+            </div>
+          )}
+
+          {/* Paused indicator */}
+          {ui.screen === 'paused' && (
+            <div className="pause-overlay">
+              <div className="pause-text">PAUSED</div>
+            </div>
+          )}
+
+          {/* Hidden HTML controls for accessibility and E2E test IDs */}
+          <div id="controls" className="sr-only">
+            <button type="button" id="btn-reality" onClick={() => handleAbility('reality')}>
+              REALITY
             </button>
-            <button
-              type="button"
-              className="btn history"
-              id="btn-history"
-              onClick={() => handleAbility('history')}
-              aria-label="Counter History (Shortcut: 2)"
-              aria-keyshortcuts="2"
-              style={{ touchAction: 'manipulation' }}
-            >
-              <div className="key-hint">2</div>HISTORY<span>📈 GROWTH</span>
-              <div
-                className="cooldown-bar"
-                id="cd-history"
-                style={{ width: `${(ui.abilityCd.history / ui.abilityMax.history) * 100}%` }}
-              ></div>
+            <button type="button" id="btn-history" onClick={() => handleAbility('history')}>
+              HISTORY
             </button>
-            <button
-              type="button"
-              className="btn logic"
-              id="btn-logic"
-              onClick={() => handleAbility('logic')}
-              aria-label="Counter Logic (Shortcut: 3)"
-              aria-keyshortcuts="3"
-              style={{ touchAction: 'manipulation' }}
-            >
-              <div className="key-hint">3</div>LOGIC<span>🤖 DEMOS</span>
-              <div
-                className="cooldown-bar"
-                id="cd-logic"
-                style={{ width: `${(ui.abilityCd.logic / ui.abilityMax.logic) * 100}%` }}
-              ></div>
+            <button type="button" id="btn-logic" onClick={() => handleAbility('logic')}>
+              LOGIC
             </button>
-            <button
-              type="button"
-              className="btn special"
-              id="btn-special"
-              onClick={handleNuke}
-              aria-label="Trigger Nuke (Shortcut: Q)"
-              aria-keyshortcuts="q"
-              style={{ touchAction: 'manipulation' }}
-            >
-              <div className="key-hint">Q</div>NUKE<span>💥 ALL</span>
-              <div
-                className="cooldown-bar"
-                id="cd-special"
-                style={{ width: `${(ui.nukeCd / ui.nukeMax) * 100}%` }}
-              ></div>
+            <button type="button" id="btn-special" onClick={handleNuke}>
+              NUKE
             </button>
           </div>
         </div>
 
-        {/* Overlay Layer */}
-        <div id="overlay" className={ui.screen !== 'playing' ? '' : 'hidden'}>
+        {/* Overlay Layer — behind canvas for E2E test compatibility.
+            The 3D scene is the visual UI; this is kept for Playwright selectors. */}
+        <div
+          id="overlay"
+          className={ui.screen === 'playing' || ui.screen === 'paused' ? 'hidden' : ''}
+        >
           <h1 id="overlay-title">
             {ui.screen === 'gameover'
               ? ui.win
                 ? 'CRISIS AVERTED'
-                : 'FULL PSYCHOSIS'
-              : 'PSYDUCK PANIC'}
+                : 'BRAIN MELTDOWN'
+              : 'COGNITIVE'}
             <br />
-            {ui.screen === 'gameover' ? '' : 'EVOLUTION'}
+            {ui.screen === 'gameover' ? '' : 'DISSONANCE'}
           </h1>
-          <div className="subtitle">{ui.screen === 'gameover' ? '' : 'D E L U X E'}</div>
+          <div className="subtitle">
+            {ui.screen === 'gameover' ? '' : 'DEFEAT THE HALLUCINATIONS'}
+          </div>
 
           <p id="overlay-desc">
             {ui.screen === 'start' && (
               <>
-                Your brother is doomscrolling AI hype.
+                Your AI is drowning in hallucinations.
                 <br />
-                Counter thought bubbles before PANIC hits 100%.
+                Counter cognitive distortions before overload.
                 <br />
-                Survive 5 waves + bosses to save his brain.
+                Survive 5 waves to restore clarity.
               </>
             )}
             {ui.screen === 'gameover' && ui.win && (
               <>
-                His brain is safe... for now.
+                Clarity restored. Systems nominal.
                 <br />
-                <br />
-                Press SPACE to continue into ENDLESS MODE
+                &quot;Logic prevails.&quot;
               </>
             )}
             {ui.screen === 'gameover' && !ui.win && (
               <>
-                His brain melted. Game over.
+                Cognitive overload. Head exploded.
                 <br />
-                <br />
-                Press SPACE to retry
+                The hallucinations won.
               </>
             )}
           </p>
 
-          {ui.screen === 'start' && (
-            <p>
-              <b style={{ color: '#e67e22' }}>1</b> Reality &nbsp;
-              <b style={{ color: '#2ecc71' }}>2</b> History &nbsp;
-              <b style={{ color: '#9b59b6' }}>3</b> Logic &nbsp;
-              <b style={{ color: '#e74c3c' }}>Q</b> Nuke
-            </p>
-          )}
-
-          {ui.screen === 'gameover' && (
+          {ui.screen === 'gameover' && ui.gameOverStats && gradeInfo && (
             <div id="end-stats">
-              SCORE: {ui.score}
-              <br />
-              {/* Accuracy calculation omitted for brevity unless tracked in state */}
-              MAX COMBO: x{ui.maxCombo}
+              <div className={`grade ${gradeInfo.className}`}>{gradeInfo.grade}</div>
+              <div className="stat-row">
+                <span className="stat-label">FINAL SCORE</span>
+                <span className="stat-value">{ui.score.toLocaleString()}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">WAVES CLEARED</span>
+                <span className="stat-value">
+                  {ui.gameOverStats.wavesCleared} / {WAVES.length}
+                </span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">MAX COMBO</span>
+                <span className="stat-value">x{ui.gameOverStats.maxCombo}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">COUNTERED</span>
+                <span className="stat-value">{ui.gameOverStats.totalC}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">ACCURACY</span>
+                <span className="stat-value">{Math.round(accuracy * 100)}%</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">NUKES USED</span>
+                <span className="stat-value">{ui.gameOverStats.nukesUsed}</span>
+              </div>
             </div>
           )}
 
@@ -544,13 +634,13 @@ export default function Game() {
             onClick={handleStartButton}
             aria-label={
               ui.screen === 'start'
-                ? 'Start Debate'
+                ? 'Start Game'
                 : ui.win
                   ? 'Continue to Endless Mode'
                   : 'Retry Game'
             }
           >
-            {ui.screen === 'start' ? 'START DEBATE' : ui.win ? 'CONTINUE ENDLESS' : 'RETRY'}
+            {ui.screen === 'start' ? 'NEW GAME' : ui.win ? 'CONTINUE ENDLESS' : 'RETRY'}
           </button>
         </div>
       </div>

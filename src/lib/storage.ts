@@ -1,3 +1,10 @@
+/**
+ * IndexedDB Persistence Layer
+ *
+ * Manages local storage for high scores and user settings
+ * using the `idb` wrapper around the IndexedDB API.
+ */
+
 import { openDB } from 'idb';
 
 const DB_NAME = 'psyduck-panic-db';
@@ -13,6 +20,7 @@ export interface Settings {
   muted: boolean;
 }
 
+/** Initialize the IndexedDB database, creating object stores on first run */
 export const initDB = async () => {
   return openDB(DB_NAME, DB_VERSION, {
     upgrade(db) {
@@ -27,11 +35,13 @@ export const initDB = async () => {
   });
 };
 
+/** Persist a new score entry with the current timestamp */
 export const saveScore = async (score: number) => {
   const db = await initDB();
   await db.add('scores', { score, date: Date.now() });
 };
 
+/** Retrieve the top high scores in descending order */
 export const getHighScores = async (limit = 10): Promise<HighScore[]> => {
   const db = await initDB();
   const tx = db.transaction('scores', 'readonly');
@@ -45,11 +55,13 @@ export const getHighScores = async (limit = 10): Promise<HighScore[]> => {
   return scores;
 };
 
+/** Save user settings (volume, mute state) to the database */
 export const saveSettings = async (settings: Settings) => {
   const db = await initDB();
   await db.put('settings', settings, 'config');
 };
 
+/** Load user settings from the database, or undefined if none saved */
 export const getSettings = async (): Promise<Settings | undefined> => {
   const db = await initDB();
   return db.get('settings', 'config');

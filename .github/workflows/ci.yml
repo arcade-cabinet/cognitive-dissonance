@@ -6,40 +6,53 @@ concurrency:
 
 on:
   pull_request:
-    branches: [main]
-  push:
-    branches: [main]
 
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: read
+  security-events: read
+  checks: read
 
 jobs:
-  lint:
-    name: Lint
+  # ═══════════════════════════════════════════════════
+  # Stage 1: Code Quality
+  # Lint → TypeCheck → Build → Unit Tests
+  # Single job, single Jules handler on failure.
+  # ═══════════════════════════════════════════════════
+  code-quality:
+    name: Code Quality
     runs-on: ubuntu-latest
+    outputs:
+      failed_jobs: ${{ steps.results.outputs.failed_jobs }}
+      failure_details: ${{ steps.results.outputs.failure_details }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/setup
-      - run: pnpm lint
 
-  typecheck:
-    name: Type Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: ./.github/actions/setup
-      - run: pnpm exec tsc --noEmit
+      - name: Lint
+        id: lint
+        continue-on-error: true
+        run: pnpm lint
 
-  unit:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: ./.github/actions/setup
-      - run: pnpm test:coverage
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      - name: Type Check
+        id: typecheck
+        continue-on-error: true
+        run: pnpm exec tsc --noEmit
+
+      - name: Build
+        id: build
+        if: steps.typecheck.outcome == 'success'
+        continue-on-error: true
+        run: pnpm build
+
+      - name: Unit Tests
+        id: unit
+        continue-on-error: true
+        run: pnpm test:coverage
+
+      - name: Upload coverage reports
         if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: coverage-reports
           path: |
@@ -47,48 +60,238 @@ jobs:
             test-results/
           retention-days: 7
 
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: ./.github/actions/setup
-      - run: pnpm build
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      - name: Upload dist
+        if: steps.build.outcome == 'success'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: dist
           path: dist/
           retention-days: 1
 
-  sonarcloud:
-    name: SonarCloud Analysis
+      - name: Check results
+        id: results
+        run: |
+          FAILED=""
+          DETAILS=""
+
+          if [[ "${{ steps.lint.outcome }}" == "failure" ]]; then
+            FAILED="${FAILED}lint,"
+            DETAILS="${DETAILS}LINT FAILED: Biome linter found issues. Run 'pnpm lint' locally. Auto-fix with 'pnpm lint:fix'.\n"
+          fi
+          if [[ "${{ steps.typecheck.outcome }}" == "failure" ]]; then
+            FAILED="${FAILED}typecheck,"
+            DETAILS="${DETAILS}TYPECHECK FAILED: TypeScript compilation errors. Run 'pnpm exec tsc --noEmit' locally.\n"
+          fi
+          if [[ "${{ steps.build.outcome }}" == "failure" ]]; then
+            FAILED="${FAILED}build,"
+            DETAILS="${DETAILS}BUILD FAILED: Vite build failed. Run 'pnpm build' locally. Prebuild runs typecheck + icon generation.\n"
+          elif [[ "${{ steps.build.outcome }}" == "skipped" ]]; then
+            FAILED="${FAILED}build,"
+            DETAILS="${DETAILS}BUILD SKIPPED: TypeCheck failed so build was not attempted.\n"
+          fi
+          if [[ "${{ steps.unit.outcome }}" == "failure" ]]; then
+            FAILED="${FAILED}unit,"
+            DETAILS="${DETAILS}UNIT TESTS FAILED: Vitest tests failed. Run 'pnpm test' locally. Check .ci-failure-artifacts/ for coverage and sonar report.\n"
+          fi
+
+          echo "failed_jobs=${FAILED}" >> $GITHUB_OUTPUT
+          echo "failure_details<<EOF" >> $GITHUB_OUTPUT
+          echo -e "${DETAILS}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          if [[ -n "$FAILED" ]]; then
+            echo "::error::Code quality checks failed: ${FAILED}"
+            exit 1
+          fi
+          echo "All code quality checks passed"
+
+  # ──────────────────────────────────────────────
+  # Stage 1 failure: Jules auto-fix
+  # ──────────────────────────────────────────────
+  fix-code-quality:
+    name: Fix Code Quality Issues
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    needs: [unit]
+    needs: [code-quality]
+    if: >-
+      failure() &&
+      !startsWith(github.head_ref, 'claude/') &&
+      !startsWith(github.head_ref, 'copilot/')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download test artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: coverage-reports
+          path: ci-artifacts/
+        continue-on-error: true
+
+      - name: Commit test artifacts to PR branch
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [ -d "ci-artifacts" ] && [ "$(ls -A ci-artifacts 2>/dev/null)" ]; then
+            mkdir -p .ci-failure-artifacts
+            cp -r ci-artifacts/* .ci-failure-artifacts/ 2>/dev/null || true
+            git add .ci-failure-artifacts/
+            git commit -m "[ci-artifacts] Test results from failed code quality checks [skip ci]" --allow-empty || true
+            git pull --rebase origin "$BRANCH_NAME" || true
+            git push origin HEAD:"$BRANCH_NAME"
+          fi
+
+      - name: Invoke Jules for code quality fix
+        if: needs.code-quality.outputs.failed_jobs != ''
+        uses: google-labs-code/jules-action@bff7875eaa123cac6742b7cfc51005b95ba4d566
+        with:
+          prompt: |
+            ## Code Quality CI Failure — Auto-Fix Request
+
+            **Repository:** ${{ github.repository }}
+            **PR Branch:** ${{ github.head_ref }}
+            **Failed Jobs:** ${{ needs.code-quality.outputs.failed_jobs }}
+            **PR:** #${{ github.event.pull_request.number }}
+
+            ### Failure Details
+            ${{ needs.code-quality.outputs.failure_details }}
+
+            ### Project Context
+            - Package manager: pnpm (lockfile: pnpm-lock.yaml)
+            - Linter: Biome (`pnpm lint` / `pnpm lint:fix`)
+            - Type checker: TypeScript strict (`pnpm exec tsc --noEmit`)
+            - Build: Vite (`pnpm build`), has prebuild hook running typecheck + icon generation
+            - Unit tests: Vitest (`pnpm test`) with coverage via v8
+            - Test results are in `.ci-failure-artifacts/` if unit tests failed
+
+            ### Instructions
+            1. Fix ONLY the failing jobs listed above.
+            2. For lint failures: run `pnpm lint:fix` first, then manually fix anything biome cannot auto-fix.
+            3. For type errors: fix the TypeScript compilation errors. Do NOT use `@ts-ignore` or `any` unless absolutely necessary.
+            4. For build failures: check if the issue is a type error (prebuild runs typecheck) or a Vite bundling issue.
+            5. For unit test failures: read the test files and fix the source code to match expected behavior, NOT the tests (unless the tests themselves are clearly wrong).
+            6. Run `pnpm lint && pnpm exec tsc --noEmit && pnpm build && pnpm test` to verify your fix before submitting.
+            7. Do NOT modify CI workflow files.
+            8. Remove the `.ci-failure-artifacts/` directory in your fix commit.
+            9. Use `[skip ci]` in your commit messages.
+          jules_api_key: ${{ secrets.GOOGLE_JULES_API_KEY }}
+          starting_branch: ${{ github.head_ref }}
+          include_last_commit: true
+
+  # ═══════════════════════════════════════════════════
+  # Stage 2: Security & Code Analysis
+  # CodeQL (advanced) + SonarCloud
+  # Uses coverage data from Stage 1 via artifact handoff.
+  # ═══════════════════════════════════════════════════
+  security:
+    name: Security & Code Analysis
+    runs-on: ubuntu-latest
+    needs: [code-quality]
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@9e907b5e64f6b83e7804b09294d44122997950d6 # v4.32.3
+        with:
+          languages: 'javascript-typescript'
+          build-mode: 'none'
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@9e907b5e64f6b83e7804b09294d44122997950d6 # v4.32.3
+
       - name: Download coverage reports
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: coverage-reports
-      - name: List coverage files
-        run: |
-          echo "Coverage directory contents:"
-          ls -la coverage/ || echo "coverage directory not found"
-          echo "Test results directory contents:"
-          ls -la test-results/ || echo "test-results directory not found"
+
       - name: SonarCloud Scan
         uses: sonarsource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+            -Dsonar.pullrequest.branch=${{ github.head_ref }}
+            -Dsonar.pullrequest.base=${{ github.base_ref }}
 
+  # ──────────────────────────────────────────────
+  # Stage 2 failure: Jules auto-fix
+  # ──────────────────────────────────────────────
+  fix-security:
+    name: Fix Security Issues
+    runs-on: ubuntu-latest
+    needs: [security]
+    if: >-
+      failure() &&
+      !startsWith(github.head_ref, 'claude/') &&
+      !startsWith(github.head_ref, 'copilot/')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Invoke Jules for security fix
+        uses: google-labs-code/jules-action@bff7875eaa123cac6742b7cfc51005b95ba4d566
+        with:
+          prompt: |
+            ## Security Analysis Failure — Auto-Fix Request
+
+            **Repository:** ${{ github.repository }}
+            **PR Branch:** ${{ github.head_ref }}
+            **PR:** #${{ github.event.pull_request.number }}
+
+            ### What Failed
+            The security analysis job failed. This job runs CodeQL (GitHub Advanced Security) and SonarCloud analysis.
+
+            ### Possible Causes
+            1. **CodeQL findings**: Security vulnerabilities in JavaScript/TypeScript (XSS, injection, etc.)
+            2. **SonarCloud Quality Gate failure**: Code smells, bugs, vulnerabilities, insufficient coverage, or duplication above threshold
+
+            ### Project Context
+            - Source code is in `src/` (React + TypeScript + Three.js game)
+            - SonarCloud config: `sonar-project.properties` (project key: arcade-cabinet_cognitive-dissonance)
+            - Coverage reports: `coverage/lcov.info` (generated by Vitest with v8 provider)
+            - Test execution reports: `test-results/sonar-report.xml`
+
+            ### Instructions
+            1. Check the CodeQL and SonarCloud dashboards for specific findings.
+            2. Fix security vulnerabilities first (highest priority).
+            3. Fix code smells and bugs identified by SonarCloud.
+            4. If coverage is too low, add unit tests in `src/**/*.test.ts` files.
+            5. Run `pnpm test:coverage` to verify coverage improvements.
+            6. Do NOT modify CI workflow files or sonar-project.properties.
+            7. Use `[skip ci]` in your commit messages.
+          jules_api_key: ${{ secrets.GOOGLE_JULES_API_KEY }}
+          starting_branch: ${{ github.head_ref }}
+          include_last_commit: true
+
+  # ═══════════════════════════════════════════════════
+  # Stage 3: E2E Smoke Tests
+  # Headed, Desktop Chrome, playthrough + governor default.
+  # Screenshots/video on failure only (playwright.config.ts).
+  # ═══════════════════════════════════════════════════
   e2e-smoke:
-    name: E2E Smoke Tests - Desktop Chrome
-    if: github.event_name == 'pull_request'
+    name: E2E Smoke Tests
     runs-on: ubuntu-latest
-    needs: [build]
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+    needs: [security]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/setup
@@ -97,210 +300,208 @@ jobs:
         with:
           name: dist
           path: dist/
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
       - name: Run E2E smoke tests
-        run: pnpm exec playwright test --project="Desktop Chrome" --workers=1
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: failure()
-        with:
-          name: e2e-smoke-reports
-          path: playwright-report/
-          retention-days: 7
-
-  e2e-matrix:
-    name: E2E Matrix - ${{ matrix.project }}
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    needs: [build]
-    strategy:
-      fail-fast: false
-      matrix:
-        project:
-          - 'Desktop Chrome'
-          - 'Desktop Firefox'
-          - 'Desktop Safari'
-          - 'iPhone 12 Portrait'
-          - 'iPhone 12 Pro Portrait'
-          - 'iPhone 13 Portrait'
-          - 'iPhone 14 Portrait'
-          - 'iPhone 12 Landscape'
-          - 'iPad Pro 11 Portrait'
-          - 'iPad Pro 11 Landscape'
-          - 'iPad Pro 12.9 Portrait'
-          - 'Pixel 5 Portrait'
-          - 'Pixel 5 Landscape'
-          - 'Galaxy S21 Portrait'
-          - 'Samsung Galaxy Fold Folded Portrait'
-          - 'Samsung Galaxy Fold Folded Landscape'
-          - 'Samsung Galaxy Fold Unfolded Portrait'
-          - 'Samsung Galaxy Fold Unfolded Landscape'
-          - 'Surface Duo Portrait'
-          - 'Surface Duo Landscape'
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: ./.github/actions/setup
-      - name: Download build artifact
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          name: dist
-          path: dist/
-      - name: Install Playwright browsers
-        run: |
-          if [[ "${{ matrix.project }}" == *"Firefox"* ]]; then
-            pnpm exec playwright install --with-deps firefox
-          elif [[ "${{ matrix.project }}" == *"Safari"* || "${{ matrix.project }}" == *"iPhone"* ]]; then
-            pnpm exec playwright install --with-deps webkit
-          else
-            pnpm exec playwright install --with-deps chromium
-          fi
-      - name: Set project slug
-        id: slug
-        run: |
-          PROJECT_SLUG=$(echo "${{ matrix.project }}" | sed 's/ /-/g')
-          echo "project_slug=${PROJECT_SLUG}" >> $GITHUB_OUTPUT
-      - name: Run E2E matrix tests
-        run: pnpm exec playwright test --project="${{ matrix.project }}" --workers=1 --reporter=junit,line
+        run: xvfb-run pnpm exec playwright test --project="Desktop Chrome" --grep-invert "@matrix" --workers=1
         env:
-          PLAYWRIGHT_JUNIT_OUTPUT_NAME: junit-${{ steps.slug.outputs.project_slug }}.xml
-      - name: Upload JUnit test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+          HOME: /root
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
-          name: e2e-junit-${{ steps.slug.outputs.project_slug }}
-          path: junit-${{ steps.slug.outputs.project_slug }}.xml
-          retention-days: 7
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: failure()
-        with:
-          name: e2e-reports-${{ steps.slug.outputs.project_slug }}
-          path: playwright-report/
+          name: e2e-smoke-reports
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 7
 
-  e2e-matrix-collector:
-    name: E2E Matrix - Collector
+  # ──────────────────────────────────────────────
+  # Stage 3 failure: Jules auto-fix
+  # Commits screenshots/traces to PR branch for Jules context.
+  # ──────────────────────────────────────────────
+  fix-e2e:
+    name: Fix E2E Smoke Failures
     runs-on: ubuntu-latest
-    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [e2e-matrix]
+    needs: [e2e-smoke]
+    if: >-
+      failure() &&
+      !startsWith(github.head_ref, 'claude/') &&
+      !startsWith(github.head_ref, 'copilot/')
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Combine JUnit Reports
-        uses: ./.github/actions/combine-junit
         with:
-          artifact-pattern: 'e2e-junit-*'
-          output-name: 'e2e-junit-combined'
-      - name: Check E2E matrix results
-        run: |
-          echo "E2E Matrix Test Results:"
-          echo "Matrix job result: ${{ needs.e2e-matrix.result }}"
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-          # Check if any matrix job failed
-          if [[ "${{ needs.e2e-matrix.result }}" == "failure" ]]; then
-            echo "❌ One or more E2E matrix tests failed"
-            echo "Check individual matrix job results for details"
-            exit 1
-          elif [[ "${{ needs.e2e-matrix.result }}" == "cancelled" ]]; then
-            echo "⚠️ E2E matrix tests were cancelled"
-            exit 1
+      - name: Download E2E reports
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: e2e-smoke-reports
+          path: e2e-failure-artifacts/
+        continue-on-error: true
+
+      - name: Commit E2E artifacts to PR branch
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if [ -d "e2e-failure-artifacts" ] && [ "$(ls -A e2e-failure-artifacts 2>/dev/null)" ]; then
+            mkdir -p .ci-failure-artifacts/e2e
+            cp -r e2e-failure-artifacts/* .ci-failure-artifacts/e2e/ 2>/dev/null || true
+            git add .ci-failure-artifacts/
+            git commit -m "[ci-artifacts] E2E test results from failed smoke tests [skip ci]" --allow-empty || true
+            git pull --rebase origin "$BRANCH_NAME" || true
+            git push origin HEAD:"$BRANCH_NAME"
           fi
 
-          echo "✅ All E2E matrix tests passed"
+      - name: Invoke Jules for E2E fix
+        uses: google-labs-code/jules-action@bff7875eaa123cac6742b7cfc51005b95ba4d566
+        with:
+          prompt: |
+            ## E2E Smoke Test Failure — Auto-Fix Request
 
-  # Collector job that ensures all checks pass
+            **Repository:** ${{ github.repository }}
+            **PR Branch:** ${{ github.head_ref }}
+            **PR:** #${{ github.event.pull_request.number }}
+
+            ### What Failed
+            The E2E smoke tests failed. These tests run against the built application using Playwright with Desktop Chrome.
+
+            ### Test Configuration
+            - Command: `playwright test --project="Desktop Chrome" --grep-invert "@matrix" --workers=1`
+            - Test files: `e2e/game.spec.ts`, `e2e/playthrough.spec.ts`, `e2e/governor.spec.ts` (default test only), `e2e/device-responsive.spec.ts`
+            - The game runs via `vite preview --port 4173`
+            - Retries: 1 (CI mode)
+            - Traces on first retry, screenshots on failure, video retained on failure
+
+            ### Artifacts
+            E2E failure artifacts (screenshots, traces, playwright report) are committed to `.ci-failure-artifacts/e2e/`.
+            - `playwright-report/` contains the HTML report
+            - `test-results/` contains traces, screenshots, and videos from failed tests
+
+            ### Project Context
+            - React + Three.js game ("Cognitive Dissonance")
+            - Canvas renderer (#gameCanvas) with HTML overlay UI (#overlay, #ui-layer)
+            - Key DOM elements: #overlay, #overlay-title, #start-btn, #ui-layer, #wave-display, #score-display, #combo-display, #panic-bar
+            - Game starts via spacebar press or clicking #start-btn
+            - E2E helpers: `e2e/helpers/game-helpers.ts` and `e2e/helpers/game-governor.ts`
+
+            ### Instructions
+            1. Examine the failure artifacts in `.ci-failure-artifacts/e2e/` to understand what failed.
+            2. Fix the APPLICATION code (under `src/`), not the test code, unless the tests are clearly wrong.
+            3. Common issues: missing DOM elements, timing issues, CSS class changes, game state not transitioning correctly.
+            4. Run `pnpm build && pnpm exec playwright test --project="Desktop Chrome" --grep-invert "@matrix"` to verify.
+            5. Do NOT modify CI workflow files or playwright.config.ts.
+            6. Remove the `.ci-failure-artifacts/` directory in your fix commit.
+            7. Use `[skip ci]` in your commit messages.
+          jules_api_key: ${{ secrets.GOOGLE_JULES_API_KEY }}
+          starting_branch: ${{ github.head_ref }}
+          include_last_commit: true
+
+  # ═══════════════════════════════════════════════════
+  # Cleanup: remove test artifacts after ALL stages pass
+  # ═══════════════════════════════════════════════════
+  cleanup:
+    name: Cleanup CI Artifacts
+    runs-on: ubuntu-latest
+    needs: [code-quality, security, e2e-smoke]
+    if: success()
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove CI failure artifacts if present
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          if [ -d ".ci-failure-artifacts" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git rm -rf .ci-failure-artifacts/
+            git commit -m "[ci-cleanup] Remove CI failure artifacts after successful run [skip ci]"
+            git push origin HEAD:"$BRANCH_NAME"
+          else
+            echo "No CI failure artifacts to clean up"
+          fi
+
+  # ═══════════════════════════════════════════════════
+  # CI Gate + PR Reports
+  # ═══════════════════════════════════════════════════
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
     if: always()
-    needs: [lint, typecheck, unit, build, sonarcloud, e2e-smoke, e2e-matrix-collector]
+    needs: [code-quality, security, e2e-smoke]
     steps:
       - name: Check CI status
         run: |
-          if [[ "${{ needs.lint.result }}" != "success" ]]; then
-            echo "❌ Lint failed"
+          if [[ "${{ needs.code-quality.result }}" != "success" ]]; then
+            echo "Code quality failed"
             exit 1
           fi
-          if [[ "${{ needs.typecheck.result }}" != "success" ]]; then
-            echo "❌ Type check failed"
+          if [[ "${{ needs.security.result }}" != "success" ]]; then
+            echo "Security analysis failed"
             exit 1
           fi
-          if [[ "${{ needs.unit.result }}" != "success" ]]; then
-            echo "❌ Unit tests failed"
+          if [[ "${{ needs.e2e-smoke.result }}" != "success" ]]; then
+            echo "E2E smoke tests failed"
             exit 1
           fi
-          if [[ "${{ needs.build.result }}" != "success" ]]; then
-            echo "❌ Build failed"
-            exit 1
-          fi
-          # SonarCloud runs on PRs only, allow skipped or success
-          if [[ "${{ needs.sonarcloud.result }}" != "success" && "${{ needs.sonarcloud.result }}" != "skipped" ]]; then
-            echo "❌ SonarCloud analysis failed"
-            exit 1
-          fi
-          # E2E smoke runs on PRs, matrix runs on main pushes
-          if [[ "${{ needs.e2e-smoke.result }}" != "success" && "${{ needs.e2e-smoke.result }}" != "skipped" ]]; then
-            echo "❌ E2E smoke tests failed"
-            exit 1
-          fi
-          if [[ "${{ needs.e2e-matrix-collector.result }}" != "success" && "${{ needs.e2e-matrix-collector.result }}" != "skipped" ]]; then
-            echo "❌ E2E matrix tests failed"
-            exit 1
-          fi
-          echo "✅ All CI checks passed"
+          echo "All CI checks passed"
 
-  # Post PR comment with CI results
   pr-comment:
     name: Update PR with CI Results
     runs-on: ubuntu-latest
-    if: always() && github.event_name == 'pull_request'
-    needs: [lint, typecheck, unit, build, e2e-smoke, ci-success]
+    if: always()
+    needs: [code-quality, security, e2e-smoke, ci-success]
     permissions:
       pull-requests: write
     steps:
       - name: Generate CI summary
         id: summary
         run: |
-          # Determine overall status
           if [[ "${{ needs.ci-success.result }}" == "success" ]]; then
-            STATUS="✅ **CI Passed**"
-            EMOJI="🎉"
+            STATUS="**CI Passed**"
           else
-            STATUS="❌ **CI Failed**"
-            EMOJI="⚠️"
+            STATUS="**CI Failed**"
           fi
 
-          # Build detailed results
           {
-            echo "## ${EMOJI} CI Results for PR #${{ github.event.pull_request.number }}"
+            echo "## CI Results for PR #${{ github.event.pull_request.number }}"
             echo ""
             echo "${STATUS}"
             echo ""
-            echo "### Job Results"
-            echo "| Job | Status |"
-            echo "|-----|--------|"
-            echo "| Lint | ${{ (needs.lint.result == 'success' && '✅ Passed') || (needs.lint.result == 'skipped' && '⏭️ Skipped') || (needs.lint.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |"
-            echo "| Type Check | ${{ (needs.typecheck.result == 'success' && '✅ Passed') || (needs.typecheck.result == 'skipped' && '⏭️ Skipped') || (needs.typecheck.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |"
-            echo "| Unit Tests | ${{ (needs.unit.result == 'success' && '✅ Passed') || (needs.unit.result == 'skipped' && '⏭️ Skipped') || (needs.unit.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |"
-            echo "| Build | ${{ (needs.build.result == 'success' && '✅ Passed') || (needs.build.result == 'skipped' && '⏭️ Skipped') || (needs.build.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |"
-            echo "| E2E Smoke Tests | ${{ (needs.e2e-smoke.result == 'success' && '✅ Passed') || (needs.e2e-smoke.result == 'skipped' && '⏭️ Skipped') || (needs.e2e-smoke.result == 'cancelled' && '🚫 Cancelled') || '❌ Failed' }} |"
+            echo "### Pipeline Stages (sequential)"
+            echo "| Stage | Status |"
+            echo "|-------|--------|"
+            echo "| 1. Code Quality (Lint, TypeCheck, Build, Tests) | ${{ (needs.code-quality.result == 'success' && 'Passed') || (needs.code-quality.result == 'skipped' && 'Skipped') || (needs.code-quality.result == 'cancelled' && 'Cancelled') || 'Failed' }} |"
+            echo "| 2. Security & Code Analysis (CodeQL, SonarCloud) | ${{ (needs.security.result == 'success' && 'Passed') || (needs.security.result == 'skipped' && 'Skipped') || (needs.security.result == 'cancelled' && 'Cancelled') || 'Failed' }} |"
+            echo "| 3. E2E Smoke Tests (Desktop Chrome) | ${{ (needs.e2e-smoke.result == 'success' && 'Passed') || (needs.e2e-smoke.result == 'skipped' && 'Skipped') || (needs.e2e-smoke.result == 'cancelled' && 'Cancelled') || 'Failed' }} |"
             echo ""
-            echo "### Quick Actions"
           } > summary.md
 
-          # Add failure-specific guidance
-          if [[ "${{ needs.lint.result }}" != "success" ]]; then
-            echo "- 🔧 Run \`pnpm lint:fix\` to auto-fix linting issues" >> summary.md
+          # Failure-specific guidance
+          if [[ "${{ needs.code-quality.result }}" != "success" ]]; then
+            {
+              echo "### Code Quality Failures: ${{ needs.code-quality.outputs.failed_jobs }}"
+              echo "A Jules auto-fix PR has been dispatched. It will auto-merge when ready."
+              echo ""
+            } >> summary.md
           fi
 
-          if [[ "${{ needs.typecheck.result }}" != "success" ]]; then
-            echo "- 🔍 Run \`pnpm exec tsc --noEmit\` to check types locally" >> summary.md
-          fi
-
-          if [[ "${{ needs.unit.result }}" != "success" ]]; then
-            echo "- 🧪 Run \`pnpm test\` to reproduce unit test failures" >> summary.md
+          if [[ "${{ needs.security.result }}" == "failure" ]]; then
+            echo "- Check CodeQL and SonarCloud dashboards for security findings" >> summary.md
           fi
 
           if [[ "${{ needs.e2e-smoke.result }}" == "failure" ]]; then
-            echo "- 🎭 Run \`pnpm exec playwright test --project=\"Desktop Chrome\"\` to debug E2E tests" >> summary.md
+            echo "- E2E failure artifacts committed to branch. Check \`.ci-failure-artifacts/e2e/\`" >> summary.md
           fi
 
           if [[ "${{ needs.ci-success.result }}" == "success" ]]; then
@@ -313,11 +514,9 @@ jobs:
             {
               echo ""
               echo "---"
-              echo "_Please fix the failing checks before requesting review._"
+              echo "_A Jules auto-fix PR may be in progress. CI will re-run after the fix merges._"
             } >> summary.md
           fi
-
-          echo "summary_file=summary.md" >> $GITHUB_OUTPUT
 
       - name: Post or update PR comment
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
@@ -326,7 +525,6 @@ jobs:
             const fs = require('fs');
             const summary = fs.readFileSync('summary.md', 'utf8');
 
-            // Find existing comment
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -339,21 +537,288 @@ jobs:
             );
 
             if (botComment) {
-              // Update existing comment
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: botComment.id,
                 body: summary
               });
-              console.log('Updated existing PR comment');
             } else {
-              // Create new comment
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
                 body: summary
               });
-              console.log('Created new PR comment');
+            }
+
+  # SonarCloud detailed PR report
+  sonar-pr-comment:
+    name: SonarCloud PR Report
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [security]
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Check if SonarCloud ran
+        id: check
+        run: |
+          if [[ "${{ needs.security.result }}" != "success" ]]; then
+            echo "Security job did not succeed (result: ${{ needs.security.result }}), skipping report."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Wait for SonarCloud processing
+        if: steps.check.outputs.skip != 'true'
+        id: wait-sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "Waiting for SonarCloud to process PR #${PR_NUMBER} analysis..."
+          MAX_ATTEMPTS=30
+          SLEEP_SECONDS=10
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            STATUS=$(curl -sf -H "Authorization: Bearer ${SONAR_TOKEN}" \
+              "https://sonarcloud.io/api/qualitygates/project_status?projectKey=arcade-cabinet_cognitive-dissonance&pullRequest=${PR_NUMBER}" \
+              | jq -r '.projectStatus.status // empty' 2>/dev/null || true)
+
+            if [[ -n "$STATUS" && "$STATUS" != "null" ]]; then
+              echo "SonarCloud analysis ready. Quality Gate: ${STATUS}"
+              echo "quality_gate_status=${STATUS}" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            echo "Attempt ${i}/${MAX_ATTEMPTS}: not ready, waiting ${SLEEP_SECONDS}s..."
+            sleep $SLEEP_SECONDS
+          done
+
+          echo "::warning::SonarCloud analysis did not complete within timeout"
+          echo "quality_gate_status=TIMEOUT" >> $GITHUB_OUTPUT
+
+      - name: Fetch SonarCloud analysis results
+        if: steps.check.outputs.skip != 'true' && steps.wait-sonar.outputs.quality_gate_status != 'TIMEOUT'
+        id: fetch-sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          PROJECT="arcade-cabinet_cognitive-dissonance"
+          BASE="https://sonarcloud.io"
+          AUTH="Authorization: Bearer ${SONAR_TOKEN}"
+
+          echo "Fetching quality gate..."
+          curl -sf -H "${AUTH}" \
+            "${BASE}/api/qualitygates/project_status?projectKey=${PROJECT}&pullRequest=${PR_NUMBER}" \
+            -o quality_gate.json
+
+          echo "Fetching measures..."
+          curl -sf -H "${AUTH}" \
+            "${BASE}/api/measures/component?component=${PROJECT}&pullRequest=${PR_NUMBER}&metricKeys=new_coverage,new_code_smells,new_bugs,new_vulnerabilities,new_security_hotspots,new_duplicated_lines_density,new_technical_debt" \
+            -o measures.json
+
+          echo "Fetching issues..."
+          PAGE=1
+          TOTAL=0
+          echo '[]' > all_issues.json
+          while true; do
+            curl -sf -H "${AUTH}" \
+              "${BASE}/api/issues/search?componentKeys=${PROJECT}&pullRequest=${PR_NUMBER}&ps=500&p=${PAGE}&issueStatuses=OPEN,CONFIRMED&additionalFields=effort" \
+              -o issues_page.json
+
+            ISSUES_IN_PAGE=$(jq '.issues | length' issues_page.json)
+            TOTAL_AVAILABLE=$(jq '.total' issues_page.json)
+            jq -s '.[0] + .[1].issues' all_issues.json issues_page.json > tmp_issues.json
+            mv tmp_issues.json all_issues.json
+            TOTAL=$((TOTAL + ISSUES_IN_PAGE))
+            echo "  Page ${PAGE}: ${ISSUES_IN_PAGE} issues (${TOTAL}/${TOTAL_AVAILABLE})"
+
+            if [[ $TOTAL -ge $TOTAL_AVAILABLE ]] || [[ $ISSUES_IN_PAGE -lt 500 ]]; then
+              break
+            fi
+            PAGE=$((PAGE + 1))
+            if [[ $PAGE -gt 5 ]]; then
+              echo "::warning::Truncated at 2500 issues (${TOTAL_AVAILABLE} total)"
+              break
+            fi
+          done
+
+          echo "Fetching hotspots..."
+          curl -sf -H "${AUTH}" \
+            "${BASE}/api/hotspots/search?projectKey=${PROJECT}&pullRequest=${PR_NUMBER}&ps=500" \
+            -o hotspots.json 2>/dev/null || echo '{"hotspots":[],"paging":{"total":0}}' > hotspots.json
+
+          jq -n \
+            --slurpfile qg quality_gate.json \
+            --slurpfile measures measures.json \
+            --slurpfile issues all_issues.json \
+            --slurpfile hotspots hotspots.json \
+            '{quality_gate:$qg[0],measures:$measures[0],issues:$issues[0],hotspots:$hotspots[0]}' > sonar_results.json
+
+          echo "Done. $(jq '.issues | length' sonar_results.json) issues, $(jq '.hotspots.hotspots | length' sonar_results.json) hotspots"
+
+      - name: Post SonarCloud PR comment
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          QUALITY_GATE_STATUS: ${{ steps.wait-sonar.outputs.quality_gate_status }}
+        with:
+          script: |
+            const fs = require('fs');
+            const MARKER = '<!-- sonarcloud-detailed-results -->';
+            const MAX_BODY = 65000;
+            const prNumber = context.issue.number;
+            const dashboardUrl = `https://sonarcloud.io/summary/new_code?id=arcade-cabinet_cognitive-dissonance&pullRequest=${prNumber}`;
+
+            let body;
+
+            if (process.env.QUALITY_GATE_STATUS === 'TIMEOUT') {
+              body = [MARKER, `## :hourglass: SonarCloud Analysis`, '', `Analysis did not complete in time. [View on SonarCloud](${dashboardUrl}).`].join('\n');
+            } else {
+              let data;
+              try {
+                data = JSON.parse(fs.readFileSync('sonar_results.json', 'utf8'));
+              } catch (e) {
+                body = [MARKER, '## :warning: SonarCloud Analysis', '', `Failed to read results: ${e.message}`].join('\n');
+              }
+              if (!data) {
+                // body already set in catch — fall through to post comment
+              } else {
+                body = formatReport(data);
+              }
+            }
+
+            if (body.length > MAX_BODY) {
+              const msg = `\n\n---\n:warning: **Truncated** — [view full results on SonarCloud](${dashboardUrl})\n`;
+              body = body.substring(0, MAX_BODY - msg.length) + msg;
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: prNumber,
+            });
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes(MARKER));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: prNumber, body,
+              });
+            }
+
+            function formatReport(data) {
+              const L = [MARKER];
+              const qgStatus = data.quality_gate?.projectStatus?.status || 'UNKNOWN';
+              const qgEmoji = qgStatus === 'OK' ? ':white_check_mark:' : qgStatus === 'ERROR' ? ':x:' : ':grey_question:';
+              const qgLabel = qgStatus === 'OK' ? 'PASSED' : qgStatus === 'ERROR' ? 'FAILED' : qgStatus;
+              L.push(`## ${qgEmoji} SonarCloud Quality Gate: **${qgLabel}**`, '');
+
+              const conditions = data.quality_gate?.projectStatus?.conditions || [];
+              if (conditions.length) {
+                L.push('<details>', '<summary>Quality Gate Conditions</summary>', '',
+                  '| Metric | Status | Value | Threshold |', '|--------|--------|-------|-----------|');
+                for (const c of conditions) {
+                  const e = c.status === 'OK' ? ':white_check_mark:' : ':x:';
+                  const name = c.metricKey.replace(/_/g, ' ');
+                  L.push(`| ${name} | ${e} | ${c.actualValue || '-'} | ${c.comparator || ''} ${c.errorThreshold || c.warningThreshold || '-'} |`);
+                }
+                L.push('', '</details>', '');
+              }
+
+              const measures = {};
+              for (const m of (data.measures?.component?.measures || [])) {
+                measures[m.metric] = m.period?.value ?? m.value ?? '-';
+              }
+              L.push('### Metrics on New Code', '', '| Metric | Value |', '|--------|-------|');
+              if (measures.new_coverage !== undefined) {
+                const cov = parseFloat(measures.new_coverage);
+                const ce = cov >= 80 ? ':green_circle:' : cov >= 50 ? ':yellow_circle:' : ':red_circle:';
+                L.push(`| ${ce} Coverage | ${isNaN(cov) ? measures.new_coverage : cov.toFixed(1) + '%'} |`);
+              }
+              if (measures.new_duplicated_lines_density !== undefined)
+                L.push(`| Duplication | ${parseFloat(measures.new_duplicated_lines_density).toFixed(1)}% |`);
+              if (measures.new_bugs !== undefined) L.push(`| Bugs | ${measures.new_bugs} |`);
+              if (measures.new_vulnerabilities !== undefined) L.push(`| Vulnerabilities | ${measures.new_vulnerabilities} |`);
+              if (measures.new_code_smells !== undefined) L.push(`| Code Smells | ${measures.new_code_smells} |`);
+              if (measures.new_security_hotspots !== undefined) L.push(`| Security Hotspots | ${measures.new_security_hotspots} |`);
+              if (measures.new_technical_debt !== undefined) L.push(`| Technical Debt | ${measures.new_technical_debt} |`);
+              L.push('');
+
+              const issues = data.issues || [];
+              if (issues.length === 0) {
+                L.push('### :tada: No Issues Found', '');
+              } else {
+                const sevOrder = ['BLOCKER','CRITICAL','MAJOR','MINOR','INFO'];
+                const sevEmoji = {BLOCKER:':no_entry:',CRITICAL:':rotating_light:',MAJOR:':warning:',MINOR:':information_source:',INFO:':speech_balloon:'};
+                const bySev = {};
+                let totalEffort = 0;
+                for (const i of issues) {
+                  const s = i.severity || 'INFO';
+                  (bySev[s] = bySev[s] || []).push(i);
+                  if (i.effort) {
+                    const hm = i.effort.match(/(\d+)h/); const mm = i.effort.match(/(\d+)min/);
+                    if (hm) totalEffort += parseInt(hm[1]) * 60;
+                    if (mm) totalEffort += parseInt(mm[1]);
+                  }
+                }
+
+                L.push(`### Issues (${issues.length} total)`, '');
+                if (totalEffort > 0) {
+                  const h = Math.floor(totalEffort/60), m = totalEffort%60;
+                  L.push(`**Estimated debt:** ${h > 0 ? h+'h ':''}${m}m`, '');
+                }
+                L.push('| Severity | Count |', '|----------|-------|');
+                for (const s of sevOrder) if (bySev[s]) L.push(`| ${sevEmoji[s]||''} ${s} | ${bySev[s].length} |`);
+                L.push('');
+
+                for (const s of sevOrder) {
+                  const si = bySev[s];
+                  if (!si || !si.length) continue;
+                  L.push(`<details>`, `<summary>${sevEmoji[s]||''} ${s} (${si.length})</summary>`, '');
+
+                  const byFile = {};
+                  for (const i of si) {
+                    const comp = i.component || '';
+                    const fp = comp.includes(':') ? comp.split(':').slice(1).join(':') : comp;
+                    (byFile[fp] = byFile[fp] || []).push(i);
+                  }
+                  for (const [fp, fi] of Object.entries(byFile).sort()) {
+                    L.push(`**\`${fp}\`**`);
+                    for (const i of fi) {
+                      const ln = i.line || i.textRange?.startLine || '?';
+                      const t = i.type === 'BUG' ? 'Bug' : i.type === 'VULNERABILITY' ? 'Vuln' : i.type === 'CODE_SMELL' ? 'Smell' : (i.type || '');
+                      const eff = i.effort ? ` (${i.effort})` : '';
+                      L.push(`- L${ln}: ${i.message} [\`${t}\`] \`${i.rule||''}\`${eff}`);
+                    }
+                    L.push('');
+                  }
+                  L.push('</details>', '');
+                }
+              }
+
+              const hotspots = data.hotspots?.hotspots || [];
+              if (hotspots.length) {
+                L.push(`### Security Hotspots (${hotspots.length})`, '', '<details>', '<summary>View hotspots</summary>', '',
+                  '| File | Line | Category | Probability | Description |', '|------|------|----------|-------------|-------------|');
+                for (const h of hotspots) {
+                  const comp = h.component || '';
+                  const fp = comp.includes(':') ? comp.split(':').slice(1).join(':') : comp;
+                  const ln = h.line || h.textRange?.startLine || '?';
+                  const cat = h.securityCategory || '-';
+                  const prob = h.vulnerabilityProbability || '-';
+                  const msg = (h.message || '').replace(/\|/g, '\\|').substring(0, 120);
+                  L.push(`| \`${fp}\` | ${ln} | ${cat} | ${prob} | ${msg} |`);
+                }
+                L.push('', '</details>', '');
+              }
+
+              L.push('---', `[:link: View on SonarCloud](${dashboardUrl})`);
+              return L.join('\n');
             }

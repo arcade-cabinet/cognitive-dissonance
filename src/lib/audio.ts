@@ -1,21 +1,46 @@
+/**
+ * Sound Effects Manager
+ *
+ * Synthesizes game audio using the Web Audio API oscillator nodes.
+ * Handles all SFX (counter, miss, powerup, nuke, boss) and
+ * procedural background music that scales with wave intensity.
+ */
 export class SFX {
   public ctx: AudioContext | null = null;
   public musicInterval: number | null = null;
+  private musicGain: GainNode | null = null;
+  private pendingTimers: number[] = [];
 
+  /** Initialize the AudioContext (must be called after user interaction) */
   init(): void {
-    // Support both standard and webkit-prefixed AudioContext for browser compatibility
-    const AudioContextClass =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    this.ctx = new AudioContextClass();
-  }
-
-  resume(): void {
-    if (this.ctx?.state === 'suspended') {
-      this.ctx.resume();
+    try {
+      // Support both standard and webkit-prefixed AudioContext for browser compatibility
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AudioContextClass();
+    } catch (err) {
+      console.warn('Failed to create AudioContext:', err);
     }
   }
 
+  /** Resume a suspended AudioContext (required by autoplay policy) */
+  resume(): void {
+    if (this.ctx?.state === 'suspended') {
+      this.ctx.resume().catch((err: unknown) => {
+        console.warn('AudioContext resume failed:', err);
+      });
+    }
+  }
+
+  /** Schedule a delayed callback and track the timer for cleanup */
+  private schedule(fn: () => void, delayMs: number): void {
+    const id = window.setTimeout(() => {
+      this.pendingTimers = this.pendingTimers.filter((t) => t !== id);
+      fn();
+    }, delayMs);
+    this.pendingTimers.push(id);
+  }
+
+  /** Generate a synthesized tone with envelope decay */
   private tone(
     frequency: number,
     type: OscillatorType = 'square',
@@ -33,51 +58,64 @@ export class SFX {
     gainNode.connect(this.ctx.destination);
     oscillator.start();
     oscillator.stop(this.ctx.currentTime + duration);
+    oscillator.onended = () => {
+      oscillator.disconnect();
+      gainNode.disconnect();
+    };
   }
 
+  /** Play ascending counter SFX with pitch scaled by combo multiplier */
   counter(combo: number): void {
     const f = 400 + combo * 40;
     this.tone(f, 'square', 0.08, 0.1);
-    setTimeout(() => this.tone(f * 1.25, 'square', 0.08, 0.08), 50);
-    setTimeout(() => this.tone(f * 1.5, 'triangle', 0.15, 0.06), 100);
+    this.schedule(() => this.tone(f * 1.25, 'square', 0.08, 0.08), 50);
+    this.schedule(() => this.tone(f * 1.5, 'triangle', 0.15, 0.06), 100);
   }
 
+  /** Play low-frequency miss sound */
   miss(): void {
     this.tone(120, 'sawtooth', 0.2, 0.08);
   }
 
+  /** Play deep rumble when panic damage is taken */
   panicHit(): void {
     this.tone(90, 'sawtooth', 0.15, 0.1);
   }
 
+  /** Play ascending triple-tone powerup collection jingle */
   powerup(): void {
     this.tone(600, 'triangle', 0.1, 0.08);
-    setTimeout(() => this.tone(800, 'triangle', 0.1, 0.08), 80);
-    setTimeout(() => this.tone(1000, 'triangle', 0.2, 0.06), 160);
+    this.schedule(() => this.tone(800, 'triangle', 0.1, 0.08), 80);
+    this.schedule(() => this.tone(1000, 'triangle', 0.2, 0.06), 160);
   }
 
+  /** Play heavy descending nuke activation blast */
   nuke(): void {
     this.tone(200, 'sawtooth', 0.4, 0.13);
-    setTimeout(() => this.tone(100, 'sawtooth', 0.6, 0.1), 100);
+    this.schedule(() => this.tone(100, 'sawtooth', 0.6, 0.1), 100);
   }
 
+  /** Play dual-tone boss damage impact */
   bossHit(): void {
     this.tone(300, 'square', 0.06, 0.1);
     this.tone(450, 'square', 0.06, 0.08);
   }
 
+  /** Play escalating victory fanfare when boss is defeated */
   bossDie(): void {
     [0, 80, 160, 240, 320, 400].forEach((d, i) => {
-      setTimeout(() => this.tone(200 + i * 80, 'square', 0.15, 0.1), d);
+      this.schedule(() => this.tone(200 + i * 80, 'square', 0.15, 0.1), d);
     });
   }
 
+  /** Play four-note ascending wave start fanfare */
   waveStart(): void {
     [0, 100, 200, 300].forEach((d, i) => {
-      setTimeout(() => this.tone(300 + i * 100, 'square', 0.12, 0.07), d);
+      this.schedule(() => this.tone(300 + i * 100, 'square', 0.12, 0.07), d);
     });
   }
 
+  /** Start procedural background music loop that scales BPM and intensity with wave number */
   startMusic(wave: number): void {
     this.stopMusic();
     if (!this.ctx) return;
@@ -86,9 +124,10 @@ export class SFX {
     const bass = [110, 110, 130.81, 110, 146.83, 130.81, 110, 98];
     const mel = [440, 0, 550, 0, 440, 660, 550, 0];
     let beat = 0;
-    const gainNode = this.ctx.createGain();
-    gainNode.gain.value = 0.06;
-    gainNode.connect(this.ctx.destination);
+    this.musicGain = this.ctx.createGain();
+    this.musicGain.gain.value = 0.06;
+    this.musicGain.connect(this.ctx.destination);
+    const gainNode = this.musicGain;
     this.musicInterval = window.setInterval(() => {
       if (!this.ctx) return;
       const i = beat % 8;
@@ -102,6 +141,10 @@ export class SFX {
       gain.connect(gainNode);
       oscillator.start();
       oscillator.stop(this.ctx.currentTime + ms / 1000);
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gain.disconnect();
+      };
       if (i % 2 === 0) {
         const kick = this.ctx.createOscillator();
         const kickGain = this.ctx.createGain();
@@ -113,6 +156,10 @@ export class SFX {
         kickGain.connect(gainNode);
         kick.start();
         kick.stop(this.ctx.currentTime + 0.07);
+        kick.onended = () => {
+          kick.disconnect();
+          kickGain.disconnect();
+        };
       }
       if (wave > 1 && mel[i] > 0) {
         const melody = this.ctx.createOscillator();
@@ -128,15 +175,37 @@ export class SFX {
         melodyGain.connect(gainNode);
         melody.start();
         melody.stop(this.ctx.currentTime + (ms / 1000) * 0.5);
+        melody.onended = () => {
+          melody.disconnect();
+          melodyGain.disconnect();
+        };
       }
       beat++;
     }, ms);
   }
 
+  /** Stop the background music loop */
   stopMusic(): void {
     if (this.musicInterval) {
       clearInterval(this.musicInterval);
       this.musicInterval = null;
+    }
+    if (this.musicGain) {
+      this.musicGain.disconnect();
+      this.musicGain = null;
+    }
+  }
+
+  /** Clean up all audio resources */
+  destroy(): void {
+    this.stopMusic();
+    for (const id of this.pendingTimers) {
+      clearTimeout(id);
+    }
+    this.pendingTimers = [];
+    if (this.ctx) {
+      this.ctx.close().catch(() => {});
+      this.ctx = null;
     }
   }
 }

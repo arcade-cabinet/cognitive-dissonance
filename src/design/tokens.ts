@@ -1,8 +1,8 @@
 /**
- * Design Tokens
+ * Design Tokens — Cognitive Dissonance
  *
  * Centralized design system values for consistent styling across the application.
- * These tokens define the visual language and brand identity of Psyduck Panic.
+ * Metallic technopunk aesthetic: brushed aluminum, RGB chromatic accents, monospace type.
  */
 
 // =============================================================================
@@ -10,20 +10,20 @@
 // =============================================================================
 
 export const colors = {
-  // Primary Colors - Retro gaming palette
+  // Primary Colors — Metallic chrome
   primary: {
-    main: '#f1c40f', // Golden yellow (Psyduck)
-    light: '#f9e79f',
-    dark: '#d4ac0d',
-    darker: '#b7950b',
+    main: '#c0c8d8', // Brushed steel (brand)
+    light: '#e0e8f0',
+    dark: '#8899bb',
+    darker: '#667788',
   },
 
-  // Secondary Colors
+  // Secondary Colors — Chromatic accent
   secondary: {
-    main: '#9b59b6', // Purple (tech/AI theme)
-    light: '#d7bde2',
-    dark: '#8e44ad',
-    darker: '#7d3c98',
+    main: '#00ccff', // Cyan (AI/neural theme)
+    light: '#66ddff',
+    dark: '#0099cc',
+    darker: '#006699',
   },
 
   // Accent Colors - Enemy types
@@ -44,7 +44,7 @@ export const colors = {
   // UI Colors
   ui: {
     background: {
-      primary: '#0a0a18',
+      primary: '#0e0e28',
       secondary: '#1a1a2e',
       tertiary: '#16213e',
       overlay: 'rgba(5, 5, 15, 0.97)',
@@ -56,10 +56,36 @@ export const colors = {
       muted: '#7f8c8d',
     },
     border: {
-      default: '#1a1a3a',
+      default: '#2a2a4a',
       accent: 'rgba(241, 196, 15, 0.3)',
       glow: 'rgba(0, 255, 255, 0.5)',
     },
+  },
+
+  // 3D Scene Colors — dark foundation with vivid colorful accents
+  // Inspired by the original 2D game's neon-arcade-meets-cozy-bedroom aesthetic
+  scene: {
+    background: '#0e0e28',
+    wall: '#1c1c42', // Rich dark indigo
+    floor: '#1e1e38', // Visible dark navy
+    desk: '#34495e', // Bright enough to see desk surface
+    deskEdge: '#2c3e50', // Visible edge highlight
+    keyboard: '#222d3a', // Dark but visible keys
+    mouse: '#4a6070', // Light enough to read shape
+    windowPane: '#060620', // Deep night sky
+    windowFrame: '#4a5a6c', // Visible frame
+    poster: '#303050', // Visible poster bg
+    posterText: '#aabbdd', // Bright, clearly readable
+    monitorGlow: '#60ccff', // Vivid cyan-blue glow
+    monitorGlowWarm: '#ff8844', // Warm panic glow
+    moonColor: '#fffde8', // Bright moon
+    moonGlow: '#ffd090', // Warm golden glow
+    ambient: '#5566aa', // Rich blue ambient
+    fillLight: '#88aacc', // Bright fill
+    keyLight: '#aabbcc', // Strong key light
+    rimLight: '#4466aa', // Saturated blue rim
+    deskLamp: '#ffcc66', // Warm desk accent
+    screenSpill: '#3388ff', // Monitor screen spill color
   },
 
   // Powerup Colors
@@ -69,25 +95,21 @@ export const colors = {
     double: '#f1c40f', // 2X Score
   },
 
-  // Character States
+  // Character Bust (rear view — NS-5 style android)
   character: {
-    normal: {
-      skin: '#ffdbac',
-      shirt: '#3498db',
-      hair: '#3d2b1f',
-      pants: '#1a1a2e',
-    },
-    panic: {
-      skin: '#f5cba7',
-      shirt: '#2471a3',
-      hair: '#3d2b1f',
-      pants: '#1a1a2e',
-    },
-    psyduck: {
-      body: '#f1c40f',
-      beak: '#f0b27a',
-      outline: '#d4ac0d',
-    },
+    shell: '#f1f3f7', // Pearlescent white shell (MeshPhysicalMaterial clearcoat)
+    shellWarm: '#ffe8d6', // Warm stress tint at high panic
+    dark: '#0a0a0f', // Dark metallic (joints, seams, cable channels)
+    joint: '#bbbbbb', // Bright metallic (neck rings, actuator caps)
+    cable: '#0f0f14', // Cable rubber (dark, slight metalness)
+    cableStress: '#442222', // Cable color when under tension (warm tint)
+    eyeGlow: '#99ddff', // Eye emissive color (calm)
+    eyeStress: '#ff4444', // Eye emissive color (high panic)
+    statusLed: '#33ff66', // Status LED (calm green)
+    statusWarn: '#ffaa00', // Status LED (warning amber)
+    statusCrit: '#ff2222', // Status LED (critical red)
+    panelSeam: '#1a1a2a', // Panel seam line color
+    spark: '#66ccff', // Electrical spark color
   },
 
   // Boss Colors
@@ -118,12 +140,12 @@ export const colors = {
 // =============================================================================
 
 export const typography = {
-  // Font Families - Vision-aligned for Psyduck Panic
+  // Font Families — Cognitive Dissonance (metallic technopunk)
   fonts: {
-    display: '"Righteous", sans-serif', // Bold, playful headers - perfect for Psyduck
-    body: '"Space Mono", monospace', // Readable, tech aesthetic for gameplay
-    accent: '"Bungee", sans-serif', // Extra punch for special elements
-    mono: '"VT323", monospace', // Terminal/retro for stats and technical info
+    display: '"Courier New", "Lucida Console", monospace', // Sharp, clinical headers
+    body: '"Courier New", "Lucida Console", monospace', // Tech aesthetic for gameplay
+    accent: '"Courier New", "Lucida Console", monospace', // Consistent monospace identity
+    mono: '"Courier New", "Lucida Console", monospace', // Terminal/stats
   },
 
   // Font Sizes

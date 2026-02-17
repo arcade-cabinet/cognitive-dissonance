@@ -1,94 +1,82 @@
 import { expect, test } from '@playwright/test';
+import {
+  navigateToGame,
+  startGame,
+  verifyControlsAttached,
+  verifyGamePlaying,
+  verifyHUDVisible,
+} from './helpers/game-helpers';
 
-test.describe('Psyduck Panic Game', () => {
+test.describe('Cognitive Dissonance Game', () => {
   test('should load the game page', async ({ page }) => {
-    await page.goto('/game');
-    await expect(page.locator('#game-container')).toBeVisible();
+    await navigateToGame(page);
   });
 
   test('should display game title on overlay', async ({ page }) => {
-    await page.goto('/game');
+    await navigateToGame(page);
     const title = page.locator('#overlay-title');
     await expect(title).toBeVisible();
-    await expect(title).toContainText('PSYDUCK PANIC');
+    await expect(title).toContainText('COGNITIVE');
   });
 
   test('should have start button', async ({ page }) => {
-    await page.goto('/game');
+    await navigateToGame(page);
     const startBtn = page.locator('#start-btn');
     await expect(startBtn).toBeVisible();
-    await expect(startBtn).toContainText('START DEBATE');
+    await expect(startBtn).toContainText('NEW GAME');
   });
 
   test('should have game canvas', async ({ page }) => {
-    await page.goto('/game');
-    const canvas = page.locator('#gameCanvas');
-    await expect(canvas).toBeVisible();
+    await navigateToGame(page);
+    const container = page.locator('#gameCanvas');
+    await expect(container).toBeVisible();
 
-    // Check dimensions and aspect ratio
-    const width = Number(await canvas.getAttribute('width'));
-    const height = Number(await canvas.getAttribute('height'));
+    // R3F wraps the actual canvas inside a container div
+    await expect(async () => {
+      const box = await container.boundingBox();
+      if (!box) throw new Error('Canvas bounding box is null');
+      expect(box.width).toBeGreaterThanOrEqual(100);
+      expect(box.height).toBeGreaterThanOrEqual(75);
+    }).toPass({ timeout: 10000 });
 
-    expect(width).toBeGreaterThanOrEqual(800);
-    expect(height).toBeGreaterThanOrEqual(600);
-    expect(width / height).toBeCloseTo(4 / 3, 1);
+    // Verify an actual WebGL canvas exists inside the R3F container
+    // Wrapped in toPass because R3F may mount the <canvas> asynchronously
+    await expect(async () => {
+      const canvasCount = await container.locator('canvas').count();
+      expect(canvasCount).toBeGreaterThanOrEqual(1);
+    }).toPass({ timeout: 10000 });
   });
 
   test('should have control buttons', async ({ page }) => {
-    await page.goto('/game');
-    await expect(page.locator('#btn-reality')).toBeAttached();
-    await expect(page.locator('#btn-history')).toBeAttached();
-    await expect(page.locator('#btn-logic')).toBeAttached();
-    await expect(page.locator('#btn-special')).toBeAttached();
+    await navigateToGame(page);
+    await verifyControlsAttached(page);
   });
 
   test('should display HUD elements', async ({ page }) => {
-    await page.goto('/game');
+    await navigateToGame(page);
+    // meter-container is sr-only (tension conveyed via 3D keyboard RGB)
+    await startGame(page);
     await expect(page.locator('.meter-container')).toBeAttached();
-    await expect(page.locator('#panic-bar')).toBeAttached();
-    await expect(page.locator('#combo-display')).toBeAttached();
-    await expect(page.locator('#wave-display')).toBeAttached();
-    await expect(page.locator('#time-display')).toBeAttached();
-    await expect(page.locator('#score-display')).toBeAttached();
+    await verifyHUDVisible(page);
   });
 
   test('should start game when clicking start button', async ({ page }) => {
-    await page.goto('/game');
-    const overlay = page.locator('#overlay');
-    await expect(overlay).toBeVisible();
-
-    const startBtn = page.locator('#start-btn');
-    // Ensure button is visible and enabled
-    await expect(startBtn).toBeVisible();
-    await expect(startBtn).toBeEnabled();
-
-    // Click without force
-    await startBtn.click();
-
-    // Overlay should be hidden after starting
-    await expect(overlay).toHaveClass(/hidden/);
+    await navigateToGame(page);
+    await expect(page.locator('#overlay')).toBeVisible();
+    await startGame(page);
   });
 
   test('should respond to keyboard controls', async ({ page }) => {
-    await page.goto('/game');
-    const startBtn = page.locator('#start-btn');
+    await navigateToGame(page);
+    await startGame(page);
 
-    // Ensure button is visible and enabled
-    await expect(startBtn).toBeVisible();
-    await expect(startBtn).toBeEnabled();
-
-    // Click without force
-    await startBtn.click();
-
-    // Wait for the overlay to be hidden (game started)
-    await expect(page.locator('#overlay')).toHaveClass(/hidden/);
-
-    // Press ability keys
-    await page.keyboard.press('1');
-    await page.keyboard.press('2');
-    await page.keyboard.press('3');
+    // Press ability keys (F1-F3 for abilities, F4 for nuke on 3D keyboard)
+    await page.keyboard.press('F1');
+    await page.keyboard.press('F2');
+    await page.keyboard.press('F3');
+    await page.keyboard.press('F4');
 
     // Should not crash
-    await expect(page.locator('#game-container')).toBeVisible();
+    await verifyGamePlaying(page);
   });
 });

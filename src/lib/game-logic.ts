@@ -1,5 +1,10 @@
+import type { BossAction } from './ai/boss-ai';
+import { BossAI } from './ai/boss-ai';
+import { AIDirector } from './ai/director';
 import { FEED, GAME_HEIGHT, GAME_WIDTH, POWERUPS, TYPES, WAVES } from './constants';
 import type { GameEvent, GameState } from './events';
+import { calculatePanicDamage, calculatePanicDecay, getPanicModifiers } from './panic-system';
+import { nextId, resetIds, rng, seedRng } from './rng';
 import type { Boss, BossConfig, Enemy, MomentumPerks, PowerUpInstance } from './types';
 
 const W = GAME_WIDTH;
@@ -41,6 +46,17 @@ export class GameLogic {
   momPerks: MomentumPerks;
   secondAccumulator: number;
 
+  // AI systems
+  private director: AIDirector;
+  private bossAI: BossAI | null;
+  private recentEscapes: number;
+  private recentCounters: number;
+  private recentResetTimer: number;
+  private bossWaveTransitionTimer: number;
+
+  /** Last game-clock timestamp from update(), used by methods called outside the loop */
+  private nowMs: number;
+
   // Event queue
   events: GameEvent[] = [];
 
@@ -80,6 +96,15 @@ export class GameLogic {
     this.momPerks = { spawnDelay: 0, scoreBonus: 0, cdReduction: 0 };
     this.secondAccumulator = 0;
 
+    // AI systems
+    this.director = new AIDirector();
+    this.bossAI = null;
+    this.recentEscapes = 0;
+    this.recentCounters = 0;
+    this.recentResetTimer = 0;
+    this.bossWaveTransitionTimer = 0;
+    this.nowMs = 0;
+
     this.reset();
   }
 
@@ -114,32 +139,39 @@ export class GameLogic {
     this.momPerks = { spawnDelay: 0, scoreBonus: 0, cdReduction: 0 };
     this.events = [];
     this.secondAccumulator = 0;
+
+    // Reset AI
+    this.director = new AIDirector();
+    this.bossAI?.dispose();
+    this.bossAI = null;
+    resetIds();
+    this.recentEscapes = 0;
+    this.recentCounters = 0;
+    this.recentResetTimer = 0;
+    this.bossWaveTransitionTimer = 0;
+    this.nowMs = 0;
   }
 
-  startOrContinue(): void {
+  startOrContinue(seed?: number): void {
     if (this.running) return;
-    this.start();
+    this.start(seed);
   }
 
   startEndlessMode(): void {
+    // Endless reuses the same RNG stream — no reseed needed
     this.endless = true;
     this.running = true;
     this.events.push({ type: 'SFX', name: 'resume' });
     this.startWave(this.wave + 1);
   }
 
-  start(): void {
+  start(seed?: number): void {
     this.reset();
+    seedRng(seed ?? Date.now());
     this.running = true;
     this.events.push({ type: 'SFX', name: 'resume' });
     this.feedIdx = 0;
     this.startWave(0);
-  }
-
-  getBossX(t: number): number {
-    if (!this.boss) return W / 2;
-    this._lastBossX = this.boss.x + Math.sin(t / 800) * 60;
-    return this._lastBossX;
   }
 
   startWave(idx: number): void {
@@ -148,6 +180,8 @@ export class GameLogic {
     this.waveTime = currentWave.dur;
     this.bossPhase = false;
     this.boss = null;
+    this.bossAI?.dispose();
+    this.bossAI = null;
     this.secondAccumulator = 0;
 
     const isEndless = idx >= WAVES.length;
@@ -169,10 +203,24 @@ export class GameLogic {
       pat: cfg.pats[0],
       timer: 0,
       x: W / 2,
-      y: -60,
+      y: 80,
       iFrame: 0,
       spiralAngle: 0,
     };
+
+    // Initialize Yuka boss AI
+    const enemyTypes = Object.values(TYPES);
+    this.bossAI = new BossAI({
+      x: W / 2,
+      y: 80,
+      hp: cfg.hp,
+      maxHp: cfg.hp,
+      aggression: this.director.modifiers.bossAggression,
+      patterns: cfg.pats,
+      enemyTypes,
+      wave: this.wave,
+    });
+
     this.events.push({ type: 'BOSS_START', name: cfg.name, hp: cfg.hp });
     this.fl = 0.3;
     this.flCol = '#e74c3c';
@@ -191,38 +239,81 @@ export class GameLogic {
 
   endGame(win: boolean): void {
     this.running = false;
+    this.bossAI?.dispose();
+    this.bossAI = null;
     this.events.push({ type: 'SFX', name: 'stopMusic' });
-    this.events.push({ type: 'GAME_OVER', score: this.score, win });
+    this.events.push({
+      type: 'GAME_OVER',
+      score: this.score,
+      win,
+      totalC: this.totalC,
+      totalM: this.totalM,
+      maxCombo: this.maxCombo,
+      nukesUsed: this.nukesUsed,
+      wavesCleared: win ? WAVES.length : this.wave + 1,
+    });
   }
 
   spawnEnemy(): void {
     const typeKeys = Object.keys(TYPES);
-    const typeKey = typeKeys[Math.floor(Math.random() * typeKeys.length)];
+    const typeKey = typeKeys[Math.floor(rng() * typeKeys.length)];
     const type = TYPES[typeKey];
-    const word = type.words[Math.floor(Math.random() * type.words.length)];
+    const word = type.words[Math.floor(rng() * type.words.length)];
     const cfg = WAVES[Math.min(this.wave, WAVES.length - 1)];
-    const side = Math.random() < 0.5 ? 0 : 1;
+    const side = rng() < 0.5 ? 0 : 1;
+
+    // Get panic + director modifiers for dynamic speed
+    const panicMods = getPanicModifiers(this.panic, this.wave);
+    const directorMods = this.director.modifiers;
+    const speedMult = panicMods.speedMultiplier * directorMods.enemySpeedMultiplier;
+
+    // Determine if this enemy should be special
+    const isEncrypted = rng() < panicMods.encryptChance;
+    const isChild = !isEncrypted && rng() < panicMods.variantChance;
+
     const enemy: Enemy = {
-      id: Date.now() + Math.random(),
+      id: nextId(),
       x: side === 0 ? -40 : W + 40,
-      y: 100 + Math.random() * 180,
+      y: 100 + rng() * 180,
       word,
       type,
-      vx: (side === 0 ? 1 : -1) * (0.8 + Math.random() * 0.4) * cfg.spd,
-      vy: (Math.random() - 0.5) * 0.3,
+      vx: (side === 0 ? 1 : -1) * (0.8 + rng() * 0.4) * cfg.spd * speedMult,
+      vy: (rng() - 0.5) * 0.3,
       counter: type.counter,
-      spd: cfg.spd,
+      spd: cfg.spd * speedMult,
+      encrypted: isEncrypted,
+      child: isChild,
+    };
+    this.enemies.push(enemy);
+  }
+
+  /** Spawn enemy from boss AI action (partial enemy data) */
+  private spawnBossEnemy(partial: Partial<Enemy>): void {
+    const type = partial.type || Object.values(TYPES)[0];
+    const enemy: Enemy = {
+      id: nextId(),
+      x: partial.x ?? W / 2,
+      y: partial.y ?? 80,
+      word: partial.word || type.words[0],
+      type,
+      vx: partial.vx ?? 0,
+      vy: partial.vy ?? 1,
+      counter: partial.counter || type.counter,
+      spd: partial.spd ?? 1,
+      encrypted: partial.encrypted,
+      child: partial.child,
     };
     this.enemies.push(enemy);
   }
 
   spawnPowerUp(): void {
-    const pu = POWERUPS[Math.floor(Math.random() * POWERUPS.length)];
+    const pu = POWERUPS[Math.floor(rng() * POWERUPS.length)];
     this.powerups.push({
       ...pu,
-      x: 100 + Math.random() * (W - 200),
+      id: `${pu.id}-${nextId()}`,
+      x: 100 + rng() * (W - 200),
       y: -30,
-      vy: 0.6 + Math.random() * 0.4,
+      vy: 0.6 + rng() * 0.4,
     });
   }
 
@@ -243,6 +334,7 @@ export class GameLogic {
       this.combo = 0;
       this.totalM++;
       this.events.push({ type: 'SFX', name: 'miss' });
+      this.director.recordAction(false, this.nowMs);
     }
   }
 
@@ -263,10 +355,12 @@ export class GameLogic {
         this.events.push({ type: 'BOSS_DIE' });
         this.boss = null;
         this.bossPhase = false;
+        this.bossAI?.dispose();
+        this.bossAI = null;
         this.fl = 0.4;
         this.flCol = '#2ecc71';
         this.events.push({ type: 'CONFETTI', x: W / 2, y: 120, color: 'random' });
-        setTimeout(() => this.nextWave(), 1500);
+        this.bossWaveTransitionTimer = 1.5;
       }
     }
     for (let i = this.enemies.length - 1; i >= 0; i--) {
@@ -285,12 +379,14 @@ export class GameLogic {
     this.combo++;
     if (this.combo > this.maxCombo) this.maxCombo = this.combo;
     this.totalC++;
+    this.recentCounters++;
     const pts = 10 * this.combo * (this.pu.double > 0 ? 2 : 1);
     const bonusPts = Math.floor(pts * this.momPerks.scoreBonus);
     this.score += pts + bonusPts;
     this.events.push({ type: 'SFX', name: 'counter', args: [this.combo] });
     this.events.push({ type: 'PARTICLE', x: e.x, y: e.y, color: e.type.color });
     this.updateMomentum();
+    this.director.recordAction(true, this.nowMs);
   }
 
   updateMomentum(): void {
@@ -309,14 +405,22 @@ export class GameLogic {
     }
   }
 
-  addPanic(amt: number): void {
+  addPanic(baseAmt: number): void {
     if (this.pu.shield > 0 || this.panicInvuln > 0) return;
-    this.panic = Math.min(100, this.panic + amt);
+
+    // Apply logarithmic damage curve from panic system
+    const actualDamage = calculatePanicDamage(baseAmt, this.panic);
+    this.panic = Math.min(100, this.panic + actualDamage);
     this.panicInvuln = 30;
+    this.recentEscapes++;
+
     this.events.push({ type: 'SFX', name: 'panicHit' });
-    this.shake = 6;
-    this.fl = 0.3;
+
+    // Shake intensity scales with panic zone
+    this.shake = 4 + (this.panic / 100) * 8;
+    this.fl = 0.2 + (this.panic / 100) * 0.2;
     this.flCol = '#e74c3c';
+
     if (this.panic >= 100) {
       this.endGame(false);
     }
@@ -326,7 +430,7 @@ export class GameLogic {
     for (const e of this.enemies) {
       const dx = e.x - x;
       const dy = e.y - y;
-      if (Math.sqrt(dx * dx + dy * dy) < 30) {
+      if (dx * dx + dy * dy < 900) {
         return e;
       }
     }
@@ -335,18 +439,58 @@ export class GameLogic {
 
   update(dt: number, now: number): void {
     if (!this.running) return;
+    this.nowMs = now;
 
-    // Wave timer logic
+    const deltaSec = (dt * 16.67) / 1000; // Convert frame-time factor to seconds
+
+    // Boss wave transition (time-based delay to allow confetti)
+    if (this.bossWaveTransitionTimer > 0) {
+      this.bossWaveTransitionTimer -= deltaSec;
+      if (this.bossWaveTransitionTimer <= 0) {
+        this.nextWave();
+      }
+    }
+
+    // ─── Update AI Director ─────────────────────────────
+    this.recentResetTimer += deltaSec;
+    if (this.recentResetTimer >= 5) {
+      // Reset rolling counters every 5 seconds
+      this.recentEscapes = 0;
+      this.recentCounters = 0;
+      this.recentResetTimer = 0;
+    }
+
+    this.director.updatePerformance(
+      {
+        panic: this.panic,
+        combo: this.combo,
+        recentEscapes: this.recentEscapes,
+        recentCounters: this.recentCounters,
+        wave: this.wave,
+        bossActive: this.bossPhase,
+      },
+      now
+    );
+    this.director.update(deltaSec);
+
+    // ─── Panic Decay ────────────────────────────────────
+    // calculatePanicDecay expects frame-factor `dt` (~1.0 at 60fps) for its
+    // internal tuning (multiplies by dt * 0.08). director.update uses `deltaSec`
+    // (real seconds) for its time-based state transitions.
+    const decay = calculatePanicDecay(this.panic, this.combo, dt);
+    if (decay > 0) {
+      this.panic = Math.max(0, this.panic - decay);
+    }
+
+    // ─── Wave timer (modulo reset prevents floating-point drift) ────
     this.secondAccumulator += dt * 16.67;
     if (this.secondAccumulator >= 1000) {
-      this.secondAccumulator -= 1000;
+      this.secondAccumulator = this.secondAccumulator % 1000;
       this.waveTime--;
       if (this.waveTime <= 0) {
         const cfg = WAVES[Math.min(this.wave, WAVES.length - 1)];
         if (!this.endless && cfg.boss && !this.bossPhase) {
           this.startBoss(cfg.boss);
-        } else if (this.endless) {
-          this.nextWave();
         } else {
           this.nextWave();
         }
@@ -355,7 +499,7 @@ export class GameLogic {
 
     const slowFactor = this.pu.slow > 0 ? 0.5 : 1;
 
-    // Update timers
+    // ─── Update timers ──────────────────────────────────
     if (this.panicInvuln > 0) this.panicInvuln--;
     if (this.nukeCd > 0) this.nukeCd -= 16.67 * dt;
     if (this.abilityCd.reality > 0) this.abilityCd.reality -= 16.67 * dt;
@@ -365,28 +509,41 @@ export class GameLogic {
     if (this.pu.shield > 0) this.pu.shield -= 16.67 * dt;
     if (this.pu.double > 0) this.pu.double -= 16.67 * dt;
 
-    // Update enemies
+    // ─── Spawn enemies (with AI Director + Panic modifiers) ─────
     if (!this.bossPhase) {
       const cfg = WAVES[Math.min(this.wave, WAVES.length - 1)];
-      const spawnDelay = cfg.spawn * (1 - this.momPerks.spawnDelay);
-      if (now - this.lastSpawn > spawnDelay && this.enemies.length < cfg.max) {
+      const panicMods = getPanicModifiers(this.panic, this.wave);
+      const directorMods = this.director.modifiers;
+
+      // Spawn delay combines: wave config × momentum × panic × director
+      const spawnDelay =
+        cfg.spawn *
+        (1 - this.momPerks.spawnDelay) *
+        panicMods.spawnRateMultiplier *
+        directorMods.spawnDelayMultiplier;
+
+      // Max enemies adjusted by director
+      const maxEnemies = cfg.max + directorMods.maxEnemyAdjustment;
+
+      if (now - this.lastSpawn > spawnDelay && this.enemies.length < maxEnemies) {
         this.spawnEnemy();
         this.lastSpawn = now;
       }
     }
 
+    // ─── Update enemies ─────────────────────────────────
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];
       e.x += e.vx * dt * slowFactor;
       e.y += e.vy * dt * slowFactor;
-      if (e.x < -60 || e.x > W + 60) {
+      if (e.x < -60 || e.x > W + 60 || e.y < -60 || e.y > H + 60) {
         this.enemies.splice(i, 1);
         this.combo = 0;
         this.addPanic(8);
       }
     }
 
-    // Update powerups
+    // ─── Update powerups ────────────────────────────────
     if (now - this.lastPU > 15000) {
       this.spawnPowerUp();
       this.lastPU = now;
@@ -400,41 +557,70 @@ export class GameLogic {
       }
     }
 
-    // Update boss
-    if (this.bossPhase && this.boss) {
+    // ─── Update boss (Yuka AI-driven) ───────────────────
+    if (this.bossPhase && this.boss && this.bossAI) {
       if (this.boss.iFrame > 0) this.boss.iFrame--;
       this.boss.timer++;
 
-      // Basic boss movement
-      this.boss.x = this.getBossX(now);
+      // Feed current state to boss AI
+      const actions = this.bossAI.update(deltaSec, {
+        x: this.boss.x,
+        y: this.boss.y,
+        hp: this.boss.hp,
+        maxHp: this.boss.maxHp,
+        aggression: this.director.modifiers.bossAggression,
+        patterns: WAVES[Math.min(this.wave, WAVES.length - 1)].boss?.pats || ['burst'],
+        enemyTypes: Object.values(TYPES),
+        wave: this.wave,
+      });
 
-      // Attacks - simplified as in original logic (logic was commented out there too? No, it said "simplified for brevity" in my thought process)
-      // I should check game-engine.ts content closely.
-      // In game-engine.ts, it said: "// Boss movement and attacks would go here // (simplified for brevity)"
-      // WAIT, the file read output showed that comment!
-      // Does that mean the original game logic was missing boss logic??
-      // Let me re-read game-engine.ts carefully.
+      // Execute boss actions
+      this.executeBossActions(actions);
     }
 
-    // Logic for boss patterns seems missing in the file I read.
-    // It seems I might have missed it or the provided file content was truncated or simplified by the user/system?
-    // "Complete game logic extracted and converted to TypeScript" comment suggests it was extracted.
-    // I should check `startBoss` again. It sets `pat`.
-    // But `loop` had `// Boss movement and attacks would go here`
-    // This implies the current codebase might have incomplete boss logic?
-    // Or I missed it.
-    // I will stick to what is there. If it was missing, I can't invent it without specific instructions.
-    // However, `getBossX` exists. I used it.
-
-    // Update flash and shake
+    // ─── Update flash and shake ─────────────────────────
     if (this.fl > 0) this.fl -= 0.02 * dt;
     if (this.shake > 0) this.shake -= 0.5 * dt;
 
-    // Update feed
+    // ─── Update feed ────────────────────────────────────
     this.feedTimer += dt * 16.67;
     if (this.feedTimer > 3000) {
       this.feedTimer = 0;
       this.addFeedItem();
+    }
+  }
+
+  /** Process boss AI action queue */
+  private executeBossActions(actions: BossAction[]): void {
+    if (!this.boss) return;
+
+    for (const action of actions) {
+      switch (action.type) {
+        case 'move':
+          if (action.x != null) this.boss.x = action.x;
+          if (action.y != null) this.boss.y = action.y;
+          break;
+
+        case 'spawn_enemies':
+          if (action.enemies) {
+            const cfg = WAVES[Math.min(this.wave, WAVES.length - 1)];
+            const maxEnemies = cfg.max + this.director.modifiers.maxEnemyAdjustment;
+            for (const partial of action.enemies) {
+              if (this.enemies.length >= maxEnemies + 10) break; // Boss gets small buffer
+              this.spawnBossEnemy(partial);
+            }
+          }
+          break;
+
+        case 'flash':
+          this.fl = Math.max(this.fl, action.intensity ?? 0.2);
+          this.flCol = '#e74c3c';
+          break;
+
+        case 'shake':
+          this.shake = Math.max(this.shake, action.intensity ?? 6);
+          break;
+      }
     }
   }
 

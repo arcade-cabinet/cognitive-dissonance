@@ -10,9 +10,9 @@ describe('Game Constants', () => {
   it('should have three enemy types', () => {
     const typeKeys = Object.keys(TYPES);
     expect(typeKeys).toHaveLength(3);
-    expect(typeKeys).toContain('REALITY');
-    expect(typeKeys).toContain('HISTORY');
-    expect(typeKeys).toContain('LOGIC');
+    expect(typeKeys).toContain('DENIAL');
+    expect(typeKeys).toContain('DELUSION');
+    expect(typeKeys).toContain('FALLACY');
   });
 
   it('should have valid enemy type data', () => {
@@ -20,7 +20,7 @@ describe('Game Constants', () => {
       expect(type.words).toBeInstanceOf(Array);
       expect(type.words.length).toBeGreaterThan(0);
       expect(type.color).toMatch(/^#[0-9a-f]{6}$/i);
-      expect(type.icon).toBeTruthy();
+      expect(type.shape).toBeTruthy();
       expect(['reality', 'history', 'logic']).toContain(type.counter);
     }
   });

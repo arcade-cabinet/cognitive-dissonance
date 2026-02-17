@@ -1,12 +1,12 @@
 {
-  "name": "Psyduck Panic: Evolution Deluxe",
-  "short_name": "Psyduck Panic",
-  "description": "Counter AI hype thought bubbles before your brother's brain melts from doomscrolling!",
+  "name": "Cognitive Dissonance",
+  "short_name": "CogDis",
+  "description": "Defeat the hallucinations raining down on your AI before its head explodes.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0a0a18",
-  "theme_color": "#ffcc00",
+  "theme_color": "#0a0a18",
   "icons": [
     {
       "src": "/icon.svg",
@@ -27,8 +27,8 @@
     {
       "name": "Play Game",
       "short_name": "Play",
-      "description": "Start playing Psyduck Panic",
-      "url": "/game",
+      "description": "Start playing Cognitive Dissonance",
+      "url": "/",
       "icons": [
         {
           "src": "/icon.svg",

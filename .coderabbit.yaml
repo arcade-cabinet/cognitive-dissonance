@@ -1,0 +1,188 @@
+language: "en-US"
+tone_instructions: "Be direct and concise. Focus on bugs, performance, and security. Flag non-deterministic code (Math.random, Date.now) in game-state paths. Enforce Three.js resource cleanup patterns."
+early_access: true
+enable_free_tier: true
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: true
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  auto_title_placeholder: "@coderabbitai"
+  review_status: true
+  review_details: true
+  commit_status: true
+  fail_commit_status: false
+  collapse_walkthrough: false
+  changed_files_summary: true
+  sequence_diagrams: true
+  estimate_code_review_effort: true
+  assess_linked_issues: true
+  related_issues: true
+  related_prs: true
+  suggested_labels: true
+  auto_apply_labels: true
+  suggested_reviewers: true
+  auto_assign_reviewers: true
+  poem: false
+  in_progress_fortune: false
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 10
+    ignore_title_keywords:
+      - "[skip review]"
+      - "[ci-cleanup]"
+      - "[ci-artifacts]"
+    drafts: false
+    base_branches:
+      - ".*"
+
+  finishing_touches:
+    docstrings:
+      enabled: true
+    unit_tests:
+      enabled: true
+
+  pre_merge_checks:
+    docstrings:
+      mode: "warning"
+      threshold: 70
+    title:
+      mode: "warning"
+    description:
+      mode: "warning"
+    issue_assessment:
+      mode: "warning"
+
+  tools:
+    biome:
+      enabled: true
+    eslint:
+      enabled: true
+    shellcheck:
+      enabled: true
+    markdownlint:
+      enabled: true
+    actionlint:
+      enabled: true
+    github-checks:
+      enabled: true
+      timeout_ms: 120000
+    languagetool:
+      enabled: true
+      disabled_rules:
+        - "MORFOLOGIK_RULE_EN_US"
+    yamllint:
+      enabled: true
+    gitleaks:
+      enabled: true
+    semgrep:
+      enabled: true
+    ast-grep:
+      essential_rules: true
+
+  path_instructions:
+    - path: "src/lib/game-logic.ts"
+      instructions: |
+        Core game loop. Flag any Math.random() or Date.now() usage - must use seeded RNG.
+        Check enemy array management (splice in loops, unbounded growth).
+        Verify all game state transitions are deterministic.
+    - path: "src/lib/ai/**"
+      instructions: |
+        Yuka.js AI systems. Flag any Math.random() - must use seeded RNG.
+        Check GoalEvaluator desirability calculations for balance.
+        Verify timer cleanup (setTimeout must have matching clearTimeout).
+        Boss AI must have destroy() method for resource cleanup.
+    - path: "src/components/scene/**"
+      instructions: |
+        React Three Fiber components. Check for:
+        - Three.js resource leaks (geometry/material not disposed)
+        - useState inside useFrame (causes re-renders)
+        - Missing useCallback dependencies
+        - Refs used correctly for hot-loop values
+    - path: "src/worker/**"
+      instructions: |
+        Web Worker. Must have error boundary (try-catch in onmessage).
+        Frame timing uses dt as frame factor (1.0 = 60fps), NOT seconds.
+        Check for proper cleanup on worker termination.
+    - path: "src/lib/music.ts"
+      instructions: |
+        Tone.js adaptive music. Check for:
+        - Dispose chain completeness (all synths, loops, effects)
+        - Race conditions in stop() during playback
+        - Overlapping rampTo() calls from per-frame setPanic()
+    - path: "e2e/**"
+      instructions: |
+        Playwright E2E tests. Verify tests actually assert gameplay outcomes,
+        not just DOM element existence. Governor should make intelligent decisions
+        (analyze enemies, match counters) not random key presses.
+    - path: ".github/workflows/**"
+      instructions: |
+        GitHub Actions workflows. Apply least-privilege permissions.
+        Never inject github.head_ref directly into shell - use env vars.
+        Pin all actions to SHA commits. Check for script injection vectors.
+    - path: "src/styles/**"
+      instructions: |
+        CSS. Check for deprecated properties (clip vs clip-path).
+        Verify prefers-reduced-motion guards on all animations.
+        Ensure :focus-visible styles on interactive elements.
+        Check WCAG contrast ratios.
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  opt_out: false
+  web_search:
+    enabled: true
+  code_guidelines:
+    enabled: true
+  learnings:
+    scope: "auto"
+  issues:
+    scope: "auto"
+  pull_requests:
+    scope: "auto"
+
+code_generation:
+  docstrings:
+    language: "en-US"
+  unit_tests:
+    path_instructions:
+      - path: "src/lib/**"
+        instructions: "Use vitest with vi.fn() mocks. Follow patterns in audio.test.ts for Web API mocking. Assert deterministic behavior where possible."
+      - path: "e2e/**"
+        instructions: "Use Playwright with game-helpers.ts utilities. Verify actual gameplay outcomes, not just DOM state."
+
+issue_enrichment:
+  auto_enrich:
+    enabled: true
+  planning:
+    enabled: true
+    auto_planning:
+      enabled: true
+  labeling:
+    auto_apply_labels: true
+    labeling_instructions:
+      - label: "bug"
+        instructions: "Apply when the issue describes incorrect behavior, crashes, memory leaks, or resource cleanup failures."
+      - label: "enhancement"
+        instructions: "Apply when the issue proposes new functionality, features, or significant improvements."
+      - label: "determinism"
+        instructions: "Apply when the issue relates to Math.random(), seedrandom, seed phrases, game chronometer, or reproducible gameplay."
+      - label: "accessibility"
+        instructions: "Apply when the issue relates to WCAG compliance, screen readers, keyboard navigation, reduced motion, or colorblind support."
+      - label: "performance"
+        instructions: "Apply when the issue relates to Three.js resource management, memory leaks, frame rate, bundle size, or rendering optimization."
+      - label: "ci/cd"
+        instructions: "Apply when the issue relates to GitHub Actions workflows, Playwright E2E tests, deployment, or build pipeline."
+      - label: "ai"
+        instructions: "Apply when the issue relates to Yuka.js boss AI, director FSM, goal evaluators, or E2E governor intelligence."
+      - label: "state-management"
+        instructions: "Apply when the issue relates to zustand adoption, React state patterns, worker communication, or props drilling."
+      - label: "old-index-parity"
+        instructions: "Apply when the issue describes a feature present in the original index.html that is missing or incomplete in the 3D version."
+      - label: "triage"
+        instructions: "Always apply this label to every new issue alongside functional labels. It triggers automated AI quality assessment via GitHub Models which evaluates actionability, conflict risk, and specification completeness."

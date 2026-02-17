@@ -21,8 +21,12 @@ export default defineConfig({
         manualChunks: {
           // Vendor chunks
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-pixi': ['pixi.js'],
+          'vendor-three': ['three', '@react-three/fiber', '@react-three/drei'],
+          'vendor-tone': ['tone'],
           'vendor-anime': ['animejs'],
+          // Spline 3D (lazy loaded — only when SPLINE_BUST_URL is set)
+          'vendor-spline': ['@splinetool/runtime', '@splinetool/react-spline'],
+          // yuka is bundled into game.worker.js (worker-only dependency)
 
           // Capacitor chunks (lazy loaded)
           'capacitor-core': ['@capacitor/core', '@capacitor/app'],
@@ -40,7 +44,7 @@ export default defineConfig({
             './src/lib/constants.ts',
             './src/lib/events.ts',
           ],
-          'game-renderer': ['./src/lib/pixi-renderer.ts', './src/lib/character-renderer.ts'],
+          'game-ecs': ['./src/ecs/world.ts', './src/ecs/react.ts', './src/ecs/state-sync.ts'],
           'game-utils': [
             './src/lib/audio.ts',
             './src/lib/storage.ts',
@@ -61,7 +65,7 @@ export default defineConfig({
     strictPort: true,
   },
   worker: {
-    format: 'es',
+    format: 'iife',
   },
   optimizeDeps: {
     exclude: ['@capacitor/core', '@capacitor/app'],

@@ -1,7 +1,9 @@
+export type EnemyShape = 'denial' | 'delusion' | 'fallacy';
+
 export interface EnemyType {
   words: string[];
   color: string;
-  icon: string;
+  shape: EnemyShape;
   counter: 'reality' | 'history' | 'logic';
 }
 

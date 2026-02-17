@@ -232,7 +232,7 @@ function detectNotch(
  */
 export async function initializePlatform(): Promise<void> {
   if (!Capacitor.isNativePlatform()) {
-    console.log('Running in web mode - native features unavailable');
+    console.info('Running in web mode - native features unavailable');
     return;
   }
 
@@ -251,7 +251,7 @@ export async function initializePlatform(): Promise<void> {
     // Lock orientation to landscape for optimal gameplay (optional)
     // await ScreenOrientation.lock({ orientation: 'landscape' });
 
-    console.log('Platform initialized successfully');
+    console.info('Platform initialized successfully');
   } catch (error) {
     console.warn('Failed to initialize platform features:', error);
   }
@@ -296,7 +296,7 @@ export async function lockOrientation(
   orientation: 'portrait' | 'landscape' | 'any'
 ): Promise<void> {
   if (!Capacitor.isNativePlatform()) {
-    console.log('Orientation lock not available in web mode');
+    console.info('Orientation lock not available in web mode');
     return;
   }
 

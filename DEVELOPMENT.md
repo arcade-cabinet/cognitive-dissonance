@@ -8,7 +8,7 @@ pnpm install
 
 # Start development server
 pnpm dev
-# Open http://localhost:4321/psyduck-panic/
+# Open http://localhost:5173/
 
 # Build for production
 pnpm build
