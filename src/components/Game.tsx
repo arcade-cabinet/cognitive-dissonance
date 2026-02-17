@@ -93,9 +93,15 @@ export default function Game() {
     // Delay worker start to let React commit the screen transition first.
     // Without this delay, the worker's rapid STATE messages can race with
     // React 18's concurrent rendering and prevent the commit.
-    setTimeout(() => {
-      workerRef.current?.postMessage({ type: 'START', endless });
-    }, 100);
+    // Also includes retry logic in case worker init is slow.
+    const attemptStart = (retries = 0) => {
+      if (workerRef.current) {
+        workerRef.current.postMessage({ type: 'START', endless });
+      } else if (retries < 10) {
+        setTimeout(() => attemptStart(retries + 1), 200);
+      }
+    };
+    setTimeout(() => attemptStart(), 100);
   }, []);
 
   const handleStartButton = () => {
@@ -109,6 +115,41 @@ export default function Game() {
   const handleNuke = useCallback(() => {
     workerRef.current?.postMessage({ type: 'NUKE' });
   }, []);
+
+  // Keyboard controls - decoupled from worker init to ensure immediate responsiveness
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      const currentUI = uiRef.current;
+      if (e.key === ' ') {
+        e.preventDefault();
+        if (currentUI.screen === 'start' || currentUI.screen === 'gameover') {
+          handleStartLogic(currentUI);
+        }
+      } else if (e.key === 'F1') {
+        e.preventDefault();
+        handleAbility('reality');
+      } else if (e.key === 'F2') {
+        e.preventDefault();
+        handleAbility('history');
+      } else if (e.key === 'F3') {
+        e.preventDefault();
+        handleAbility('logic');
+      } else if (e.key === 'F4') {
+        e.preventDefault();
+        handleNuke();
+      } else {
+        workerRef.current?.postMessage({ type: 'INPUT', key: e.key });
+      }
+    },
+    [handleStartLogic, handleAbility, handleNuke]
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
 
   // Initialize Worker
   useEffect(() => {
@@ -226,39 +267,11 @@ export default function Game() {
       }
     };
 
-    // Keyboard controls
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const currentUI = uiRef.current;
-      if (e.key === ' ') {
-        e.preventDefault();
-        if (currentUI.screen === 'start' || currentUI.screen === 'gameover') {
-          handleStartLogic(currentUI);
-        }
-      } else if (e.key === 'F1') {
-        e.preventDefault();
-        handleAbility('reality');
-      } else if (e.key === 'F2') {
-        e.preventDefault();
-        handleAbility('history');
-      } else if (e.key === 'F3') {
-        e.preventDefault();
-        handleAbility('logic');
-      } else if (e.key === 'F4') {
-        e.preventDefault();
-        handleNuke();
-      } else {
-        worker.postMessage({ type: 'INPUT', key: e.key });
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
     return () => {
       worker.terminate();
-      window.removeEventListener('keydown', handleKeyDown);
       if (waveTimeoutRef.current) clearTimeout(waveTimeoutRef.current);
     };
-  }, [handleStartLogic, handleAbility, handleNuke]);
+  }, []);
 
   const handleCanvasPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     // Only forward clicks during gameplay — ignore when overlay is showing
