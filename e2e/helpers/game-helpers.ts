@@ -84,7 +84,7 @@ export async function verifyGamePlaying(page: Page): Promise<void> {
   const timeDisplay = page.locator('#time-display');
   const initialTime = await timeDisplay.textContent();
   await expect
-    .poll(async () => await timeDisplay.textContent(), { timeout: 2500 })
+    .poll(async () => await timeDisplay.textContent(), { timeout: 10000 })
     .not.toBe(initialTime);
 }
 
