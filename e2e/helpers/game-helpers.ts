@@ -34,6 +34,7 @@ export async function startGame(page: Page): Promise<void> {
   const startBtn = page.locator('#start-btn');
   await expect(startBtn).toBeVisible();
   await page.keyboard.press(' ');
+  await page.waitForTimeout(1000);
   await expect(page.locator('#overlay')).toHaveClass(/hidden/, {
     timeout: GAME_START_TIMEOUT,
   });

@@ -16,6 +16,9 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   const msg = e.data;
   switch (msg.type) {
     case 'START':
+      // Ensure idempotency: cancel any existing loop before starting a new one
+      if (running) cancelFrame(animationFrameId);
+
       running = true;
       if (msg.endless) {
         logic.startEndlessMode();

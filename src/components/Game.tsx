@@ -93,9 +93,15 @@ export default function Game() {
     // Delay worker start to let React commit the screen transition first.
     // Without this delay, the worker's rapid STATE messages can race with
     // React 18's concurrent rendering and prevent the commit.
-    setTimeout(() => {
-      workerRef.current?.postMessage({ type: 'START', endless });
-    }, 100);
+    // Retry logic added for slower CI environments.
+    const attemptStart = (retryCount = 0) => {
+      if (workerRef.current) {
+        workerRef.current.postMessage({ type: 'START', endless });
+      } else if (retryCount < 3) {
+        setTimeout(() => attemptStart(retryCount + 1), 250);
+      }
+    };
+    setTimeout(() => attemptStart(), 250);
   }, []);
 
   const handleStartButton = () => {
