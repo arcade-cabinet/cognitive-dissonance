@@ -21,22 +21,22 @@ You are a senior software architect performing a weekly deep-dive assessment of 
 
 **SonarCloud Metrics (from CI):**
 ```
-!{echo $SONAR_METRICS}
+!{echo "$SONAR_METRICS"}
 ```
 
 **Open Issues Summary:**
 ```
-!{echo $OPEN_ISSUES}
+!{echo "$OPEN_ISSUES"}
 ```
 
 **Recent Commits (last 7 days):**
 ```
-!{echo $RECENT_COMMITS}
+!{echo "$RECENT_COMMITS"}
 ```
 
 **Coverage Report:**
 ```
-!{echo $COVERAGE_SUMMARY}
+!{echo "$COVERAGE_SUMMARY"}
 ```
 
 

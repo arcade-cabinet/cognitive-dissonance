@@ -59,6 +59,13 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
         }
         break;
       }
+      case 'TERMINATE':
+        running = false;
+        if (animationFrameId !== undefined) {
+          cancelFrame(animationFrameId);
+        }
+        self.close();
+        return;
     }
   } catch (err) {
     running = false;

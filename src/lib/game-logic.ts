@@ -52,7 +52,7 @@ export class GameLogic {
   private recentEscapes: number;
   private recentCounters: number;
   private recentResetTimer: number;
-  private bossWaveTransitionFrames: number;
+  private bossWaveTransitionTimer: number;
 
   /** Last game-clock timestamp from update(), used by methods called outside the loop */
   private nowMs: number;
@@ -102,7 +102,7 @@ export class GameLogic {
     this.recentEscapes = 0;
     this.recentCounters = 0;
     this.recentResetTimer = 0;
-    this.bossWaveTransitionFrames = 0;
+    this.bossWaveTransitionTimer = 0;
     this.nowMs = 0;
 
     this.reset();
@@ -148,7 +148,7 @@ export class GameLogic {
     this.recentEscapes = 0;
     this.recentCounters = 0;
     this.recentResetTimer = 0;
-    this.bossWaveTransitionFrames = 0;
+    this.bossWaveTransitionTimer = 0;
     this.nowMs = 0;
   }
 
@@ -360,7 +360,7 @@ export class GameLogic {
         this.fl = 0.4;
         this.flCol = '#2ecc71';
         this.events.push({ type: 'CONFETTI', x: W / 2, y: 120, color: 'random' });
-        this.bossWaveTransitionFrames = 90;
+        this.bossWaveTransitionTimer = 1.5;
       }
     }
     for (let i = this.enemies.length - 1; i >= 0; i--) {
@@ -443,7 +443,7 @@ export class GameLogic {
 
     const deltaSec = (dt * 16.67) / 1000; // Convert frame-time factor to seconds
 
-    // Boss wave transition (frame-based delay to allow confetti)
+    // Boss wave transition (time-based delay to allow confetti)
     if (this.bossWaveTransitionTimer > 0) {
       this.bossWaveTransitionTimer -= deltaSec;
       if (this.bossWaveTransitionTimer <= 0) {
@@ -474,6 +474,9 @@ export class GameLogic {
     this.director.update(deltaSec);
 
     // ─── Panic Decay ────────────────────────────────────
+    // calculatePanicDecay expects frame-factor `dt` (~1.0 at 60fps) for its
+    // internal tuning (multiplies by dt * 0.08). director.update uses `deltaSec`
+    // (real seconds) for its time-based state transitions.
     const decay = calculatePanicDecay(this.panic, this.combo, dt);
     if (decay > 0) {
       this.panic = Math.max(0, this.panic - decay);

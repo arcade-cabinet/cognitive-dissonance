@@ -84,16 +84,15 @@ export class GameGovernor {
     } finally {
       this.isRunning = false;
     }
+  }
 }
 
-/** Helper function to run automated playthrough */
+/** Helper function to run automated playthrough.
+ *  Defaults accuracy to 1 (deterministic) unless caller overrides. */
 export async function runAutomatedPlaythrough(
   page: Page,
   config?: GovernorConfig
 ): Promise<PlaythroughResult> {
-  const governor = new GameGovernor(page, {
-    accuracy: 1,
-    ...(config ?? {}),
-  });
+  const governor = new GameGovernor(page, { accuracy: 1, ...config });
   return governor.playthrough();
 }

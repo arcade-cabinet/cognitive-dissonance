@@ -67,8 +67,8 @@ jobs:
             core.setOutput('pr_labels', pr.labels.map(l => l.name).join(','));
             core.setOutput('pr_author', pr.user.login);
 
-            // Check existing reviews for CodeRabbit status
-            const { data: reviews } = await github.rest.pulls.listReviews({
+            // Check existing reviews for CodeRabbit status (paginate to catch all)
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: prNumber,
@@ -221,7 +221,7 @@ jobs:
             const touchesWorkflows = allFiles.some(f => f.filename.startsWith('.github/workflows/'));
 
             // Verify CodeRabbit hasn't requested changes since Gemini reviewed
-            const { data: reviews } = await github.rest.pulls.listReviews({
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: prNumber,
