@@ -113,17 +113,52 @@ export function KeyboardControls({
 }: KeyboardControlsProps) {
   return (
     <group position={[0, -1.92, 0.6]} rotation={[-0.12, 0, 0]}>
-      {/* Keyboard plate — dark aluminum housing */}
-      <mesh position={[0, -0.035, 0]}>
-        <boxGeometry args={[TOTAL_W + 0.4, 0.05, KEY_D + 0.3]} />
-        <meshStandardMaterial color="#12121e" roughness={0.5} metalness={0.4} />
+      {/* Keyboard case — brushed aluminum housing with chamfered edges */}
+      <mesh position={[0, -0.04, 0]}>
+        <boxGeometry args={[TOTAL_W + 0.45, 0.06, KEY_D + 0.35]} />
+        <meshPhysicalMaterial
+          color="#1a1a2e"
+          roughness={0.35}
+          metalness={0.85}
+          clearcoat={0.3}
+          clearcoatRoughness={0.4}
+        />
       </mesh>
 
-      {/* Plate front edge — subtle highlight */}
-      <mesh position={[0, -0.01, (KEY_D + 0.3) / 2]}>
-        <boxGeometry args={[TOTAL_W + 0.4, 0.01, 0.02]} />
-        <meshStandardMaterial color="#2a2a4a" />
+      {/* Plate surface — anodized aluminum */}
+      <mesh position={[0, -0.009, 0]}>
+        <boxGeometry args={[TOTAL_W + 0.35, 0.005, KEY_D + 0.2]} />
+        <meshPhysicalMaterial
+          color="#0f0f1e"
+          roughness={0.25}
+          metalness={0.92}
+          clearcoat={0.2}
+          clearcoatRoughness={0.3}
+        />
       </mesh>
+
+      {/* Plate front edge — chamfered highlight */}
+      <mesh position={[0, -0.01, (KEY_D + 0.3) / 2]}>
+        <boxGeometry args={[TOTAL_W + 0.45, 0.015, 0.025]} />
+        <meshPhysicalMaterial color="#2a2a4a" roughness={0.3} metalness={0.9} />
+      </mesh>
+
+      {/* Screw details on plate corners */}
+      {[
+        [-1, -1],
+        [-1, 1],
+        [1, -1],
+        [1, 1],
+      ].map(([sx, sz]) => (
+        <mesh
+          key={`screw-${sx}-${sz}`}
+          position={[sx * (TOTAL_W / 2 + 0.12), -0.006, sz * (KEY_D / 2 + 0.08)]}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
+          <cylinderGeometry args={[0.012, 0.012, 0.008, 6]} />
+          <meshStandardMaterial color="#444466" roughness={0.2} metalness={0.95} />
+        </mesh>
+      ))}
 
       {/* RGB underglow — single point light driven by panic */}
       <RGBUnderglow panicRef={panicRef} />
@@ -286,12 +321,18 @@ function FKey({ keyDef, position, panicRef, cooldownRef, onPress }: FKeyProps) {
       {/* Switch well — recessed dark area under the keycap */}
       <mesh position={[0, -0.02, 0]}>
         <boxGeometry args={[KEY_W + 0.02, 0.04, KEY_D + 0.02]} />
-        <meshStandardMaterial color="#080810" roughness={0.9} />
+        <meshStandardMaterial color="#060610" roughness={0.95} metalness={0.1} />
+      </mesh>
+
+      {/* Switch housing visible between keycap and plate */}
+      <mesh position={[0, 0.005, 0]}>
+        <boxGeometry args={[KEY_W * 0.5, 0.015, KEY_D * 0.5]} />
+        <meshStandardMaterial color="#333344" roughness={0.6} metalness={0.3} />
       </mesh>
 
       {/* RGB LED strip — emissive plane under the keycap gap */}
-      <mesh position={[0, -0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[KEY_W - 0.05, KEY_D - 0.05]} />
+      <mesh position={[0, -0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[KEY_W - 0.04, KEY_D - 0.04]} />
         <meshStandardMaterial
           ref={ledMatRef}
           color="#111111"
@@ -300,8 +341,9 @@ function FKey({ keyDef, position, panicRef, cooldownRef, onPress }: FKeyProps) {
         />
       </mesh>
 
-      {/* Keycap — interactive, depresses on click */}
+      {/* Keycap — sculpted with rounded edges, slight concave dish */}
       <group ref={keycapGroupRef}>
+        {/* Main keycap body with draft angle */}
         <mesh
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
@@ -309,14 +351,22 @@ function FKey({ keyDef, position, panicRef, cooldownRef, onPress }: FKeyProps) {
           onPointerOut={handlePointerOut}
         >
           <boxGeometry args={[KEY_W, KEY_H, KEY_D]} />
-          <meshStandardMaterial
+          <meshPhysicalMaterial
             ref={keycapMatRef}
             color={keyDef.color}
             emissive={keyDef.color}
             emissiveIntensity={0.2}
-            roughness={0.4}
-            metalness={0.1}
+            roughness={0.35}
+            metalness={0.05}
+            clearcoat={0.4}
+            clearcoatRoughness={0.15}
           />
+        </mesh>
+
+        {/* Keycap top edge highlight — simulates rounded edge catch-light */}
+        <mesh position={[0, KEY_H / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[KEY_W - 0.04, KEY_D - 0.04]} />
+          <meshBasicMaterial color="white" transparent opacity={0.06} />
         </mesh>
 
         {/* Cooldown progress bar — front face of keycap */}

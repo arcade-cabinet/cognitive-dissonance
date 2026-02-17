@@ -261,11 +261,16 @@ export class AdaptiveMusic {
   }
 
   /**
-   * Resume audio context after user interaction
+   * Resume audio context after user interaction.
+   * Handles autoplay policy gracefully with error recovery.
    */
   async resume(): Promise<void> {
-    if (Tone.getContext().state === 'suspended') {
-      await Tone.start();
+    try {
+      if (Tone.getContext().state === 'suspended') {
+        await Tone.start();
+      }
+    } catch (err) {
+      console.warn('Tone.js audio context resume failed:', err);
     }
   }
 

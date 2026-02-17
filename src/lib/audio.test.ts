@@ -25,7 +25,7 @@ const mockGain = {
 // Capture the spies to verify calls
 const createOscillatorSpy = vi.fn(() => ({ ...mockOscillator }));
 const createGainSpy = vi.fn(() => ({ ...mockGain }));
-const resumeSpy = vi.fn();
+const resumeSpy = vi.fn().mockResolvedValue(undefined);
 const closeSpy = vi.fn().mockResolvedValue(undefined);
 
 class MockAudioContext {

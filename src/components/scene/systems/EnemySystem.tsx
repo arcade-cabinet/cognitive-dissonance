@@ -1,10 +1,11 @@
 /**
- * Enemy Rendering System
+ * Enemy Rendering System — Glass Iridescent Bubbles
  *
- * Renders each enemy entity as a 3D bubble with:
- * - Colored sphere with glow
- * - Type icon (emoji)
- * - Word label
+ * Renders each enemy entity as a 3D glass bubble with:
+ * - Iridescent MeshPhysicalMaterial (transmission, clearcoat, IOR)
+ * - Inner emissive glow sphere
+ * - Specular highlight spot
+ * - Type icon (emoji) and word label
  * - Connection line to character
  * - Variant effects (encrypted: "?", child: smaller)
  *
@@ -31,18 +32,34 @@ export function EnemySystem() {
 
 function EnemyMesh({ entity }: { entity: (typeof enemies.entities)[number] }) {
   const groupRef = useRef<THREE.Group>(null);
+  const innerGlowRef = useRef<THREE.MeshStandardMaterial>(null);
+  const outerShellRef = useRef<THREE.MeshPhysicalMaterial>(null);
   const { position, enemy } = entity;
   const isEncrypted = enemy.encrypted;
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
+    const t = clock.elapsedTime;
+
     // Smooth position update
     groupRef.current.position.x = gx(position.x);
     groupRef.current.position.y = gy(position.y);
     groupRef.current.position.z = position.z;
 
     // Gentle float bob
-    groupRef.current.position.y += Math.sin(clock.elapsedTime * 2 + entity.enemy.gameId) * 0.02;
+    groupRef.current.position.y += Math.sin(t * 2 + entity.enemy.gameId) * 0.02;
+
+    // Pulsing inner glow
+    if (innerGlowRef.current) {
+      innerGlowRef.current.emissiveIntensity =
+        0.4 + Math.sin(t * 3 + entity.enemy.gameId * 0.5) * 0.2;
+    }
+
+    // Shell iridescence animation via clearcoat roughness oscillation
+    if (outerShellRef.current) {
+      outerShellRef.current.clearcoatRoughness =
+        0.02 + Math.sin(t * 1.5 + entity.enemy.gameId) * 0.01;
+    }
   });
 
   const displayColor = isEncrypted ? '#444444' : enemy.color;
@@ -50,29 +67,60 @@ function EnemyMesh({ entity }: { entity: (typeof enemies.entities)[number] }) {
 
   return (
     <group ref={groupRef}>
-      {/* Glow sphere (larger, transparent) — vivid halo like original 2D */}
+      {/* Outer glow aura — vivid halo */}
       <mesh>
-        <sphereGeometry args={[radius + 0.12, 16, 16]} />
-        <meshBasicMaterial color={displayColor} transparent opacity={0.15} />
+        <sphereGeometry args={[radius + 0.15, 24, 24]} />
+        <meshBasicMaterial color={displayColor} transparent opacity={0.08} />
       </mesh>
 
-      {/* Main bubble — saturated with strong emissive */}
+      {/* Main glass bubble shell — iridescent PBR material */}
       <mesh>
-        <sphereGeometry args={[radius, 16, 16]} />
-        <meshStandardMaterial
+        <sphereGeometry args={[radius, 24, 24]} />
+        <meshPhysicalMaterial
+          ref={outerShellRef}
           color={displayColor}
+          roughness={0.05}
+          metalness={0.0}
+          transmission={isEncrypted ? 0 : 0.5}
+          thickness={0.4}
+          ior={1.45}
+          clearcoat={1.0}
+          clearcoatRoughness={0.02}
+          transparent
+          opacity={isEncrypted ? 0.9 : 0.75}
+          envMapIntensity={1.2}
           emissive={displayColor}
-          emissiveIntensity={0.5}
-          roughness={0.3}
-          metalness={0.1}
+          emissiveIntensity={0.15}
         />
       </mesh>
 
-      {/* Highlight spot */}
-      <mesh position={[-0.06, 0.08, radius * 0.9]}>
-        <circleGeometry args={[0.06, 8]} />
-        <meshBasicMaterial color="white" transparent opacity={0.2} />
+      {/* Inner emissive glow core — visible through the glass shell */}
+      <mesh>
+        <sphereGeometry args={[radius * 0.6, 16, 16]} />
+        <meshStandardMaterial
+          ref={innerGlowRef}
+          color={displayColor}
+          emissive={displayColor}
+          emissiveIntensity={0.4}
+          transparent
+          opacity={0.4}
+        />
       </mesh>
+
+      {/* Specular highlight — refraction spot */}
+      <mesh position={[-0.06, 0.08, radius * 0.92]}>
+        <circleGeometry args={[0.05, 12]} />
+        <meshBasicMaterial color="white" transparent opacity={0.35} />
+      </mesh>
+
+      {/* Secondary highlight — bottom-right */}
+      <mesh position={[0.04, -0.04, radius * 0.88]} rotation={[0, 0, 0.5]}>
+        <circleGeometry args={[0.025, 8]} />
+        <meshBasicMaterial color="white" transparent opacity={0.15} />
+      </mesh>
+
+      {/* Point light for local glow illumination */}
+      <pointLight color={displayColor} intensity={0.3} distance={1.5} decay={2} />
 
       {/* Icon */}
       <Billboard position={[0, 0.05, radius + 0.01]}>

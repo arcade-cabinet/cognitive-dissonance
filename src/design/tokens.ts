@@ -95,17 +95,21 @@ export const colors = {
     double: '#f1c40f', // 2X Score
   },
 
-  // Character Bust (rear view — back of head, shoulders, t-shirt)
+  // Character Bust (rear view — NS-5 style android)
   character: {
-    hair: '#3d2b1f', // Brown hair base
-    hairHighlight: '#5a3f2b', // Lighter streaks
-    hairDark: '#2a1d14', // Shadow tones
-    skin: '#ffdbac', // Neck/ear skin
-    skinFlush: '#e8967a', // Flushed red at high panic
-    shirt: '#2c3e50', // Dark blue-charcoal t-shirt
-    shirtWrinkle: '#1a2733', // Wrinkle shadow color
-    neckVein: '#c0392b', // Vein color at high panic
-    sweat: '#d4e6f1', // Sweat bead glossy color
+    shell: '#f1f3f7', // Pearlescent white shell (MeshPhysicalMaterial clearcoat)
+    shellWarm: '#ffe8d6', // Warm stress tint at high panic
+    dark: '#0a0a0f', // Dark metallic (joints, seams, cable channels)
+    joint: '#bbbbbb', // Bright metallic (neck rings, actuator caps)
+    cable: '#0f0f14', // Cable rubber (dark, slight metalness)
+    cableStress: '#442222', // Cable color when under tension (warm tint)
+    eyeGlow: '#99ddff', // Eye emissive color (calm)
+    eyeStress: '#ff4444', // Eye emissive color (high panic)
+    statusLed: '#33ff66', // Status LED (calm green)
+    statusWarn: '#ffaa00', // Status LED (warning amber)
+    statusCrit: '#ff2222', // Status LED (critical red)
+    panelSeam: '#1a1a2a', // Panel seam line color
+    spark: '#66ccff', // Electrical spark color
   },
 
   // Boss Colors

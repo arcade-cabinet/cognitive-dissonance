@@ -277,6 +277,9 @@ export default function Game() {
               saveScore(event.score).catch((err) => console.warn('Failed to save score:', err));
               if (event.win) {
                 sceneRef.current?.spawnConfetti();
+              } else {
+                // Trigger head explosion effect on game over (loss)
+                sceneRef.current?.triggerHeadExplosion();
               }
               break;
             case 'WAVE_START':
@@ -323,13 +326,13 @@ export default function Game() {
     workerRef.current?.postMessage({ type: 'CLICK', x, y });
   };
 
-  // Game-over grade calculation
+  // Game-over grade calculation (accuracy is now normalized 0-1)
   const accuracy = ui.gameOverStats
     ? calculateAccuracy(ui.gameOverStats.totalC, ui.gameOverStats.totalM)
     : 0;
 
   const gradeInfo = ui.gameOverStats
-    ? calculateGrade(ui.win, accuracy / 100, ui.gameOverStats.maxCombo)
+    ? calculateGrade(ui.win, accuracy, ui.gameOverStats.maxCombo)
     : null;
 
   return (
@@ -440,6 +443,10 @@ export default function Game() {
                 <div className="marker" style={{ left: '33%' }}></div>
                 <div className="marker" style={{ left: '66%' }}></div>
                 <div id="panic-bar" style={{ width: `${ui.panic}%` }}></div>
+              </div>
+              <div className="panic-zone-icons">
+                <span>{ui.panic < 33 ? '\u{2714}' : ui.panic < 66 ? '\u{26A0}' : '\u{1F525}'}</span>
+                <span className="panic-pct">{Math.round(ui.panic)}%</span>
               </div>
               <div id="combo-display">COMBO: x{ui.combo}</div>
             </div>
@@ -554,7 +561,7 @@ export default function Game() {
               </div>
               <div className="stat-row">
                 <span className="stat-label">ACCURACY</span>
-                <span className="stat-value">{accuracy}%</span>
+                <span className="stat-value">{Math.round(accuracy * 100)}%</span>
               </div>
               <div className="stat-row">
                 <span className="stat-label">NUKES USED</span>

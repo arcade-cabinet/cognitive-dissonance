@@ -13,15 +13,21 @@ export class SFX {
 
   /** Initialize the AudioContext (must be called after user interaction) */
   init(): void {
-    // Support both standard and webkit-prefixed AudioContext for browser compatibility
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    this.ctx = new AudioContextClass();
+    try {
+      // Support both standard and webkit-prefixed AudioContext for browser compatibility
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AudioContextClass();
+    } catch (err) {
+      console.warn('Failed to create AudioContext:', err);
+    }
   }
 
   /** Resume a suspended AudioContext (required by autoplay policy) */
   resume(): void {
     if (this.ctx?.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch((err: unknown) => {
+        console.warn('AudioContext resume failed:', err);
+      });
     }
   }
 

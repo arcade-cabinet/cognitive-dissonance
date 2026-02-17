@@ -176,6 +176,7 @@ body {
   height: 100%;
   background: linear-gradient(90deg, #2ecc71, #f1c40f 50%, #e74c3c);
   transition: width 0.15s ease-out;
+  position: relative;
 }
 #panic-bar::after {
   content: "";
@@ -191,6 +192,27 @@ body {
     rgba(0, 0, 0, 0.2) 100%
   );
 }
+
+/* Colorblind-accessible pattern overlay on panic bar */
+#panic-bar::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+  /* Diagonal stripe pattern — visible regardless of color perception */
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 3px,
+    rgba(255, 255, 255, 0.12) 3px,
+    rgba(255, 255, 255, 0.12) 4px
+  );
+}
+
 .marker {
   position: absolute;
   top: 0;
@@ -198,6 +220,26 @@ body {
   width: 2px;
   background: rgba(255, 255, 255, 0.25);
   z-index: 2;
+}
+
+/* Panic level icons — colorblind-accessible zone indicators */
+.panic-zone-icons {
+  display: flex;
+  justify-content: space-between;
+  width: 200px;
+  font-size: 7px;
+  margin-top: 2px;
+  opacity: 0.7;
+}
+.panic-zone-icons span {
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+/* Panic percentage text display */
+.panic-pct {
+  font-size: 7px;
+  color: #ccc;
+  margin-top: 1px;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
 }
 
 #combo-display {

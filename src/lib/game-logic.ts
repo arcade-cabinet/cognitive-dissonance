@@ -482,10 +482,10 @@ export class GameLogic {
       this.panic = Math.max(0, this.panic - decay);
     }
 
-    // ─── Wave timer ─────────────────────────────────────
+    // ─── Wave timer (modulo reset prevents floating-point drift) ────
     this.secondAccumulator += dt * 16.67;
     if (this.secondAccumulator >= 1000) {
-      this.secondAccumulator -= 1000;
+      this.secondAccumulator = this.secondAccumulator % 1000;
       this.waveTime--;
       if (this.waveTime <= 0) {
         const cfg = WAVES[Math.min(this.wave, WAVES.length - 1)];

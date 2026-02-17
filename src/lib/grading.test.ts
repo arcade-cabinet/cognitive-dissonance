@@ -7,16 +7,17 @@ describe('Grading System', () => {
       expect(calculateAccuracy(0, 0)).toBe(0);
     });
 
-    it('should return 100 for perfect accuracy', () => {
-      expect(calculateAccuracy(50, 0)).toBe(100);
+    it('should return 1 for perfect accuracy', () => {
+      expect(calculateAccuracy(50, 0)).toBe(1);
     });
 
-    it('should calculate correct percentage', () => {
-      expect(calculateAccuracy(80, 20)).toBe(80);
+    it('should calculate correct normalized ratio', () => {
+      expect(calculateAccuracy(80, 20)).toBe(0.8);
     });
 
-    it('should round to nearest integer', () => {
-      expect(calculateAccuracy(2, 1)).toBe(67); // 66.67 rounds to 67
+    it('should return precise floating point value', () => {
+      // 2 / (2+1) = 0.6667
+      expect(calculateAccuracy(2, 1)).toBeCloseTo(0.6667, 3);
     });
   });
 

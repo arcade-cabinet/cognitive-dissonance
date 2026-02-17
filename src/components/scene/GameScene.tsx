@@ -28,7 +28,9 @@ import {
 import type { GameState } from '../../lib/events';
 import { AtmosphericBackground } from './AtmosphericBackground';
 import { CharacterBust } from './CharacterBust';
+import { HeadExplosion } from './HeadExplosion';
 import { type CooldownState, KeyboardControls } from './KeyboardControls';
+import { PostProcessing } from './PostProcessing';
 import { BossSystem } from './systems/BossSystem';
 import { EnemySystem } from './systems/EnemySystem';
 import { ConfettiSystem, ParticleSystem, TrailSystem } from './systems/ParticleSystem';
@@ -37,6 +39,7 @@ export interface GameSceneHandle {
   updateState: (state: GameState) => void;
   spawnParticles: (x: number, y: number, color: string) => void;
   spawnConfetti: () => void;
+  triggerHeadExplosion: () => void;
   reset: () => void;
 }
 
@@ -54,6 +57,7 @@ export const GameScene = forwardRef<GameSceneHandle, GameSceneProps>(function Ga
   const waveRef = useRef(0);
   const shakeRef = useRef(0);
   const flashRef = useRef({ alpha: 0, color: '#ffffff' });
+  const explosionActiveRef = useRef(false);
   const cooldownRef = useRef<CooldownState>({
     abilityCd: { reality: 0, history: 0, logic: 0 },
     abilityMax: { reality: 1, history: 1, logic: 1 },
@@ -92,7 +96,11 @@ export const GameScene = forwardRef<GameSceneHandle, GameSceneProps>(function Ga
     spawnConfetti() {
       spawnConfetti();
     },
+    triggerHeadExplosion() {
+      explosionActiveRef.current = true;
+    },
     reset() {
+      explosionActiveRef.current = false;
       clearAllEntities();
       panicRef.current = 0;
       waveRef.current = 0;
@@ -136,6 +144,17 @@ export const GameScene = forwardRef<GameSceneHandle, GameSceneProps>(function Ga
       <ParticleSystem />
       <TrailSystem />
       <ConfettiSystem />
+
+      {/* Head explosion effect */}
+      <HeadExplosion
+        active={explosionActiveRef.current}
+        onComplete={() => {
+          explosionActiveRef.current = false;
+        }}
+      />
+
+      {/* Post-processing: Bloom, Chromatic Aberration, Vignette */}
+      <PostProcessing panicRef={panicRef} />
 
       {/* Flash overlay */}
       <FlashOverlay flashRef={flashRef} />
