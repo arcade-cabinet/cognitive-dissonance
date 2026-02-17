@@ -171,7 +171,8 @@ export class AdaptiveMusic {
     // Bass gets louder and more aggressive
     if (this.bassSynth) {
       this.bassSynth.volume.value = -8 + (this.panic / 100) * 4;
-      const bassType: 'sawtooth' | 'square' | 'triangle' = this.panic > 66 ? 'sawtooth' : this.panic > 33 ? 'square' : 'triangle';
+      const bassType: 'sawtooth' | 'square' | 'triangle' =
+        this.panic > 66 ? 'sawtooth' : this.panic > 33 ? 'square' : 'triangle';
       if (this.bassSynth.oscillator.type !== bassType) {
         this.bassSynth.oscillator.type = bassType;
       }
