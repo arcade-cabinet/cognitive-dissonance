@@ -13,51 +13,62 @@ const requestFrame =
 const cancelFrame = self.cancelAnimationFrame || clearTimeout;
 
 self.onmessage = (e: MessageEvent<WorkerMessage>) => {
-  const msg = e.data;
-  switch (msg.type) {
-    case 'START':
-      if (animationFrameId !== undefined) {
-        cancelFrame(animationFrameId);
-      }
-      running = true;
-      if (msg.endless) {
-        logic.startEndlessMode();
-      } else {
-        logic.start();
-      }
-      lastTime = performance.now();
-      scheduleLoop();
-      break;
-    case 'PAUSE':
-      running = false;
-      cancelFrame(animationFrameId);
-      break;
-    case 'RESUME':
-      if (!running) {
+  try {
+    const msg = e.data;
+    switch (msg.type) {
+      case 'START':
+        if (animationFrameId !== undefined) {
+          cancelFrame(animationFrameId);
+        }
         running = true;
+        if (msg.endless) {
+          logic.startEndlessMode();
+        } else {
+          logic.start();
+        }
         lastTime = performance.now();
         scheduleLoop();
+        break;
+      case 'PAUSE':
+        running = false;
+        cancelFrame(animationFrameId);
+        break;
+      case 'RESUME':
+        if (!running) {
+          running = true;
+          lastTime = performance.now();
+          scheduleLoop();
+        }
+        break;
+      case 'INPUT':
+        if (msg.key === '1') logic.triggerAbility('reality');
+        else if (msg.key === '2') logic.triggerAbility('history');
+        else if (msg.key === '3') logic.triggerAbility('logic');
+        else if (msg.key === 'q' || msg.key === 'Q') logic.triggerNuke();
+        break;
+      case 'ABILITY':
+        logic.triggerAbility(msg.ability);
+        break;
+      case 'NUKE':
+        logic.triggerNuke();
+        break;
+      case 'CLICK': {
+        const enemy = logic.findEnemyAt(msg.x, msg.y);
+        if (enemy && !enemy.encrypted) {
+          logic.triggerAbility(enemy.type.counter);
+        }
+        break;
       }
-      break;
-    case 'INPUT':
-      if (msg.key === '1') logic.triggerAbility('reality');
-      else if (msg.key === '2') logic.triggerAbility('history');
-      else if (msg.key === '3') logic.triggerAbility('logic');
-      else if (msg.key === 'q' || msg.key === 'Q') logic.triggerNuke();
-      break;
-    case 'ABILITY':
-      logic.triggerAbility(msg.ability);
-      break;
-    case 'NUKE':
-      logic.triggerNuke();
-      break;
-    case 'CLICK': {
-      const enemy = logic.findEnemyAt(msg.x, msg.y);
-      if (enemy && !enemy.encrypted) {
-        logic.triggerAbility(enemy.type.counter);
-      }
-      break;
     }
+  } catch (err) {
+    running = false;
+    cancelFrame(animationFrameId);
+    console.error('[game.worker] Unhandled error in message handler:', err);
+    const errorMsg: MainMessage = {
+      type: 'ERROR',
+      message: err instanceof Error ? err.message : String(err),
+    };
+    self.postMessage(errorMsg);
   }
 };
 

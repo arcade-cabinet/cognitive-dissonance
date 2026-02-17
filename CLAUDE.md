@@ -118,7 +118,7 @@ Enemy IDs use `Date.now() + Math.random()` (non-deterministic, collision-prone).
 ## Comprehensive Code Review Findings
 
 ### P0 - Bugs / Resource Leaks
-1. boss-ai.ts:159 - No destroy() method; moveCooldownTimer leaks on game end
+1. ~~boss-ai.ts:159 - No destroy() method~~ **FIXED** - destroy() added, forwards to dispose()
 2. Landing.tsx:29-62 - anime.js animations not cancelled on unmount
 3. audio.ts:87-96 - setTimeout chains not tracked; fire after destroy()
 4. game-logic.ts:420 - Math.sqrt() in findEnemyAt(); use squared distance
@@ -127,12 +127,12 @@ Enemy IDs use `Date.now() + Math.random()` (non-deterministic, collision-prone).
 5. ui-state.ts:19 - 'endless_transition' screen state declared but never dispatched
 6. game-logic.ts:469-472 - Floating-point drift in secondAccumulator
 7. director.ts:200-216 - BuildingState checks SURGING before RELIEVING
-8. music.ts:163 - setPanic() calls bpm.rampTo() every frame (60 overlapping ramps)
+8. ~~music.ts:163 - setPanic() calls bpm.rampTo() every frame~~ **FIXED** - cancelScheduledValues() called before rampTo()
 9. music.ts:244 - arpIndex increments without bound
 
 ### P2 - Robustness
 10. game.worker.ts:7 - animationFrameId uninitialized
-11. game.worker.ts:15-58 - No error boundary in worker message handler
+11. ~~game.worker.ts:15-58 - No error boundary in worker message handler~~ **FIXED** - try-catch with ERROR postMessage
 12. boss-ai.ts:167 - getHpRatio() not clamped
 13. device-utils.ts:63-67 - Hardcoded iPhone notch dimensions (missing 15/16)
 

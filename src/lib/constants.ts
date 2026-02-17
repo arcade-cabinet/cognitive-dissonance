@@ -2,6 +2,7 @@ import type { EnemyType, PowerUp, Wave } from './types';
 
 export const GAME_WIDTH = 800;
 export const GAME_HEIGHT = 600;
+export const CHARACTER_Y = 400;
 export const WAVE_ANNOUNCEMENT_DURATION = 6000;
 
 export const TYPES: Record<string, EnemyType> = {

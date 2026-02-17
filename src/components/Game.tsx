@@ -190,6 +190,10 @@ export default function Game() {
 
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
+      if (msg.type === 'ERROR') {
+        console.error('[game.worker] Worker error:', msg.message);
+        return;
+      }
       if (msg.type === 'STATE') {
         const state = msg.state as GameState;
 

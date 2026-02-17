@@ -37,7 +37,7 @@ reviews:
       - "[ci-artifacts]"
     drafts: false
     base_branches:
-      - "main"
+      - ".*"
 
   finishing_touches:
     docstrings:

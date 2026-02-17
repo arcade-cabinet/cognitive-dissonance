@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { GameLogic } from './game-logic';
 import { WAVES } from './constants';
+import { GameLogic } from './game-logic';
 
 describe('GameLogic Coverage', () => {
   let game: GameLogic;
@@ -69,22 +69,30 @@ describe('GameLogic Coverage', () => {
   });
 
   it('should spawn boss enemy from partial data', () => {
-      const bossConfig = { name: 'Test Boss', hp: 100, pats: ['burst'] };
-      game.startBoss(bossConfig);
+    const bossConfig = { name: 'Test Boss', hp: 100, pats: ['burst'] };
+    game.startBoss(bossConfig);
 
-      const action = {
-          type: 'spawn_enemies',
-          enemies: [{ x: 100, y: 100, vx: 1, vy: 1 }]
-      };
+    const action = {
+      type: 'spawn_enemies',
+      enemies: [{ x: 100, y: 100, vx: 1, vy: 1 }],
+    };
 
-      // biome-ignore lint/suspicious/noExplicitAny: access private method for testing
-      (game as unknown as { executeBossActions: (actions: Array<{ type: string; enemies: Array<{ x: number; y: number; vx: number; vy: number }> }>) => void }).executeBossActions([action]);
-
-      expect(game.enemies.length).toBeGreaterThan(0);
-      if (game.enemies.length > 0) {
-        const enemy = game.enemies[0];
-        expect(enemy.x).toBe(100);
-        expect(enemy.y).toBe(100);
+    (
+      game as unknown as {
+        executeBossActions: (
+          actions: Array<{
+            type: string;
+            enemies: Array<{ x: number; y: number; vx: number; vy: number }>;
+          }>
+        ) => void;
       }
+    ).executeBossActions([action]);
+
+    expect(game.enemies.length).toBeGreaterThan(0);
+    if (game.enemies.length > 0) {
+      const enemy = game.enemies[0];
+      expect(enemy.x).toBe(100);
+      expect(enemy.y).toBe(100);
+    }
   });
 });

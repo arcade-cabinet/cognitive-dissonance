@@ -18,6 +18,7 @@ import { useRef } from 'react';
 import type * as THREE from 'three';
 import { ECS } from '../../../ecs/react';
 import { enemies } from '../../../ecs/world';
+import { CHARACTER_Y } from '../../../lib/constants';
 import { gx, gy } from '../coordinates';
 
 export function EnemySystem() {
@@ -101,7 +102,7 @@ function EnemyMesh({ entity }: { entity: (typeof enemies.entities)[number] }) {
         <Line
           points={[
             [0, 0, 0],
-            [-gx(position.x), -gy(position.y) + gy(400), 0],
+            [-gx(position.x), -gy(position.y) + gy(CHARACTER_Y), 0],
           ]}
           color="white"
           lineWidth={0.5}

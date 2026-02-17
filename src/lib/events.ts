@@ -50,4 +50,4 @@ export type WorkerMessage =
   | { type: 'NUKE' }
   | { type: 'CLICK'; x: number; y: number };
 
-export type MainMessage = { type: 'STATE'; state: GameState };
+export type MainMessage = { type: 'STATE'; state: GameState } | { type: 'ERROR'; message: string };

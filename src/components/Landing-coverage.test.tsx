@@ -1,8 +1,8 @@
 import { render } from '@testing-library/react';
+import { animate } from 'animejs';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Landing from './Landing';
-import { animate } from 'animejs';
 
 // Mock animejs
 vi.mock('animejs', () => ({
@@ -62,26 +62,26 @@ describe('Landing Component Coverage', () => {
   });
 
   it('should execute animejs callbacks if provided', () => {
-      render(
-        <MemoryRouter>
-          <Landing />
-        </MemoryRouter>
-      );
+    render(
+      <MemoryRouter>
+        <Landing />
+      </MemoryRouter>
+    );
 
-      const calls = vi.mocked(animate).mock.calls;
-      expect(calls.length).toBeGreaterThan(0);
+    const calls = vi.mocked(animate).mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
 
-      // Check specific call arguments
-      // The second call for the first bubble (index 1) has the complex animation
-      const secondCallArgs = calls[1][1];
-      expect(secondCallArgs.translateX).toBeDefined();
-      expect(Array.isArray(secondCallArgs.translateX)).toBe(true);
+    // Check specific call arguments
+    // The second call for the first bubble (index 1) has the complex animation
+    const secondCallArgs = calls[1][1];
+    expect(secondCallArgs.translateX).toBeDefined();
+    expect(Array.isArray(secondCallArgs.translateX)).toBe(true);
 
-      // Verify callbacks execute
-      const callback = secondCallArgs.translateX[0];
-      if (typeof callback === 'function') {
-          const val = callback();
-          expect(val).toBeDefined();
-      }
+    // Verify callbacks execute
+    const callback = (secondCallArgs.translateX as unknown[])[0];
+    if (typeof callback === 'function') {
+      const val = callback();
+      expect(val).toBeDefined();
+    }
   });
 });
