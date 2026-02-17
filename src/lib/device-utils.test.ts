@@ -205,6 +205,102 @@ describe('device-utils', () => {
       // top notch is 44px
       expect(vp.offsetY).toBeGreaterThanOrEqual(44);
     });
+
+    test('calculates viewport for desktop with wide screen', () => {
+      const deviceInfo: DeviceInfo = {
+        type: 'desktop',
+        orientation: 'landscape',
+        screenWidth: 1920,
+        screenHeight: 1080, // 16:9
+        pixelRatio: 1,
+        isTouchDevice: false,
+        isIOS: false,
+        isAndroid: false,
+        hasNotch: false,
+        isFoldable: false,
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      // 16:9 > 4:3. Should constrain by height.
+      expect(vp.aspectRatio).toBeCloseTo(baseWidth / baseHeight);
+    });
+
+    test('calculates viewport for tablet with wide screen', () => {
+      const deviceInfo: DeviceInfo = {
+        type: 'tablet',
+        orientation: 'landscape',
+        screenWidth: 1024,
+        screenHeight: 600, // Wide
+        pixelRatio: 2,
+        isTouchDevice: true,
+        isIOS: false,
+        isAndroid: true,
+        hasNotch: false,
+        isFoldable: false,
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      expect(vp.aspectRatio).toBeCloseTo(baseWidth / baseHeight);
+    });
+
+    test('calculates viewport for tablet portrait', () => {
+      const deviceInfo: DeviceInfo = {
+        type: 'tablet',
+        orientation: 'portrait',
+        screenWidth: 768,
+        screenHeight: 1024,
+        pixelRatio: 2,
+        isTouchDevice: true,
+        isIOS: true,
+        isAndroid: false,
+        hasNotch: false,
+        isFoldable: false,
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      // 0.75 < 1.33. Should constrain by width.
+      expect(vp.aspectRatio).toBeCloseTo(baseWidth / baseHeight);
+    });
+
+    test('calculates viewport for foldable unfolded', () => {
+      const deviceInfo: DeviceInfo = {
+        type: 'foldable',
+        orientation: 'landscape',
+        screenWidth: 2208,
+        screenHeight: 1768,
+        pixelRatio: 3,
+        isTouchDevice: true,
+        isIOS: false,
+        isAndroid: true,
+        hasNotch: false,
+        isFoldable: true,
+        foldState: 'unfolded',
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      expect(vp.aspectRatio).toBeCloseTo(baseWidth / baseHeight);
+    });
+
+    test('calculates viewport for phone landscape', () => {
+      const deviceInfo: DeviceInfo = {
+        type: 'phone',
+        orientation: 'landscape',
+        screenWidth: 812,
+        screenHeight: 375,
+        pixelRatio: 3,
+        isTouchDevice: true,
+        isIOS: true,
+        isAndroid: false,
+        hasNotch: true,
+        isFoldable: false,
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      // Phone landscape Logic.
+      // Base aspect 1.33. Screen aspect 2.16.
+      // Constrained by height.
+      expect(vp.aspectRatio).toBeCloseTo(baseWidth / baseHeight);
+    });
   });
 
   describe('getUIScale', () => {
@@ -292,6 +388,47 @@ describe('device-utils', () => {
 
       expect(removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
       expect(removeEventListener).toHaveBeenCalledWith('orientationchange', expect.any(Function));
+    });
+
+    test('uses visualViewport if available', () => {
+      vi.useFakeTimers();
+      const addEventListener = vi.fn();
+      const removeEventListener = vi.fn();
+      Object.defineProperty(window, 'visualViewport', {
+        value: {
+          addEventListener,
+          removeEventListener,
+        },
+        writable: true,
+      });
+
+      const callback = vi.fn();
+      const cleanup = createResizeObserver(callback);
+
+      expect(addEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
+
+      cleanup();
+      expect(removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
+      vi.useRealTimers();
+    });
+
+    test('handles orientation change', () => {
+      vi.useFakeTimers();
+      const callback = vi.fn();
+      const cleanup = createResizeObserver(callback);
+
+      // Trigger orientation change
+      window.dispatchEvent(new Event('orientationchange'));
+
+      // Should debounce/delay
+      expect(callback).not.toHaveBeenCalled();
+
+      // Orientation change delay is 200ms
+      vi.advanceTimersByTime(200);
+      expect(callback).toHaveBeenCalled();
+
+      cleanup();
+      vi.useRealTimers();
     });
   });
 });
