@@ -107,8 +107,5 @@ Numbered list of actionable items, each with:
 Top 3 actions for the coming week, ordered by impact.
 ```
 
-After writing the report, use the echo command to write findings for Jules:
-```
-echo "MAINTENANCE_FINDINGS=[brief CSV of actionable items]" >> "$GITHUB_ENV"
-```
+After writing the report, use the multiline env format to write findings for Jules:
 """
