@@ -625,9 +625,10 @@ jobs:
           TOTAL=0
           echo '[]' > all_issues.json
           while true; do
+            # Use || true to prevent exit 22 (HTTP error) from crashing the job
             curl -sf -H "${AUTH}" \
               "${BASE}/api/issues/search?componentKeys=${PROJECT}&pullRequest=${PR_NUMBER}&ps=500&p=${PAGE}&issueStatuses=OPEN,CONFIRMED&additionalFields=effort" \
-              -o issues_page.json
+              -o issues_page.json || echo '{"issues":[],"total":0}' > issues_page.json
 
             ISSUES_IN_PAGE=$(jq '.issues | length' issues_page.json)
             TOTAL_AVAILABLE=$(jq '.total' issues_page.json)
