@@ -7,10 +7,10 @@ let lastTime = 0;
 let animationFrameId: number | undefined;
 
 // Polyfill for requestAnimationFrame in worker if needed
-const requestFrame =
-  self.requestAnimationFrame ||
-  ((callback: (t: number) => void) => setTimeout(() => callback(performance.now()), 16));
-const cancelFrame = self.cancelAnimationFrame || clearTimeout;
+const requestFrame = self.requestAnimationFrame
+  ? self.requestAnimationFrame.bind(self)
+  : (callback: (t: number) => void) => setTimeout(() => callback(performance.now()), 16);
+const cancelFrame = self.cancelAnimationFrame ? self.cancelAnimationFrame.bind(self) : clearTimeout;
 
 self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   try {
