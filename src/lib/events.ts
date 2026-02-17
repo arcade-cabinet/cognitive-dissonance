@@ -51,4 +51,7 @@ export type WorkerMessage =
   | { type: 'CLICK'; x: number; y: number }
   | { type: 'TERMINATE' };
 
-export type MainMessage = { type: 'STATE'; state: GameState } | { type: 'ERROR'; message: string };
+export type MainMessage =
+  | { type: 'STATE'; state: GameState }
+  | { type: 'ERROR'; message: string }
+  | { type: 'READY' };
