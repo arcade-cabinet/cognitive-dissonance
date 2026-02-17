@@ -187,13 +187,30 @@ export default function Game() {
 
   // Initialize Worker
   useEffect(() => {
-    const worker = new GameWorker();
-    workerRef.current = worker;
+    let worker: Worker;
+    try {
+      worker = new GameWorker();
+      workerRef.current = worker;
+      console.error('[Game.tsx] Worker initialized'); // Force log in production
+    } catch (e) {
+      console.error('[Game.tsx] Failed to initialize worker:', e);
+      return;
+    }
+
+    worker.onerror = (e) => {
+      console.error('[Game.tsx] Worker error event:', e.message, e.filename, e.lineno);
+    };
 
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
+
+      if (msg.type === 'READY') {
+        console.error('[Game.tsx] Worker READY received');
+        return;
+      }
+
       if (msg.type === 'ERROR') {
-        console.error('[game.worker] Worker error:', msg.message);
+        console.error('[game.worker] Worker reported error:', msg.message);
         return;
       }
       if (msg.type === 'STATE') {

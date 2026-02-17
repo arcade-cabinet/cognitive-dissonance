@@ -1,6 +1,8 @@
 import type { MainMessage, WorkerMessage } from '../lib/events';
 import { GameLogic } from '../lib/game-logic';
 
+console.error('[game.worker] Initializing worker script...');
+
 const logic = new GameLogic();
 let running = false;
 let lastTime = 0;
@@ -14,11 +16,20 @@ const requestFrame = (callback: (t: number) => void) =>
 
 const cancelFrame = clearTimeout;
 
+// Notify main thread that worker is ready
+try {
+  self.postMessage({ type: 'READY' });
+  console.error('[game.worker] Sent READY message');
+} catch (e) {
+  console.error('[game.worker] Failed to send READY message:', e);
+}
+
 self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   try {
     const msg = e.data;
     switch (msg.type) {
       case 'START':
+        console.error('[game.worker] Received START command');
         if (animationFrameId !== undefined) {
           cancelFrame(animationFrameId);
         }
@@ -30,6 +41,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
         }
         lastTime = performance.now();
         scheduleLoop();
+        console.error('[game.worker] Loop scheduled');
         break;
       case 'PAUSE':
         running = false;
