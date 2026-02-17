@@ -112,7 +112,6 @@ function EnemyMesh({ entity }: { entity: (typeof enemies.entities)[number] }) {
           gapSize={0.15}
         />
       )}
-
     </group>
   );
 }
