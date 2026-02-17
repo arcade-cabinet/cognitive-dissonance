@@ -55,6 +55,7 @@ export async function readSnapshot(page: Page): Promise<GameSnapshot> {
 /** Check if the game is currently running (overlay hidden) */
 export async function isGameRunning(page: Page): Promise<boolean> {
   const overlay = page.locator('#overlay');
+  if ((await overlay.count()) === 0) return false;
   return overlay.evaluate((el) => el.classList.contains('hidden'));
 }
 
