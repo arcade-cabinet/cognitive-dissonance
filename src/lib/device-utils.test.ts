@@ -279,6 +279,28 @@ describe('device-utils', () => {
       expect(vp.width / vp.height).toBeCloseTo(baseWidth / baseHeight, 1);
     });
 
+    test('calculates viewport for tablet wide landscape', () => {
+      const deviceInfo: DeviceInfo = {
+        type: 'tablet',
+        orientation: 'landscape',
+        screenWidth: 1280,
+        screenHeight: 800, // AR = 1.6 > 1.33
+        pixelRatio: 2,
+        isTouchDevice: true,
+        isIOS: false,
+        isAndroid: true,
+        hasNotch: false,
+        isFoldable: false,
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      // Screen wider than base AR → constrain by height at 90%
+      // 800 * 0.9 = 720
+      expect(vp.height).toBe(720);
+      expect(vp.width).toBeCloseTo(720 * (baseWidth / baseHeight)); // 960
+      expect(vp.scale).toBe(1.2); // 960 / 800
+    });
+
     test('calculates viewport for foldable unfolded', () => {
       const deviceInfo: DeviceInfo = {
         type: 'foldable',
@@ -300,6 +322,29 @@ describe('device-utils', () => {
       expect(vp.height).toBe(353); // Math.round(471.04 / (4/3))
       expect(vp.scale).toBe(0.589);
       expect(vp.width / vp.height).toBeCloseTo(baseWidth / baseHeight, 1);
+    });
+
+    test('calculates viewport for foldable unfolded wide', () => {
+      const deviceInfo: DeviceInfo = {
+        type: 'foldable',
+        orientation: 'landscape',
+        screenWidth: 1000,
+        screenHeight: 600, // AR = 1.66 > 1.33
+        pixelRatio: 2,
+        isTouchDevice: true,
+        isIOS: false,
+        isAndroid: true,
+        hasNotch: false,
+        isFoldable: true,
+        foldState: 'unfolded',
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      // Unfolded foldable wide: constrain by height at 92%
+      // 600 * 0.92 = 552
+      expect(vp.height).toBe(552);
+      expect(vp.width).toBeCloseTo(552 * (baseWidth / baseHeight)); // 736
+      expect(vp.scale).toBe(0.92);
     });
 
     test('calculates viewport for phone landscape', () => {

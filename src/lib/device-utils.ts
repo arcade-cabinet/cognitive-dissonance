@@ -33,6 +33,15 @@ export interface ViewportDimensions {
   aspectRatio: number;
 }
 
+interface DevicePosture {
+  type: 'folded' | 'continuous';
+}
+
+interface NavigatorWithExperimental extends Navigator {
+  devicePosture?: DevicePosture;
+  msMaxTouchPoints?: number;
+}
+
 /**
  * Detect current device type and capabilities
  */
@@ -45,11 +54,9 @@ export function detectDevice(): DeviceInfo {
   const orientation: Orientation = width > height ? 'landscape' : 'portrait';
 
   // Touch detection
+  const nav = navigator as NavigatorWithExperimental;
   const isTouchDevice =
-    'ontouchstart' in window ||
-    navigator.maxTouchPoints > 0 ||
-    // biome-ignore lint/suspicious/noExplicitAny: IE10/11 support
-    ((navigator as any).msMaxTouchPoints ?? 0) > 0;
+    'ontouchstart' in window || navigator.maxTouchPoints > 0 || (nav.msMaxTouchPoints ?? 0) > 0;
 
   // Platform detection
   const userAgent = navigator.userAgent.toLowerCase();
@@ -140,10 +147,9 @@ function detectFoldable(): boolean {
  */
 function detectFoldState(): 'folded' | 'unfolded' | 'tent' | 'book' {
   // Try to use Device Posture API if available
-  // biome-ignore lint/suspicious/noExplicitAny: Experimental API
-  if ((navigator as any).devicePosture) {
-    // biome-ignore lint/suspicious/noExplicitAny: Experimental API
-    const posture = (navigator as any).devicePosture.type;
+  const nav = navigator as NavigatorWithExperimental;
+  if (nav.devicePosture) {
+    const posture = nav.devicePosture.type;
     if (posture === 'folded') return 'folded';
     if (posture === 'continuous') return 'unfolded';
   }
