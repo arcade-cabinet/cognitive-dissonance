@@ -13,7 +13,7 @@ updates:
       - "dependencies"
       - "automerge"
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore(deps) [skip ci]"
       include: "scope"
     # Group related packages together
     groups:
@@ -71,7 +71,7 @@ updates:
       - "github-actions"
       - "automerge"
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore(deps) [skip ci]"
       include: "scope"
     groups:
       # Group all GitHub Actions updates
