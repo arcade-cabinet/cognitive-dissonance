@@ -97,4 +97,3 @@ export async function runAutomatedPlaythrough(
   });
   return governor.playthrough();
 }
-}
