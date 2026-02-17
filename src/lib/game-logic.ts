@@ -442,9 +442,9 @@ export class GameLogic {
     this.nowMs = now;
 
     // Boss wave transition (frame-based delay to allow confetti)
-    if (this.bossWaveTransitionFrames > 0) {
-      this.bossWaveTransitionFrames--;
-      if (this.bossWaveTransitionFrames <= 0) {
+    if (this.bossWaveTransitionTimer > 0) {
+      this.bossWaveTransitionTimer -= deltaSec;
+      if (this.bossWaveTransitionTimer <= 0) {
         this.nextWave();
       }
     }
