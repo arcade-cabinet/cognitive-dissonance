@@ -96,13 +96,16 @@ export default function Game() {
     dispatch(endless ? { type: 'START_ENDLESS' } : { type: 'START_GAME' });
 
     // Initialize audio/scene, but don't let failures block game start
+    // Initialize audio/scene, but don't let failures block game start
     try {
       sfxRef.current?.resume();
-      musicRef.current?.resume().catch((e) => console.warn('Music resume failed:', e));
       sceneRef.current?.reset();
     } catch (e) {
       console.error('Failed to initialize game components:', e);
     }
+    
+    // Handle music resume separately since it's async
+    musicRef.current?.resume().catch((e) => console.warn('Music resume failed:', e));
 
     // Delay worker start to let React commit the screen transition first.
     // Without this delay, the worker's rapid STATE messages can race with
