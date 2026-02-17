@@ -179,7 +179,7 @@ describe('BossAI', () => {
       expect(boss.actions.some((a) => a.type === 'spawn_enemies')).toBe(true);
 
       // Advance to complete
-      for(let i=0; i<20; i++) {
+      for (let i = 0; i < 20; i++) {
         goal.execute();
       }
 
@@ -235,7 +235,7 @@ describe('BossAI', () => {
       expect(boss.actions.some((a) => a.type === 'spawn_enemies')).toBe(true);
 
       // Check for child flag in spawned enemies
-      const spawnAction = boss.actions.find(a => a.type === 'spawn_enemies');
+      const spawnAction = boss.actions.find((a) => a.type === 'spawn_enemies');
       expect(spawnAction?.enemies?.[0].child).toBe(true);
     });
   });

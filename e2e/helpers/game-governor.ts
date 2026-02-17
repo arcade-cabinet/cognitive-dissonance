@@ -5,7 +5,7 @@
  * simulating realistic player behavior and decision-making.
  */
 
-import { expect, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { startGame } from './game-helpers';
 
 export interface GovernorConfig {
