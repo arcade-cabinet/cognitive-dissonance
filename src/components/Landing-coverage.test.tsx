@@ -69,7 +69,7 @@ describe('Landing Component Coverage', () => {
         </MemoryRouter>
       );
 
-      const calls = (animate as unknown as { mock: { calls: any[][] } }).mock.calls;
+      const calls = vi.mocked(animate).mock.calls;
       expect(calls.length).toBeGreaterThan(0);
 
       // Check specific call arguments
