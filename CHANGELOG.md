@@ -70,5 +70,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - E2E testing with Playwright
 - Unit testing with Vitest
 
-[Unreleased]: https://github.com/arcade-cabinet/psyduck-panic/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/arcade-cabinet/psyduck-panic/releases/tag/v1.0.0
+[Unreleased]: https://github.com/arcade-cabinet/cognitive-dissonance/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/arcade-cabinet/cognitive-dissonance/releases/tag/v1.0.0

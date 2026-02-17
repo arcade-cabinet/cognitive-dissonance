@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.arcadecabinet.psyduckpanic',
+  appId: 'com.arcadecabinet.cognitivedissonance',
   appName: 'Cognitive Dissonance',
   webDir: 'dist',
   server: {

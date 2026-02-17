@@ -332,7 +332,7 @@ Native App Bundles
 ## File Structure
 
 ```text
-psyduck-panic/
+cognitive-dissonance/
 ├── src/
 │   ├── components/
 │   │   ├── Game.tsx              # Main game component (R3F + HUD + worker)

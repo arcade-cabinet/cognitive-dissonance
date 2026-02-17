@@ -352,7 +352,7 @@ export function RoomBackground({ panicRef, waveRef }: RoomBackgroundProps) {
             />
           </group>
 
-          {/* Sticky note — vivid Psyduck yellow */}
+          {/* Sticky note — brushed steel accent */}
           <group position={[0.8, 1.3, -2.85]}>
             <mesh>
               <planeGeometry args={[0.4, 0.36]} />

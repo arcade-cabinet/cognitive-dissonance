@@ -92,11 +92,11 @@ The release workflow automatically builds signed APKs for all architectures when
 3. Release-please creates a release PR
 4. Merge the PR
 5. GitHub Actions builds and uploads signed APKs:
-   - `psyduck-panic-{version}-arm64-v8a.apk` (64-bit ARM, modern devices)
-   - `psyduck-panic-{version}-armeabi-v7a.apk` (32-bit ARM, older devices)
-   - `psyduck-panic-{version}-x86.apk` (Intel 32-bit, emulators)
-   - `psyduck-panic-{version}-x86_64.apk` (Intel 64-bit, emulators)
-   - `psyduck-panic-{version}-universal.apk` (all architectures, larger file)
+   - `cognitive-dissonance-{version}-arm64-v8a.apk` (64-bit ARM, modern devices)
+   - `cognitive-dissonance-{version}-armeabi-v7a.apk` (32-bit ARM, older devices)
+   - `cognitive-dissonance-{version}-x86.apk` (Intel 32-bit, emulators)
+   - `cognitive-dissonance-{version}-x86_64.apk` (Intel 64-bit, emulators)
+   - `cognitive-dissonance-{version}-universal.apk` (all architectures, larger file)
 
 Without signing configuration, unsigned debug APKs are built instead (for testing only).
 

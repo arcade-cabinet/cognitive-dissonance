@@ -123,7 +123,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          PROJECT="arcade-cabinet_psyduck-panic"
+          PROJECT="arcade-cabinet_cognitive-dissonance"
           BASE="https://sonarcloud.io"
           AUTH="Authorization: Bearer ${SONAR_TOKEN}"
 

@@ -1,5 +1,5 @@
 {
-  "name": "psyduck-panic",
+  "name": "cognitive-dissonance",
   "version": "1.0.0",
   "description": "Cognitive Dissonance - Defeat the hallucinations before your AI's head explodes",
   "type": "module",
@@ -38,7 +38,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/arcade-cabinet/psyduck-panic.git"
+    "url": "git+https://github.com/arcade-cabinet/cognitive-dissonance.git"
   },
   "keywords": [
     "game",
@@ -51,9 +51,9 @@
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/arcade-cabinet/psyduck-panic/issues"
+    "url": "https://github.com/arcade-cabinet/cognitive-dissonance/issues"
   },
-  "homepage": "https://github.com/arcade-cabinet/psyduck-panic#readme",
+  "homepage": "https://github.com/arcade-cabinet/cognitive-dissonance#readme",
   "dependencies": {
     "@capacitor/android": "^8.1.0",
     "@capacitor/app": "^8.0.1",
