@@ -433,4 +433,139 @@ describe('GameLogic', () => {
       expect(game.bossPhase).toBe(false);
     });
   });
+
+  describe('Advanced Logic Coverage', () => {
+    it('should reset combo on ability miss', () => {
+      game.running = true;
+      game.combo = 10;
+      game.enemies = []; // No enemies to hit
+
+      game.triggerAbility('reality');
+
+      expect(game.combo).toBe(0);
+      expect(game.events).toContainEqual(expect.objectContaining({ type: 'SFX', name: 'miss' }));
+    });
+
+    it('should transition to endless mode', () => {
+      game.running = true;
+      game.wave = 4; // Last normal wave (index 4 = wave 5)
+      // Trigger via boss wave transition logic
+      game.bossWaveTransitionFrames = 1;
+
+      // Mock nextWave behavior through update which is called when transition frames hit 0
+      // If !this.endless && wave >= WAVES.length - 1, it calls endGame(true).
+
+      game.update(1.0, 1000);
+
+      // Should win the game
+      expect(game.running).toBe(false);
+      expect(game.events).toContainEqual(expect.objectContaining({ type: 'GAME_OVER', win: true }));
+    });
+
+    it('should start endless mode explicitly', () => {
+      game.startEndlessMode();
+      expect(game.endless).toBe(true);
+      expect(game.running).toBe(true);
+      expect(game.wave).toBeGreaterThan(0);
+    });
+
+    it('should increment endless level', () => {
+      game.startEndlessMode();
+      const initialLevel = game.endlessLevel;
+      game.waveTime = 0;
+      game.secondAccumulator = 1000;
+
+      game.update(1.0, 1000);
+
+      expect(game.endlessLevel).toBe(initialLevel + 1);
+    });
+
+    it('should spawn boss when wave time ends if configured', () => {
+      game.start();
+      game.wave = 4; // Wave 5 has a boss
+      game.waveTime = 1;
+      game.secondAccumulator = 990;
+
+      game.update(2.0, 1000);
+
+      expect(game.bossPhase).toBe(true);
+      expect(game.boss).not.toBeNull();
+    });
+
+    it('should execute boss actions (spawn enemies)', () => {
+      // Setup boss phase manually to test private method execution via update/AI
+      const bossConfig = { name: 'Test', hp: 100, pats: ['burst'] };
+      game.running = true;
+      game.startBoss(bossConfig);
+
+      // Mock bossAI to return specific actions
+      const mockAction = { type: 'spawn_enemies', enemies: [{ type: undefined }] };
+      // biome-ignore lint/suspicious/noExplicitAny: access private for test
+      (game as any).bossAI.update = () => [mockAction];
+
+      const initialEnemies = game.enemies.length;
+      game.update(1.0, 1000);
+
+      expect(game.enemies.length).toBeGreaterThan(initialEnemies);
+    });
+
+    it('should execute boss actions (flash and shake)', () => {
+      const bossConfig = { name: 'Test', hp: 100, pats: ['burst'] };
+      game.running = true;
+      game.startBoss(bossConfig);
+
+      const mockAction1 = { type: 'flash', intensity: 0.8 };
+      const mockAction2 = { type: 'shake', intensity: 15 };
+      // biome-ignore lint/suspicious/noExplicitAny: access private for test
+      (game as any).bossAI.update = () => [mockAction1, mockAction2];
+
+      game.update(1.0, 1000);
+
+      // Values decay during update:
+      // fl: 0.8 - 0.02 = 0.78
+      // shake: 15 - 0.5 = 14.5
+      expect(game.fl).toBeCloseTo(0.78);
+      expect(game.shake).toBeCloseTo(14.5);
+    });
+
+    it('should execute boss actions (move)', () => {
+      const bossConfig = { name: 'Test', hp: 100, pats: ['burst'] };
+      game.running = true;
+      game.startBoss(bossConfig);
+
+      const mockAction = { type: 'move', x: 123, y: 456 };
+      // biome-ignore lint/suspicious/noExplicitAny: access private for test
+      (game as any).bossAI.update = () => [mockAction];
+
+      game.update(1.0, 1000);
+
+      expect(game.boss?.x).toBe(123);
+      expect(game.boss?.y).toBe(456);
+    });
+
+    it('should add feed items periodically', () => {
+      game.start();
+      game.feedTimer = 2990;
+
+      game.update(2.0, 1000); // Push over 3000ms threshold
+
+      const feedEvent = game.events.find((e) => e.type === 'FEED');
+      expect(feedEvent).toBeDefined();
+    });
+
+    it('should return full state object', () => {
+      game.start();
+      const state = game.getState();
+
+      expect(state).toHaveProperty('enemies');
+      expect(state).toHaveProperty('powerups');
+      expect(state).toHaveProperty('score');
+      expect(state).toHaveProperty('panic');
+      expect(state).toHaveProperty('combo');
+      expect(state).toHaveProperty('wave');
+      expect(state).toHaveProperty('events');
+      // Events should be cleared after getState
+      expect(game.events.length).toBe(0);
+    });
+  });
 });

@@ -306,6 +306,7 @@ export function createResizeObserver(
   callback: (viewport: ViewportDimensions, deviceInfo: DeviceInfo) => void
 ): () => void {
   let resizeTimeout: number;
+  let orientationTimeout: number;
 
   const handleResize = () => {
     // Debounce rapid resize events
@@ -319,7 +320,8 @@ export function createResizeObserver(
 
   const handleOrientationChange = () => {
     // Orientation change often needs a slight delay to get correct dimensions
-    setTimeout(() => {
+    clearTimeout(orientationTimeout);
+    orientationTimeout = window.setTimeout(() => {
       const deviceInfo = detectDevice();
       const viewport = calculateViewport(GAME_WIDTH, GAME_HEIGHT, deviceInfo);
       callback(viewport, deviceInfo);
@@ -341,6 +343,7 @@ export function createResizeObserver(
   // Return cleanup function
   return () => {
     clearTimeout(resizeTimeout);
+    clearTimeout(orientationTimeout);
     window.removeEventListener('resize', handleResize);
     window.removeEventListener('orientationchange', handleOrientationChange);
     if (window.visualViewport) {

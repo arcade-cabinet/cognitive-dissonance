@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { animate } from 'animejs';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Landing from './Landing';
@@ -29,6 +30,7 @@ function renderLanding() {
 describe('Landing Page', () => {
   beforeEach(() => {
     mockedNavigate.mockClear();
+    vi.mocked(animate).mockClear();
   });
 
   it('should render the game title', () => {
@@ -109,5 +111,11 @@ describe('Landing Page', () => {
     expect(screen.getByText('3D WebGL')).toBeInTheDocument();
     expect(screen.getByText('Cross-Platform')).toBeInTheDocument();
     expect(screen.getByText('3 Game Modes')).toBeInTheDocument();
+  });
+
+  it('should trigger animations for bubbles', () => {
+    renderLanding();
+    // 20 bubbles * 2 calls each (initial setup + animation loop) = 40 calls
+    expect(animate).toHaveBeenCalledTimes(40);
   });
 });

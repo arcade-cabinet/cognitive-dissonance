@@ -4,6 +4,7 @@ import { AIDirector } from './ai/director';
 import { FEED, GAME_HEIGHT, GAME_WIDTH, POWERUPS, TYPES, WAVES } from './constants';
 import type { GameEvent, GameState } from './events';
 import { calculatePanicDamage, calculatePanicDecay, getPanicModifiers } from './panic-system';
+import { secureRandom } from './secure-random';
 import type { Boss, BossConfig, Enemy, MomentumPerks, PowerUpInstance } from './types';
 
 const W = GAME_WIDTH;
@@ -260,7 +261,7 @@ export class GameLogic {
     const isChild = !isEncrypted && Math.random() < panicMods.variantChance;
 
     const enemy: Enemy = {
-      id: Date.now() + Math.random(),
+      id: Date.now() + secureRandom(),
       x: side === 0 ? -40 : W + 40,
       y: 100 + Math.random() * 180,
       word,
@@ -279,7 +280,7 @@ export class GameLogic {
   private spawnBossEnemy(partial: Partial<Enemy>): void {
     const type = partial.type || Object.values(TYPES)[0];
     const enemy: Enemy = {
-      id: Date.now() + Math.random(),
+      id: Date.now() + secureRandom(),
       x: partial.x ?? W / 2,
       y: partial.y ?? 80,
       word: partial.word || type.words[0],
@@ -298,7 +299,7 @@ export class GameLogic {
     const pu = POWERUPS[Math.floor(Math.random() * POWERUPS.length)];
     this.powerups.push({
       ...pu,
-      id: `${pu.id}-${Date.now()}-${Math.random()}`,
+      id: `${pu.id}-${Date.now()}-${secureRandom()}`,
       x: 100 + Math.random() * (W - 200),
       y: -30,
       vy: 0.6 + Math.random() * 0.4,

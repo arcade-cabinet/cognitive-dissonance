@@ -181,4 +181,18 @@ describe('SFX Audio System', () => {
     expect(() => sfx.counter(1)).not.toThrow();
     expect(() => sfx.startMusic(1)).not.toThrow();
   });
+
+  it('should use webkitAudioContext if AudioContext is missing', () => {
+    vi.stubGlobal('AudioContext', undefined);
+    vi.stubGlobal('webkitAudioContext', MockAudioContext);
+    sfx.init();
+    expect(sfx.ctx).toBeInstanceOf(MockAudioContext);
+  });
+
+  it('should handle error when closing context', async () => {
+    sfx.init();
+    closeSpy.mockRejectedValueOnce(new Error('Close failed'));
+    // Should not throw and catch block should be executed
+    expect(() => sfx.destroy()).not.toThrow();
+  });
 });
