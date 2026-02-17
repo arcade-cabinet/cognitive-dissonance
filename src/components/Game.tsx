@@ -95,7 +95,7 @@ export default function Game() {
     // React 18's concurrent rendering and prevent the commit.
     setTimeout(() => {
       workerRef.current?.postMessage({ type: 'START', endless });
-    }, 50);
+    }, 100);
   }, []);
 
   const handleStartButton = () => {
