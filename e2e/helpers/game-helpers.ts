@@ -80,6 +80,12 @@ export async function verifyPowerupsVisible(page: Page): Promise<void> {
 export async function verifyGamePlaying(page: Page): Promise<void> {
   await expect(page.locator('#overlay')).toHaveClass(/hidden/);
   await expect(page.locator('#ui-layer')).not.toHaveClass(/hidden/);
+
+  const timeDisplay = page.locator('#time-display');
+  const initialTime = await timeDisplay.textContent();
+  await expect
+    .poll(async () => await timeDisplay.textContent(), { timeout: 2500 })
+    .not.toBe(initialTime);
 }
 
 // ─── Canvas ──────────────────────────────────────────────────
