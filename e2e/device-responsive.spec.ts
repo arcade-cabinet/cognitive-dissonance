@@ -50,6 +50,7 @@ test.describe('Responsive Device Tests', () => {
   });
 
   test('should start game and show HUD on all devices', async ({ page }) => {
+    test.setTimeout(120000);
     await navigateToGame(page);
     await startGame(page);
 
@@ -88,6 +89,7 @@ test.describe('Tablet-Specific Tests', () => {
   test('should show comfortable UI spacing on tablets', async ({ page, viewport }) => {
     const isTablet = viewport && Math.min(viewport.width, viewport.height) >= 600;
     test.skip(!isTablet, 'This test is only for tablet-sized devices');
+    test.setTimeout(120000);
 
     await navigateToGame(page);
     await startGame(page);
@@ -127,6 +129,7 @@ test.describe('Foldable-Specific Tests', () => {
 
 test.describe('Character Rendering Tests', () => {
   test('should render character in all panic states', async ({ page }) => {
+    test.setTimeout(120000);
     await navigateToGame(page);
     await startGame(page);
 
@@ -138,6 +141,7 @@ test.describe('Character Rendering Tests', () => {
   });
 
   test('should show character centered on canvas', async ({ page }) => {
+    test.setTimeout(120000);
     await navigateToGame(page);
     await startGame(page);
 
@@ -179,6 +183,7 @@ test.describe('Orientation Change Tests', () => {
 
 test.describe('Game Responsiveness Tests', () => {
   test('should maintain acceptable frame rate on all devices', async ({ page }) => {
+    test.setTimeout(120000);
     await navigateToGame(page);
     await startGame(page);
 

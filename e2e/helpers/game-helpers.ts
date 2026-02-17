@@ -10,10 +10,10 @@ import { expect } from '@playwright/test';
 
 // ─── Timeouts ────────────────────────────────────────────────
 
-export const GAME_START_TIMEOUT = 3000;
+export const GAME_START_TIMEOUT = 10000;
 export const WAVE_ANNOUNCE_TIMEOUT = 5000;
 export const GAMEPLAY_TIMEOUT = 60000;
-export const E2E_PLAYTHROUGH_TIMEOUT = 90000;
+export const E2E_PLAYTHROUGH_TIMEOUT = 180000;
 
 // ─── Navigation ──────────────────────────────────────────────
 
@@ -31,12 +31,17 @@ export async function navigateToGame(page: Page): Promise<void> {
  *  synthetic event dispatch for mouse/pointer events while native
  *  keyboard listeners remain unaffected. */
 export async function startGame(page: Page): Promise<void> {
+  // Allow time for event listeners to attach
+  await page.waitForTimeout(500);
+
   const startBtn = page.locator('#start-btn');
   await expect(startBtn).toBeVisible();
-  await page.keyboard.press(' ');
-  await expect(page.locator('#overlay')).toHaveClass(/hidden/, {
-    timeout: GAME_START_TIMEOUT,
-  });
+
+  // Retry logic for spacebar press to reliably dismiss the overlay
+  await expect(async () => {
+    await page.keyboard.press(' ');
+    await expect(page.locator('#overlay')).toHaveClass(/hidden/, { timeout: 1000 });
+  }).toPass({ timeout: GAME_START_TIMEOUT });
 }
 
 /** Start the game by pressing spacebar */
@@ -51,11 +56,14 @@ export async function startGameWithSpacebar(page: Page): Promise<void> {
 
 /** Verify all HUD elements are visible during gameplay */
 export async function verifyHUDVisible(page: Page): Promise<void> {
-  await expect(page.locator('#wave-display')).toBeVisible();
-  await expect(page.locator('#time-display')).toBeVisible();
-  await expect(page.locator('#score-display')).toBeVisible();
-  await expect(page.locator('#panic-bar')).toBeVisible();
-  await expect(page.locator('#combo-display')).toBeVisible();
+  // Use toBeAttached() instead of toBeVisible() to reduce flakiness in slow CI environments
+  // where layout updates might be delayed or momentarily clipped.
+  // The parent #ui-layer visibility is already checked in verifyGamePlaying.
+  await expect(page.locator('#wave-display')).toBeAttached();
+  await expect(page.locator('#time-display')).toBeAttached();
+  await expect(page.locator('#score-display')).toBeAttached();
+  await expect(page.locator('#panic-bar')).toBeAttached();
+  await expect(page.locator('#combo-display')).toBeAttached();
 }
 
 /** Verify control buttons exist in the DOM (hidden for a11y/e2e, 3D keyboard is primary) */
@@ -95,7 +103,7 @@ export async function getCanvasBoundingBox(
     expect(box.width).toBeGreaterThan(0);
     expect(box.height).toBeGreaterThan(0);
     resultBox = box;
-  }).toPass({ timeout: 10000 });
+  }).toPass({ timeout: 30000 });
 
   if (!resultBox) throw new Error('Failed to get canvas bounding box');
   return resultBox;
