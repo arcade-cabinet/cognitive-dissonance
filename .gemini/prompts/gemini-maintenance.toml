@@ -14,7 +14,7 @@ You are a senior software architect performing a weekly deep-dive assessment of 
 - **Audio:** Web Audio SFX (src/lib/audio.ts), Tone.js adaptive music (src/lib/music.ts)
 - **Build:** Vite 7, pnpm, Biome linter, TypeScript 5 strict
 - **Tests:** Vitest (unit), Playwright (E2E across 20 device configs)
-- **Key constraint:** No bare Math.random() in game-state paths (seedrandom migration planned)
+- **Key constraint:** No bare Math.random() or Date.now() in game-state paths; use the deterministic PRNG and game clock.
 
 
 ## Input Data
