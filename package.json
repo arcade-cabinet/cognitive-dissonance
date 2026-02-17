@@ -1,7 +1,7 @@
 {
   "name": "psyduck-panic",
   "version": "1.0.0",
-  "description": "Psyduck Panic: Evolution Deluxe - Native mobile game with Capacitor",
+  "description": "Cognitive Dissonance - Defeat the hallucinations before your AI's head explodes",
   "type": "module",
   "packageManager": "pnpm@10.13.0",
   "pnpm": {

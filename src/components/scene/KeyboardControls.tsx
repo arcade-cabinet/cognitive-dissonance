@@ -2,10 +2,10 @@
  * 3D Mechanical Keyboard Controls — Dynamic Keycap UI
  *
  * The keyboard IS the entire interface. Keycaps change labels based on game state:
- * - Menu:      Center key shows ▶ START, others dark
+ * - Start:     F2 ▶ START, menu keys show NEW GAME / CONTINUE, others dark
  * - Playing:   F1-F4 show abilities, Space bar shows ⏸ PAUSE
  * - Paused:    F1-F4 dark, Space bar shows ▶ RESUME
- * - Game Over: F2 ↻ RETRY, F3 ∞ ENDLESS (if won), others dark
+ * - Game Over: F2 ↻ RETRY, F3 ∞ ENDLESS (if won), menu keys active
  *
  * RGB Backlighting System:
  * - Continuous spectrum: deep blue → cyan → green → yellow → orange → red
@@ -78,11 +78,24 @@ float getSDF(vec3 p) {
     return sdOctahedron(p, 0.65);
   } else if (u_shape == 2) {
     return sdTorus(rotX(u_time * 0.4) * p, vec2(0.45, 0.18));
-  } else {
+  } else if (u_shape == 3) {
     // NUKE: sphere with sine-wave displacement (crystalline)
     float d = sdSphere(p, 0.6);
     d -= sin(p.x * 8.0) * sin(p.y * 8.0) * sin(p.z * 8.0) * 0.05;
     return d;
+  } else if (u_shape == 4) {
+    // PLAY: triangular prism (play button)
+    vec3 q = rotY(1.5708) * p;
+    float d = max(abs(q.z) - 0.3, max(q.x * 0.866 + q.y * 0.5, -q.y) - 0.55);
+    return d;
+  } else {
+    // FAST-FORWARD: two offset triangular prisms
+    vec3 q = rotY(1.5708) * p;
+    vec3 q1 = q - vec3(0.0, 0.0, -0.25);
+    vec3 q2 = q - vec3(0.0, 0.0, 0.25);
+    float t1 = max(abs(q1.z) - 0.2, max(q1.x * 0.866 + q1.y * 0.5, -q1.y) - 0.45);
+    float t2 = max(abs(q2.z) - 0.2, max(q2.x * 0.866 + q2.y * 0.5, -q2.y) - 0.45);
+    return min(t1, t2);
   }
 }
 
@@ -251,6 +264,10 @@ const START_X = -TOTAL_FKEY_W / 2 + KEY_W / 2;
 const SPACE_W = 2.4;
 const SPACE_Z = 0.6;
 
+// Menu keys (flanking spacebar)
+const MENU_KEY_W = 0.7;
+const MENU_KEY_GAP = 0.12;
+
 // Stable key IDs for React (never reorder)
 const FKEY_IDS = ['fkey-f1', 'fkey-f2', 'fkey-f3', 'fkey-f4'] as const;
 
@@ -400,6 +417,17 @@ export function KeyboardControls({
         />
       ))}
 
+      {/* Menu key — NEW GAME (left of spacebar) */}
+      <MenuKey
+        position={[-(SPACE_W / 2 + MENU_KEY_GAP + MENU_KEY_W / 2), 0, SPACE_Z]}
+        name="NEW GAME"
+        shapeIndex={4}
+        color="#00cc88"
+        active={screenMode === 'start' || screenMode === 'gameover'}
+        panicRef={panicRef}
+        onPress={screenMode === 'start' || screenMode === 'gameover' ? onStart : null}
+      />
+
       {/* Space Bar */}
       <SpaceBar
         label={spaceLabel}
@@ -408,6 +436,17 @@ export function KeyboardControls({
         active={spaceActive}
         panicRef={panicRef}
         onPress={spaceHandler}
+      />
+
+      {/* Menu key — CONTINUE (right of spacebar) */}
+      <MenuKey
+        position={[SPACE_W / 2 + MENU_KEY_GAP + MENU_KEY_W / 2, 0, SPACE_Z]}
+        name="CONTINUE"
+        shapeIndex={5}
+        color="#00ccff"
+        active={screenMode === 'gameover' && isWin}
+        panicRef={panicRef}
+        onPress={screenMode === 'gameover' && isWin ? onEndless : null}
       />
     </group>
   );
@@ -794,6 +833,163 @@ function KeycapPortrait({ shapeIndex, color }: { shapeIndex: number; color: stri
         depthWrite={false}
       />
     </mesh>
+  );
+}
+
+// ─── Menu Key (flanks spacebar) ──────────────────────────────
+
+interface MenuKeyProps {
+  position: [number, number, number];
+  name: string;
+  shapeIndex: number;
+  color: string;
+  active: boolean;
+  panicRef: React.RefObject<number>;
+  onPress: (() => void) | null;
+}
+
+function MenuKey({ position, name, shapeIndex, color, active, panicRef, onPress }: MenuKeyProps) {
+  const keycapGroupRef = useRef<THREE.Group>(null);
+  const keycapMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const ledMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const pressYRef = useRef(0);
+  const isPressedRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      document.body.style.cursor = 'auto';
+      isPressedRef.current = false;
+    };
+  }, []);
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    const p = panicRef.current ?? 0;
+
+    // Spring animation
+    const target = isPressedRef.current ? -0.05 : 0;
+    pressYRef.current += (target - pressYRef.current) * 0.25;
+    if (keycapGroupRef.current) {
+      keycapGroupRef.current.position.y = pressYRef.current;
+    }
+
+    // Keycap color
+    if (keycapMatRef.current) {
+      if (!active) {
+        keycapMatRef.current.color.set('#0a0a18');
+        keycapMatRef.current.emissive.set('#000000');
+        keycapMatRef.current.emissiveIntensity = 0;
+      } else {
+        keycapMatRef.current.color.set(color);
+        keycapMatRef.current.emissive.set(color);
+        keycapMatRef.current.emissiveIntensity = 0.2;
+      }
+    }
+
+    // LED
+    const rgbColor = panicToRgbColor(p, 5.0, t);
+    if (ledMatRef.current) {
+      if (!active) {
+        ledMatRef.current.emissiveIntensity = 0.02;
+        ledMatRef.current.emissive.set('#111122');
+      } else {
+        ledMatRef.current.emissive.copy(rgbColor);
+        ledMatRef.current.emissiveIntensity = 0.4;
+      }
+    }
+  });
+
+  const handlePointerDown = useCallback(
+    (e: ThreeEvent<PointerEvent>) => {
+      if (!onPress) return;
+      e.stopPropagation();
+      isPressedRef.current = true;
+      onPress();
+      if ('vibrate' in navigator) navigator.vibrate(10);
+    },
+    [onPress]
+  );
+
+  const handlePointerUp = useCallback(() => {
+    isPressedRef.current = false;
+  }, []);
+
+  const handlePointerOver = useCallback(() => {
+    if (onPress) document.body.style.cursor = 'pointer';
+  }, [onPress]);
+
+  const handlePointerOut = useCallback(() => {
+    document.body.style.cursor = 'auto';
+    isPressedRef.current = false;
+  }, []);
+
+  return (
+    <group position={position}>
+      {/* Switch well */}
+      <mesh position={[0, -0.02, 0]}>
+        <boxGeometry args={[MENU_KEY_W + 0.02, 0.04, KEY_D + 0.02]} />
+        <meshStandardMaterial color="#060610" roughness={0.95} metalness={0.1} />
+      </mesh>
+
+      {/* RGB LED strip */}
+      <mesh position={[0, -0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[MENU_KEY_W - 0.04, KEY_D - 0.04]} />
+        <meshStandardMaterial
+          ref={ledMatRef}
+          color="#080808"
+          emissive="#3388ff"
+          emissiveIntensity={0.4}
+        />
+      </mesh>
+
+      {/* Keycap group */}
+      <group ref={keycapGroupRef}>
+        <mesh
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerOver={handlePointerOver}
+          onPointerOut={handlePointerOut}
+        >
+          <boxGeometry args={[MENU_KEY_W, KEY_H, KEY_D]} />
+          <meshPhysicalMaterial
+            ref={keycapMatRef}
+            color={active ? color : '#0a0a18'}
+            emissive={active ? color : '#000000'}
+            emissiveIntensity={active ? 0.2 : 0}
+            roughness={0.35}
+            metalness={0.05}
+            clearcoat={0.4}
+            clearcoatRoughness={0.15}
+          />
+        </mesh>
+
+        {/* Top highlight */}
+        <mesh position={[0, KEY_H / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[MENU_KEY_W - 0.04, KEY_D - 0.04]} />
+          <meshBasicMaterial color="white" transparent opacity={0.06} />
+        </mesh>
+
+        {/* Portrait SDF shape */}
+        {active && <KeycapPortrait shapeIndex={shapeIndex} color={color} />}
+
+        {/* Label */}
+        {active && (
+          <Billboard position={[0, KEY_H / 2 + 0.02, 0]}>
+            <Text
+              position={[0, 0.12, 0]}
+              fontSize={0.028}
+              color="white"
+              anchorX="center"
+              anchorY="middle"
+              outlineWidth={0.003}
+              outlineColor="black"
+            >
+              {name}
+            </Text>
+          </Billboard>
+        )}
+      </group>
+    </group>
   );
 }
 

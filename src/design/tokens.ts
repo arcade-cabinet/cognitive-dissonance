@@ -1,8 +1,8 @@
 /**
- * Design Tokens
+ * Design Tokens — Cognitive Dissonance
  *
  * Centralized design system values for consistent styling across the application.
- * These tokens define the visual language and brand identity of the game.
+ * Metallic technopunk aesthetic: brushed aluminum, RGB chromatic accents, monospace type.
  */
 
 // =============================================================================
@@ -10,20 +10,20 @@
 // =============================================================================
 
 export const colors = {
-  // Primary Colors - Retro gaming palette
+  // Primary Colors — Metallic chrome
   primary: {
-    main: '#f1c40f', // Golden yellow (brand)
-    light: '#f9e79f',
-    dark: '#d4ac0d',
-    darker: '#b7950b',
+    main: '#c0c8d8', // Brushed steel (brand)
+    light: '#e0e8f0',
+    dark: '#8899bb',
+    darker: '#667788',
   },
 
-  // Secondary Colors
+  // Secondary Colors — Chromatic accent
   secondary: {
-    main: '#9b59b6', // Purple (tech/AI theme)
-    light: '#d7bde2',
-    dark: '#8e44ad',
-    darker: '#7d3c98',
+    main: '#00ccff', // Cyan (AI/neural theme)
+    light: '#66ddff',
+    dark: '#0099cc',
+    darker: '#006699',
   },
 
   // Accent Colors - Enemy types
@@ -140,12 +140,12 @@ export const colors = {
 // =============================================================================
 
 export const typography = {
-  // Font Families - Vision-aligned for Psyduck Panic
+  // Font Families — Cognitive Dissonance (metallic technopunk)
   fonts: {
-    display: '"Righteous", sans-serif', // Bold, playful headers
-    body: '"Space Mono", monospace', // Readable, tech aesthetic for gameplay
-    accent: '"Bungee", sans-serif', // Extra punch for special elements
-    mono: '"VT323", monospace', // Terminal/retro for stats and technical info
+    display: '"Courier New", "Lucida Console", monospace', // Sharp, clinical headers
+    body: '"Courier New", "Lucida Console", monospace', // Tech aesthetic for gameplay
+    accent: '"Courier New", "Lucida Console", monospace', // Consistent monospace identity
+    mono: '"Courier New", "Lucida Console", monospace', // Terminal/stats
   },
 
   // Font Sizes

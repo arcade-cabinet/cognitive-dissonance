@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Game from './components/Game';
-import Landing from './components/Landing';
 import LoadingScreen from './components/LoadingScreen';
 import { initializePlatform } from './lib/capacitor-device';
 
@@ -35,16 +33,7 @@ function App() {
     return <LoadingScreen />;
   }
 
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/game" element={<Game />} />
-        <Route path="/psyduck-panic" element={<Game />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  );
+  return <Game />;
 }
 
 export default App;

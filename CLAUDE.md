@@ -1,4 +1,4 @@
-# Claude Code Instructions — Psyduck Panic
+# Claude Code Instructions — Cognitive Dissonance
 
 ## How to Use This File
 
@@ -15,7 +15,7 @@ Always read AGENTS.md and the relevant docs/ files before starting work. Update 
 
 ## Design Vision (Critical)
 
-The visual target is **photorealistic procedural generation** with a **rear bust composition** — camera behind the character showing back of head (brown hair), shoulders (t-shirt), and keyboard row. NOT low-poly, NOT retro, NOT cartoonish. Every 3D element must use complex curves, PBR materials, procedural textures, and sophisticated lighting. Game over is a **head explosion effect** (anime.js), NOT a Psyduck transformation. Read `docs/DESIGN_VISION.md` for the full specification before touching any rendering code.
+The visual target is **photorealistic procedural generation** with a **rear bust composition** — camera behind the NS-5 android showing back of head, shoulders, and keyboard row. NOT low-poly, NOT retro, NOT cartoonish. Every 3D element must use complex curves, PBR materials, procedural textures, and sophisticated lighting. Enemies are **raymarched SDF shapes** (denial=sphere-lid, delusion=octahedron, fallacy=torus) with holographic iridescent materials. Game over is a **head explosion effect** (anime.js). Read `docs/DESIGN_VISION.md` for the full specification before touching any rendering code.
 
 ## Commands
 

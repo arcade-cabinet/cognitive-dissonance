@@ -1,30 +1,31 @@
 # AGENTS.md - Cross-Agent Memory Bank
 
-> Persistent context for AI agents working on Psyduck Panic.
+> Persistent context for AI agents working on Cognitive Dissonance.
 > Read this file at the start of every task. Update it after significant changes.
 
 ---
 
 ## Project Brief
 
-Psyduck Panic: Evolution Deluxe is a browser-based retro arcade game where players counter AI hype thought bubbles before their brother's head explodes from panic overload. Built with React, TypeScript, React Three Fiber (3D), Tone.js (adaptive music), and Miniplex ECS. Deployed as a PWA and native mobile app via Capacitor.
+Cognitive Dissonance is a 3D browser game where players defend an NS-5 android from hallucinations (cognitive distortions) descending as holographic SDF shapes. Counter denial, delusion, and fallacy before cognitive overload triggers a head explosion. Built with React, TypeScript, React Three Fiber (3D), Tone.js (adaptive music), and Miniplex ECS. Deployed as a PWA and native mobile app via Capacitor.
 
 ### Core Loop
 
-1. Thought bubbles (enemies) descend toward the character's head
+1. Cognitive distortions (raymarched SDF enemies) descend toward the android's head
 2. Player counters them by type (Reality/History/Logic) via 3D keyboard F-keys or click
-3. Missed bubbles increase the PANIC meter
-4. At 100% panic → head explodes → game over with grading (S/A/B/C/D)
+3. Missed distortions increase the overload meter
+4. At 100% overload → head explodes → game over with grading (S/A/B/C/D)
 5. Tension escalates continuously: relaxed shoulders → bunched/locked → head explosion
 
 ### Key Goals
 
 - **Photorealistic procedural visuals** — See `docs/DESIGN_VISION.md` for the full specification. NO low-poly, NO placeholder primitives. Complex curves, PBR materials, procedural textures, sophisticated lighting.
-- **Rear bust composition** — Camera behind/above the character. Back of head (brown hair), shoulders (t-shirt), keyboard row. No face rendering. Tension communicated through body language.
-- **Visceral tension escalation** — Continuous shoulder bunching, head trembling, neck veins, hair standing on end. Culminates in an effects-driven head explosion (anime.js), NOT a character transformation.
+- **Rear bust composition** — Camera behind/above the NS-5 android. Back of head, shoulders, keyboard row. Tension communicated through body language.
+- **Visceral tension escalation** — Continuous shoulder bunching, head trembling, cable tension, energy crackling. Culminates in an effects-driven head explosion (anime.js).
+- **Raymarched SDF enemies** — Denial (sphere-lid), Delusion (octahedron), Fallacy (twisted torus) with holographic iridescent materials
+- **3D keyboard as entire UI** — Mechanical keyboard with dynamic keycaps, RGB backlighting tied to panic, menu keys flanking spacebar
 - Fun, rewarding escalation from calm to full panic
 - Unpredictable boss encounters (missile-command style)
-- Real engagement, not fixed patterns
 - Ship quality: all checks pass (lint, types, tests, build)
 
 ---
@@ -35,12 +36,12 @@ Psyduck Panic: Evolution Deluxe is a browser-based retro arcade game where playe
 
 ```text
 Presentation Layer (Main Thread)
-├── React Components (UI/HUD) — Game.tsx (lazy loaded), Landing.tsx
+├── React Components (UI/HUD) — Game.tsx (direct render, no routing)
 ├── R3F Canvas (3D Scene) — GameScene.tsx
 │   ├── AtmosphericBackground — Dark atmosphere, monitor glow, rim light
 │   ├── CharacterBust — Rear bust: back of head (hair), shoulders (t-shirt), neck
-│   ├── KeyboardControls — Interactive 3D F1-F4 mechanical keys with RGB underglow
-│   ├── EnemySystem — ECS-driven enemy bubbles with glow
+│   ├── KeyboardControls — 3D mechanical keyboard (F-keys, spacebar, menu keys) with RGB
+│   ├── EnemySystem — Raymarched SDF enemies with holographic iridescence
 │   ├── BossSystem — Pulsing boss with orbiting orbs
 │   ├── ParticleSystem — Burst particles on counter
 │   ├── TrailSystem — Ring trails on counter
@@ -72,7 +73,7 @@ Platform Layer
 - **Event-driven VFX**: Particles/trails/confetti spawned by event handlers, not synced from worker
 - **UI state reducer**: Game.tsx uses `useReducer` with actions defined in `src/lib/ui-state.ts`
 - **Grading**: Extracted to `src/lib/grading.ts` — S/A/B/C/D based on accuracy and max combo
-- **Lazy loading**: Game component lazy-loaded via `React.lazy()` — Three.js/R3F deferred until `/game` route
+- **No routing**: Game renders directly from App.tsx (no Landing page, no react-router-dom)
 - **No monoliths**: Logic lives in `/lib/`, not in `.tsx` files. Components are thin rendering layers.
 
 ### Spinal Systems (AI + Panic)
@@ -135,7 +136,7 @@ pnpm build        # Production build (runs typecheck + icon gen first)
 pnpm typecheck    # TypeScript check
 pnpm lint         # Biome lint
 pnpm lint:fix     # Auto-fix lint
-pnpm test         # Unit tests (94 tests)
+pnpm test         # Unit tests (277 tests)
 pnpm test:e2e     # E2E tests (Playwright)
 ```
 
@@ -147,16 +148,15 @@ pnpm test:e2e     # E2E tests (Playwright)
 src/
 ├── components/
 │   ├── Game.tsx              # Main game component (R3F Canvas + HUD + worker comm)
-│   ├── Landing.tsx           # Landing/start screen
-│   ├── Landing.test.tsx      # Landing page RTL component tests
-│   ├── Layout.astro          # Astro page layout
+│   ├── Landing.tsx           # Legacy landing page (no longer routed)
+│   ├── Landing.test.tsx      # Landing page RTL component tests (legacy)
 │   └── scene/
 │       ├── GameScene.tsx     # R3F scene orchestrator (camera, shake, flash)
-│       ├── CharacterBust.tsx  # Rear bust: back of head, hair, shoulders, t-shirt
-│       ├── KeyboardControls.tsx # 3D mechanical F1-F4 keys with RGB underglow
+│       ├── CharacterBust.tsx  # NS-5 android rear bust (procedural)
+│       ├── KeyboardControls.tsx # 3D mechanical keyboard (F-keys, spacebar, menu keys, RGB)
 │       ├── AtmosphericBackground.tsx # Dark atmosphere, monitor glow, rim light
 │       └── systems/
-│           ├── EnemySystem.tsx    # ECS enemy bubble rendering
+│           ├── EnemySystem.tsx    # Raymarched SDF enemy rendering
 │           ├── BossSystem.tsx     # ECS boss rendering
 │           └── ParticleSystem.tsx # Particles, trails, confetti
 ├── ecs/
@@ -190,7 +190,7 @@ src/
 │   └── landing.css           # Landing page styles
 ├── worker/
 │   └── game.worker.ts        # Web Worker entry point
-├── App.tsx                   # React Router setup (lazy loads Game)
+├── App.tsx                   # App root (renders Game directly)
 ├── main.tsx                  # React entry point
 └── test/
     └── setup.ts              # Vitest setup (RTL cleanup + jest-dom)
@@ -212,55 +212,46 @@ e2e/
 
 ### Current Focus
 
-Implementing the **rear bust composition** — camera behind the character showing back of head (brown hair), shoulders (t-shirt), and keyboard row. Replacing the old full-body front-facing diorama view with a tighter, more photorealistic bust view. Game over is now a head explosion effect, not a Psyduck transformation.
+**Cognitive Dissonance rebrand complete.** Game identity is now fully aligned: metallic technopunk aesthetic, raymarched SDF enemies, 3D mechanical keyboard as sole UI, NS-5 android bust with continuous tension escalation.
 
-### Recent Changes (This Session)
+### Recent Changes
 
-- **Design Vision Pivot** — Rear bust view replacing full-body diorama:
-  - Camera behind/above character, looking over their shoulder
-  - Character: back of head (textured brown hair) + shoulders (t-shirt) + neck
-  - No face rendering needed — massive simplification for photorealistic procedural gen
-  - Tension via body language: shoulder bunching, head trembling, neck veins
-  - Game over: head explodes (anime.js + Three.js particles), NOT Psyduck transformation
-  - Background: dark atmospheric lighting, not a detailed room
-- **CharacterBust.tsx** — New component replacing CharacterModel.tsx:
-  - Anatomically proportioned skull (back view) with occipital curve
-  - Procedural brown hair with layered shells and noise-based highlights
-  - Shoulders with trapezius slope, deltoid curve, scapula suggestion
-  - T-shirt fabric with procedural weave texture and wrinkle displacement
-  - Continuous tension: shoulders rise, neck stiffens, head trembles (panic 0-100)
-  - Breathing animation: frequency increases with panic
-  - Neck skin: SSS approximation, veins emerge at high panic, sweat beads
-  - Hair responds to panic: settled → disheveled → standing on end
-  - Energy crackling around skull at 75%+ panic
-- **AtmosphericBackground.tsx** — Replaces RoomBackground.tsx:
-  - Dark atmospheric void instead of detailed room geometry
-  - Monitor glow (RectAreaLight) from in front, shifts with panic
-  - Rim light from behind defines head/shoulder silhouette
-  - Floating dust particles in monitor light
-- **Head Explosion Game Over** — anime.js timeline:
-  - Screen flash → particle burst → shockwave ring → debris rain → shoulders slump
-  - ~2.5 second cinematic sequence
-  - Replaces the old Psyduck transformation / aura rings
+- **Cognitive Dissonance rebrand** — Full identity overhaul:
+  - Enemy types: DENIAL (orange sphere-lid), DELUSION (green octahedron), FALLACY (purple torus)
+  - Waves: Mild Dissonance → Double Think → Cognitive Overload → Rationalization → Total Dissolution
+  - Bosses: THE ECHO CHAMBER, THE GRAND DELUSION
+  - Data model: `EnemyType.icon` (emoji) → `EnemyType.shape` (EnemyShape union)
+- **Raymarched SDF enemy system** — Per-object fragment shaders with signed distance functions
+  - Holographic iridescent materials with fresnel rim glow
+  - Encrypted enemies: dark metallic, no iridescence
+- **Keycap portrait system** — Mini raymarched SDFs on keycap surfaces during gameplay
+- **Menu keys flanking spacebar** — NEW GAME (left, play triangle SDF) and CONTINUE (right, fast-forward SDF)
+- **Landing page removed** — No more react-router-dom, Game renders directly from App.tsx
+- **Title overlay** — "COGNITIVE DISSONANCE" with metallic gradient text and RGB chromatic aberration animation
+- **Typography** — System monospace fonts (Courier New), no external font dependencies (CSP-safe)
+- **Design tokens rebranded** — Primary palette: brushed steel (#c0c8d8), secondary: cyan (#00ccff)
+- **3D keyboard as complete UI** — Dynamic keycaps, space bar, RGB backlighting tied to panic
+- **NS-5 android bust** — Rear composition, continuous tension escalation, head explosion game over
 
 ### Next Steps
 
-1. **Panic system tuning** — Playtesting to balance the sigmoid curve, decay rates, and zone thresholds
-2. **Boss AI tuning** — Balance attack cooldowns, aggression scaling, rage threshold
-3. **Visual regression testing** — Set up Playwright screenshot comparison baselines
-4. **PBR material refinement** — Improve hair anisotropy, fabric weave, skin SSS on the bust
+1. **Panic/AI tuning** — Balance sigmoid curve, decay rates, zone thresholds
+2. **Boss AI tuning** — Attack cooldowns, aggression scaling, rage threshold
+3. **Visual regression baselines** — Playwright screenshot comparison
+4. **Reactylon migration evaluation** — Potential R3F → Reactylon for XR support and native perf
 
 ### Active Decisions
 
-- **Rear bust composition** — Camera behind the character. Back of head + shoulders + keyboard. No face, no room.
-- **Head explosion game over** — Replaces Psyduck transformation. Effects-driven (anime.js + Three.js particles).
-- **Continuous tension** — No discrete character states (normal/panic/psyduck). Panic 0-100 directly drives all deformation.
-- **3D keyboard replaces HTML buttons** — F1-F4 keys are the primary input; hidden HTML buttons remain for e2e compatibility
-- Coordinate space is 800x600 game → (-4,4) / (3,-3) scene. All systems use `gx()`/`gy()` helpers.
-- VFX (particles, trails, confetti) are render-only — spawned by events, not synced from worker.
-- Music layers are controlled by panic level and wave number.
-- Yuka.js runs entirely in the Web Worker alongside GameLogic.
-- Boss AI communicates via BossAction queue (move/spawn_enemies/flash/shake).
+- **No routing** — Game renders at `/` directly, no Landing page, no react-router-dom
+- **Rear bust composition** — Camera behind the android. Back of head + shoulders + keyboard.
+- **Head explosion game over** — Effects-driven (anime.js + Three.js particles)
+- **Continuous tension** — Panic 0-100 directly drives all deformation
+- **3D keyboard is the UI** — F1-F4, spacebar, menu keys are the primary inputs; hidden HTML buttons for e2e
+- **Raymarched SDF enemies** — Per-object billboard quads with custom GLSL fragment shaders
+- Coordinate space: 800x600 game → (-4,4) / (3,-3) scene via `gx()`/`gy()` helpers
+- VFX (particles, trails, confetti) spawned by events, not synced from worker
+- Music layers controlled by panic level and wave number
+- Yuka.js runs entirely in the Web Worker alongside GameLogic
 
 ---
 
@@ -270,56 +261,52 @@ Implementing the **rear bust composition** — camera behind the character showi
 
 - [x] R3F 3D rendering (replacing PixiJS 2D)
 - [x] Miniplex ECS with proper miniplex-react bindings
-- [x] 3D room diorama (desk, window, moon, stars, posters, progressive clutter)
-- [x] ~~3D character model with Normal/Panic/Psyduck transformations~~ → Replaced by rear bust composition
-- [x] ~~Dynamic eye system~~ → Replaced (no face in bust view)
-- [x] ECS enemy system with bubble glow and type icons
+- [x] Raymarched SDF enemy system (denial=sphere-lid, delusion=octahedron, fallacy=torus)
+- [x] Holographic iridescent enemy materials with fresnel rim glow
+- [x] Keycap portrait system (mini raymarched SDFs on keycap surfaces)
 - [x] ECS boss system with pulse, orbs, iFrame flash
 - [x] ECS particle/trail/confetti VFX systems
 - [x] Tone.js adaptive music (layers respond to panic + wave)
 - [x] Camera shake and flash overlay
 - [x] Grading system (S/A/B/C/D with accuracy + combo)
 - [x] UI state extraction (reducer pattern)
-- [x] PixiJS cleanup (removed dependency + dead code)
 - [x] Panic Escalation System (sigmoid damage, combo decay, zones, hysteresis)
 - [x] AI Director (Yuka FSM: Building/Sustaining/Relieving/Surging)
 - [x] Boss AI (Yuka goal-driven: Burst/Sweep/Spiral/Reposition/Summon/Rage)
-- [x] **3D Mechanical Keyboard Controls** (F1-F4, RGB underglow, cooldown vis, haptics)
-- [x] **Vibrant Visual Identity** (design tokens, emissive materials, colored lighting)
-- [x] **Lazy Loading** (Game route deferred, initial bundle ~75% smaller)
-- [x] **E2E Test DRY Refactor** (shared helpers, F-key controls, standardized screenshots)
-- [x] **React Testing Library** component tests (Landing page: 12 tests)
-- [x] **UI Reducer Tests** (14 tests) + **Grading Tests** (9 tests)
-- [x] Fixed flaky nuke test (encrypted enemy handling)
-- [x] All 94 unit tests passing
-- [x] 0 lint warnings, 0 type errors
-- [x] Production build working
+- [x] **3D Mechanical Keyboard UI** (F-keys, spacebar, menu keys, RGB backlighting, cooldown vis)
+- [x] **Cognitive Dissonance rebrand** (enemy types, waves, bosses, UI, docs)
+- [x] **NS-5 Android Bust** (rear composition, continuous tension, head explosion)
+- [x] **Landing page removed** (direct render, no react-router-dom)
+- [x] **Design tokens rebranded** (metallic technopunk: brushed steel + cyan)
+- [x] **E2E Test DRY Refactor** (shared helpers, F-key controls, screenshots)
+- [x] **277 unit tests passing**, 0 lint warnings, 0 type errors
 
 ### In Progress
 
-- [ ] Rear bust composition implementation (CharacterBust + AtmosphericBackground)
-- [ ] Head explosion game-over effect
 - [ ] Panic/AI tuning and balance (requires playtesting)
+- [ ] Reactylon migration evaluation (R3F → Reactylon for XR + native perf)
 
 ### Known Issues
 
-- Three.js vendor chunk is ~1.2MB (gzipped ~333KB) — inherent to Three.js, mitigated by lazy loading
+- Three.js vendor chunk is ~1.2MB (gzipped ~333KB) — inherent to Three.js
 - Visual regression baselines not yet established
+- Landing.tsx and landing.css still exist as dead files (not routed)
 
 ### Architecture Decisions Log
 
 | Decision | Rationale |
 |---|---|
-| R3F over PixiJS | 3D diorama aesthetic, better material/lighting support |
+| R3F over PixiJS | 3D aesthetic, PBR materials, lighting |
 | Miniplex ECS | Clean entity management for particles, enemies, bosses |
 | `miniplex-react` (not `@miniplex/react`) | Only compatible React bindings for `miniplex@2.0.0` |
 | Tone.js | Real-time adaptive music with synth layers |
 | Ref-based scene updates | Avoid React re-renders at 60fps |
 | Worker for game logic | Keep main thread free for rendering |
 | Logic in `/lib/`, not `.tsx` | No monolith components; thin rendering layers |
-| 3D keyboard over HTML buttons | Visual storytelling (RGB → panic), physical feedback, diorama integration |
-| Rear bust over full-body diorama | Fewer surfaces = better photorealism, player identification, physical tension |
-| Head explosion over Psyduck transformation | No copyright risk, easier photorealism, more visceral |
-| Dark atmosphere over detailed room | Focus on bust + keyboard, reduce geometry budget |
-| Lazy loading Game route | Defer ~1.5MB of Three.js/R3F until user navigates to /game |
+| 3D keyboard as entire UI | Visual storytelling (RGB → panic), physical feedback |
+| Raymarched SDF enemies | Per-object GLSL shaders, holographic iridescence, no mesh geometry |
+| Rear bust over full-body diorama | Fewer surfaces = better photorealism, player identification |
+| Head explosion game over | Effects-driven (anime.js + Three.js particles) |
+| No routing / no Landing page | Game renders directly at `/`, no react-router-dom overhead |
+| System monospace fonts | CSP-safe (`font-src 'self'`), no external font dependencies |
 | Shared E2E helpers | DRY test utilities, consistent patterns across all test suites |

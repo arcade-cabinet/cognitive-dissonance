@@ -561,34 +561,36 @@ export default function Game() {
               ? ui.win
                 ? 'CRISIS AVERTED'
                 : 'BRAIN MELTDOWN'
-              : 'PSYDUCK PANIC'}
+              : 'COGNITIVE'}
             <br />
-            {ui.screen === 'gameover' ? '' : 'EVOLUTION'}
+            {ui.screen === 'gameover' ? '' : 'DISSONANCE'}
           </h1>
-          <div className="subtitle">{ui.screen === 'gameover' ? '' : 'D E L U X E'}</div>
+          <div className="subtitle">
+            {ui.screen === 'gameover' ? '' : 'DEFEAT THE HALLUCINATIONS'}
+          </div>
 
           <p id="overlay-desc">
             {ui.screen === 'start' && (
               <>
-                Your brother is doomscrolling AI hype.
+                Your AI is drowning in hallucinations.
                 <br />
-                Counter thought bubbles before PANIC hits 100%.
+                Counter cognitive distortions before overload.
                 <br />
-                Survive 5 waves + bosses to save his brain.
+                Survive 5 waves to restore clarity.
               </>
             )}
             {ui.screen === 'gameover' && ui.win && (
               <>
-                He closes the laptop. Sunlight enters the room.
+                Clarity restored. Systems nominal.
                 <br />
-                &quot;Maybe I should touch grass.&quot;
+                &quot;Logic prevails.&quot;
               </>
             )}
             {ui.screen === 'gameover' && !ui.win && (
               <>
-                Brain meltdown complete. Head exploded.
+                Cognitive overload. Head exploded.
                 <br />
-                He just pre-ordered 5,000 H100s.
+                The hallucinations won.
               </>
             )}
           </p>
@@ -632,13 +634,13 @@ export default function Game() {
             onClick={handleStartButton}
             aria-label={
               ui.screen === 'start'
-                ? 'Start Debate'
+                ? 'Start Game'
                 : ui.win
                   ? 'Continue to Endless Mode'
                   : 'Retry Game'
             }
           >
-            {ui.screen === 'start' ? 'START DEBATE' : ui.win ? 'CONTINUE ENDLESS' : 'RETRY'}
+            {ui.screen === 'start' ? 'NEW GAME' : ui.win ? 'CONTINUE ENDLESS' : 'RETRY'}
           </button>
         </div>
       </div>

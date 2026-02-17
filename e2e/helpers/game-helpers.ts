@@ -19,7 +19,7 @@ export const E2E_PLAYTHROUGH_TIMEOUT = 180000;
 
 /** Navigate to the game page and wait for the container to load */
 export async function navigateToGame(page: Page): Promise<void> {
-  await page.goto('/game');
+  await page.goto('/');
   await expect(page.locator('#game-container')).toBeVisible();
 }
 
