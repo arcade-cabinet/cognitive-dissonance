@@ -134,6 +134,32 @@ describe('device-utils', () => {
       const info = detectDevice();
       expect(info.isFoldable).toBe(true);
     });
+
+    test('detects unfolded foldable via fallback', () => {
+      Object.defineProperty(window, 'innerWidth', { value: 768 });
+      Object.defineProperty(window, 'innerHeight', { value: 800 });
+      Object.defineProperty(window, 'navigator', {
+        value: {
+          userAgent:
+            'Mozilla/5.0 (Linux; Android 11; SM-F916U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+          maxTouchPoints: 1,
+        },
+      });
+
+      const info = detectDevice();
+      expect(info.type).toBe('foldable');
+      expect(info.foldState).toBe('unfolded');
+    });
+
+    test('detects dual screen via media query', () => {
+      const matchMedia = vi.fn().mockImplementation((query) => ({
+        matches: query === '(horizontal-viewport-segments: 2)',
+      }));
+      Object.defineProperty(window, 'matchMedia', { value: matchMedia });
+
+      const info = detectDevice();
+      expect(info.isFoldable).toBe(true);
+    });
   });
 
   describe('calculateViewport', () => {
@@ -381,6 +407,24 @@ describe('device-utils', () => {
 
       expect(removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
       expect(removeEventListener).toHaveBeenCalledWith('orientationchange', expect.any(Function));
+    });
+
+    test('adds listener to visualViewport if available', () => {
+      const addEventListener = vi.fn();
+      const removeEventListener = vi.fn();
+      Object.defineProperty(window, 'visualViewport', {
+        value: {
+          addEventListener,
+          removeEventListener,
+        },
+        writable: true,
+      });
+
+      const cleanup = createResizeObserver(vi.fn());
+      expect(addEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
+
+      cleanup();
+      expect(removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
     });
   });
 });

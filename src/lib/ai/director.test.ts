@@ -1,16 +1,23 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { AIDirector } from './director';
+import {
+  AIDirector,
+  BuildingState,
+  RelievingState,
+  SurgingState,
+  SustainingState,
+} from './director';
 
 describe('AIDirector', () => {
   let director: AIDirector;
 
   beforeEach(() => {
     director = new AIDirector();
+    // Default to BuildingState
   });
 
   it('should initialize with default state', () => {
     expect(director.tension).toBe(0.3);
-    expect(director.fsm.currentState?.constructor.name).toBe('BuildingState');
+    expect(director.fsm.currentState).toBeInstanceOf(BuildingState);
     expect(director.modifiers).toBeDefined();
   });
 
@@ -52,54 +59,132 @@ describe('AIDirector', () => {
   });
 
   describe('States', () => {
-    it('BuildingState should increase tension', () => {
-      director.fsm.changeTo('BUILDING');
-      director.targetTension = 0.3;
+    describe('BuildingState', () => {
+      beforeEach(() => {
+        director.fsm.changeTo('BUILDING');
+      });
 
-      director.update(1.0); // 1 second
+      it('should increase tension over time', () => {
+        director.targetTension = 0.3;
+        director.update(1.0); // 1 second
+        expect(director.targetTension).toBeGreaterThan(0.3);
+      });
 
-      expect(director.targetTension).toBeGreaterThan(0.3);
+      it('should transition to SURGING if tension high and skill high', () => {
+        director.tension = 0.75;
+        director.targetTension = 0.75;
+        director.stateTimer = 4.0;
+        // Mock high skill
+        director.performance.accuracy = 1.0;
+        director.performance.combo = 15; // >= 15 for max combo factor
+        director.performance.recentCounters = 10;
+
+        director.update(0.016);
+        expect(director.fsm.currentState).toBeInstanceOf(SurgingState);
+      });
+
+      it('should transition to RELIEVING if panic is critical', () => {
+        director.performance.panic = 81;
+        director.update(0.016);
+        expect(director.fsm.currentState).toBeInstanceOf(RelievingState);
+      });
+
+      it('should transition to SUSTAINING if panic is moderate or skill low', () => {
+        director.performance.panic = 61;
+        director.update(0.016);
+        expect(director.fsm.currentState).toBeInstanceOf(SustainingState);
+      });
     });
 
-    it('RelievingState should decrease tension', () => {
-      // changeTo triggers enter(), which drops tension
-      director.targetTension = 0.8;
-      director.fsm.changeTo('RELIEVING');
+    describe('SustainingState', () => {
+      beforeEach(() => {
+        director.fsm.changeTo('SUSTAINING');
+      });
 
-      expect(director.targetTension).toBeLessThan(0.8);
+      it('should nudge tension towards 0.5 (down)', () => {
+        director.targetTension = 0.6;
+        director.update(1.0);
+        expect(director.targetTension).toBeLessThan(0.6);
+        expect(director.targetTension).toBeGreaterThan(0.5);
+      });
 
-      const afterEnter = director.targetTension;
-      director.update(1.0);
-      expect(director.targetTension).toBeLessThan(afterEnter);
+      it('should nudge tension towards 0.5 (up)', () => {
+        director.targetTension = 0.4;
+        director.update(1.0);
+        expect(director.targetTension).toBeGreaterThan(0.4);
+        expect(director.targetTension).toBeLessThan(0.5);
+      });
+
+      it('should transition to BUILDING if player recovers', () => {
+        director.stateTimer = 5.0;
+        director.performance.panic = 30;
+        director.performance.accuracy = 1.0;
+        director.performance.combo = 10;
+
+        director.update(0.016);
+        expect(director.fsm.currentState).toBeInstanceOf(BuildingState);
+      });
+
+      it('should transition to RELIEVING if panic high', () => {
+        director.performance.panic = 76;
+        director.update(0.016);
+        expect(director.fsm.currentState).toBeInstanceOf(RelievingState);
+      });
     });
 
-    it('SustainingState should nudge tension towards 0.5', () => {
-      director.fsm.changeTo('SUSTAINING');
-      director.targetTension = 0.6;
+    describe('RelievingState', () => {
+      beforeEach(() => {
+        // enter() drops tension immediately
+        director.targetTension = 0.8;
+        director.fsm.changeTo('RELIEVING');
+      });
 
-      director.update(1.0); // 1 second
+      it('should decrease tension further', () => {
+        const afterEnter = director.targetTension;
+        director.update(1.0);
+        expect(director.targetTension).toBeLessThan(afterEnter);
+      });
 
-      // Should decrease towards 0.5
-      expect(director.targetTension).toBeLessThan(0.6);
-      expect(director.targetTension).toBeGreaterThan(0.5);
+      it('should transition to BUILDING once stabilized', () => {
+        director.performance.panic = 40;
+        director.performance.accuracy = 1.0;
+        director.performance.combo = 10;
+        director.stateTimer = 6.0;
+
+        director.update(0.016);
+        expect(director.fsm.currentState).toBeInstanceOf(BuildingState);
+      });
     });
 
-    it('SustainingState should nudge tension up towards 0.5', () => {
-      director.fsm.changeTo('SUSTAINING');
-      director.targetTension = 0.4;
+    describe('SurgingState', () => {
+      beforeEach(() => {
+        director.tension = 0.5;
+        director.fsm.changeTo('SURGING');
+      });
 
-      director.update(1.0); // 1 second
+      it('should spike tension on enter', () => {
+        expect(director.targetTension).toBeGreaterThan(0.7);
+      });
 
-      // Should increase towards 0.5
-      expect(director.targetTension).toBeGreaterThan(0.4);
-      expect(director.targetTension).toBeLessThan(0.5);
-    });
+      it('should transition to RELIEVING after timer if panic high', () => {
+        director.stateTimer = 5.0;
+        director.performance.panic = 60;
+        director.update(0.016);
+        expect(director.fsm.currentState).toBeInstanceOf(RelievingState);
+      });
 
-    it('SurgingState should increase tension significantly', () => {
-      director.tension = 0.5;
-      director.fsm.changeTo('SURGING');
+      it('should transition to SUSTAINING after timer if panic low', () => {
+        director.stateTimer = 5.0;
+        director.performance.panic = 40;
+        director.update(0.016);
+        expect(director.fsm.currentState).toBeInstanceOf(SustainingState);
+      });
 
-      expect(director.targetTension).toBeGreaterThan(0.7);
+      it('should emergency exit to RELIEVING if panic critical', () => {
+        director.performance.panic = 86;
+        director.update(0.016);
+        expect(director.fsm.currentState).toBeInstanceOf(RelievingState);
+      });
     });
   });
 
