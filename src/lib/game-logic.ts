@@ -298,6 +298,7 @@ export class GameLogic {
     const pu = POWERUPS[Math.floor(Math.random() * POWERUPS.length)];
     this.powerups.push({
       ...pu,
+      id: `${pu.id}-${Date.now()}-${Math.random()}`,
       x: 100 + Math.random() * (W - 200),
       y: -30,
       vy: 0.6 + Math.random() * 0.4,
@@ -520,7 +521,7 @@ export class GameLogic {
       const e = this.enemies[i];
       e.x += e.vx * dt * slowFactor;
       e.y += e.vy * dt * slowFactor;
-      if (e.x < -60 || e.x > W + 60 || e.y > H + 60) {
+      if (e.x < -60 || e.x > W + 60 || e.y < -60 || e.y > H + 60) {
         this.enemies.splice(i, 1);
         this.combo = 0;
         this.addPanic(8);
