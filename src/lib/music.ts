@@ -160,8 +160,8 @@ export class AdaptiveMusic {
     // Smooth BPM changes based on panic
     const baseBPM = 120 + this.wave * 8;
     const panicBPM = baseBPM + this.panic * 0.4;
+    Tone.getTransport().bpm.cancelScheduledValues();
     Tone.getTransport().bpm.rampTo(panicBPM, 0.5);
-
     // Distortion increases with panic
     if (this.distortion) {
       this.distortion.distortion = this.panic > 60 ? (this.panic - 60) / 200 : 0;
