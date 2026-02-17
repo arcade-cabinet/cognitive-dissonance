@@ -89,7 +89,7 @@ describe('GameLogic', () => {
       game.spawnPowerUp();
       const powerup = game.powerups[0];
 
-      expect(['slow', 'shield', 'double'].some((t) => powerup.id.startsWith(`${t}-`))).toBe(true);
+      expect(powerup.id).toMatch(/^(slow|shield|double)-/);
       expect(powerup.x).toBeGreaterThan(0);
       expect(powerup.y).toBeDefined();
     });
