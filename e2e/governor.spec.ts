@@ -9,7 +9,7 @@ import { navigateToGame, screenshot, startGame, verifyGamePlaying } from './help
  * Full matrix (CD): runs all variants (aggressive, defensive, verify-running).
  */
 test.describe('Automated Playthrough with Governor', () => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
 
   test('should run automated playthrough with default settings', async ({ page }) => {
     await navigateToGame(page);

@@ -26,6 +26,7 @@ export default function Game() {
   const musicRef = useRef<AdaptiveMusic | null>(null);
   const musicInitRef = useRef<Promise<void> | null>(null);
   const waveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startInitiatedRef = useRef(false);
   const [ui, dispatch] = useReducer(uiReducer, initialUIState);
   const [viewport, setViewport] = useState<ViewportDimensions>(() => {
     if (typeof window !== 'undefined') {
@@ -83,6 +84,9 @@ export default function Game() {
   // The worker message is delayed via setTimeout to ensure React has time
   // to commit the screen change before worker state updates arrive.
   const handleStartLogic = useCallback((currentState: UIState) => {
+    if (startInitiatedRef.current) return;
+    startInitiatedRef.current = true;
+
     sfxRef.current?.resume();
     musicRef.current?.resume();
     sceneRef.current?.reset();
@@ -103,6 +107,13 @@ export default function Game() {
     };
     setTimeout(() => attemptStart(), 100);
   }, []);
+
+  // Reset start debounce when game is playing
+  useEffect(() => {
+    if (ui.screen === 'playing') {
+      startInitiatedRef.current = false;
+    }
+  }, [ui.screen]);
 
   const handleStartButton = () => {
     handleStartLogic(ui);
