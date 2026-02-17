@@ -72,8 +72,12 @@ export default function Game() {
 
   // Initialize SFX + Music
   useEffect(() => {
-    sfxRef.current = new SFX();
-    sfxRef.current.init();
+    try {
+      sfxRef.current = new SFX();
+      sfxRef.current.init();
+    } catch (e) {
+      console.warn('SFX init failed:', e);
+    }
 
     const music = new AdaptiveMusic();
     musicInitRef.current = music.init().catch((err) => {

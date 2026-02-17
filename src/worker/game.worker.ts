@@ -7,10 +7,12 @@ let lastTime = 0;
 let animationFrameId: number | undefined;
 
 // Polyfill for requestAnimationFrame in worker if needed
-const requestFrame =
-  self.requestAnimationFrame ||
-  ((callback: (t: number) => void) => setTimeout(() => callback(performance.now()), 16));
-const cancelFrame = self.cancelAnimationFrame || clearTimeout;
+// Must bind to self to avoid "Illegal invocation" errors in some environments
+// Force setTimeout to ensure reliable execution in CI/Headless environments
+const requestFrame = (callback: (t: number) => void) =>
+  setTimeout(() => callback(performance.now()), 16);
+
+const cancelFrame = clearTimeout;
 
 self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   try {
@@ -70,16 +72,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
         return;
     }
   } catch (err) {
-    running = false;
-    if (animationFrameId !== undefined) {
-      cancelFrame(animationFrameId);
-    }
-    console.error('[game.worker] Unhandled error in message handler:', err);
-    const errorMsg: MainMessage = {
-      type: 'ERROR',
-      message: err instanceof Error ? err.message : String(err),
-    };
-    self.postMessage(errorMsg);
+    handleError(err);
   }
 };
 
@@ -90,18 +83,35 @@ function scheduleLoop() {
 function loop(now: number) {
   if (!running) return;
 
-  const dt = Math.min((now - lastTime) / 16.67, 2); // Frame time factor (approx 1.0 at 60fps)
-  lastTime = now;
+  try {
+    const dt = Math.min((now - lastTime) / 16.67, 2); // Frame time factor (approx 1.0 at 60fps)
+    lastTime = now;
 
-  logic.update(dt, now);
-  const state = logic.getState();
+    logic.update(dt, now);
+    const state = logic.getState();
 
-  const msg: MainMessage = { type: 'STATE', state };
-  self.postMessage(msg);
+    const msg: MainMessage = { type: 'STATE', state };
+    self.postMessage(msg);
 
-  if (logic.running) {
-    scheduleLoop();
-  } else {
-    running = false;
+    if (logic.running) {
+      scheduleLoop();
+    } else {
+      running = false;
+    }
+  } catch (err) {
+    handleError(err);
   }
+}
+
+function handleError(err: unknown) {
+  running = false;
+  if (animationFrameId !== undefined) {
+    cancelFrame(animationFrameId);
+  }
+  console.error('[game.worker] Unhandled error:', err);
+  const errorMsg: MainMessage = {
+    type: 'ERROR',
+    message: err instanceof Error ? err.message : String(err),
+  };
+  self.postMessage(errorMsg);
 }
