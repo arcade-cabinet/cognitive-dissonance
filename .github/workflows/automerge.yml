@@ -145,9 +145,6 @@ jobs:
       - name: Find and rebase auto-merge PRs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Find and rebase auto-merge PRs
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: ${{ github.ref_name }}
         run: |
           echo "Checking for auto-merge PRs targeting ${BRANCH}..."

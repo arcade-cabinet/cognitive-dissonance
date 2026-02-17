@@ -134,6 +134,32 @@ describe('device-utils', () => {
       const info = detectDevice();
       expect(info.isFoldable).toBe(true);
     });
+
+    test('detects unfolded foldable via fallback', () => {
+      Object.defineProperty(window, 'innerWidth', { value: 768 });
+      Object.defineProperty(window, 'innerHeight', { value: 800 });
+      Object.defineProperty(window, 'navigator', {
+        value: {
+          userAgent:
+            'Mozilla/5.0 (Linux; Android 11; SM-F916U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+          maxTouchPoints: 1,
+        },
+      });
+
+      const info = detectDevice();
+      expect(info.type).toBe('foldable');
+      expect(info.foldState).toBe('unfolded');
+    });
+
+    test('detects dual screen via media query', () => {
+      const matchMedia = vi.fn().mockImplementation((query) => ({
+        matches: query === '(horizontal-viewport-segments: 2)',
+      }));
+      Object.defineProperty(window, 'matchMedia', { value: matchMedia });
+
+      const info = detectDevice();
+      expect(info.isFoldable).toBe(true);
+    });
   });
 
   describe('calculateViewport', () => {
@@ -162,6 +188,30 @@ describe('device-utils', () => {
       // We expect it to maintain aspect ratio.
       expect(vp.aspectRatio).toBeCloseTo(baseWidth / baseHeight);
       expect(vp.width / vp.height).toBeCloseTo(baseWidth / baseHeight);
+    });
+
+    test('calculates viewport for desktop wide', () => {
+      const deviceInfo: DeviceInfo = {
+        type: 'desktop',
+        orientation: 'landscape',
+        screenWidth: 1920,
+        screenHeight: 1080,
+        pixelRatio: 1,
+        isTouchDevice: false,
+        isIOS: false,
+        isAndroid: false,
+        hasNotch: false,
+        isFoldable: false,
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      // 1920/1080 = 1.77 > 1.33 (base)
+      // Constrained by height
+      // Max height = 1080 * 0.85 = 918
+      // Or baseHeight * 1.5 = 900
+      // So height should be 900
+      expect(vp.height).toBe(900);
+      expect(vp.width).toBe(1200); // 900 * 1.33
     });
 
     test('calculates viewport for phone portrait', () => {
@@ -294,6 +344,40 @@ describe('device-utils', () => {
       // top notch is 44px
       expect(vp.offsetY).toBeGreaterThanOrEqual(44);
     });
+
+    test('reads safe area insets from CSS variables', () => {
+      const getComputedStyleSpy = vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+        getPropertyValue: (prop: string) => {
+          if (prop === '--safe-area-inset-top') return '20px';
+          if (prop === '--safe-area-inset-right') return '10px';
+          if (prop === '--safe-area-inset-bottom') return '20px';
+          if (prop === '--safe-area-inset-left') return '10px';
+          return '';
+        },
+      } as CSSStyleDeclaration);
+
+      const deviceInfo: DeviceInfo = {
+        type: 'phone',
+        orientation: 'landscape',
+        screenWidth: 800,
+        screenHeight: 400,
+        pixelRatio: 2,
+        isTouchDevice: true,
+        isIOS: true,
+        isAndroid: false,
+        hasNotch: true,
+        isFoldable: false,
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      // Available width: 800 - 10 - 10 = 780
+      // Available height: 400 - 20 - 20 = 360
+      // ... logic continues ...
+
+      expect(getComputedStyleSpy).toHaveBeenCalled();
+      // Should have offset due to left inset
+      expect(vp.offsetX).toBeGreaterThanOrEqual(10);
+    });
   });
 
   describe('getUIScale', () => {
@@ -381,6 +465,24 @@ describe('device-utils', () => {
 
       expect(removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
       expect(removeEventListener).toHaveBeenCalledWith('orientationchange', expect.any(Function));
+    });
+
+    test('adds listener to visualViewport if available', () => {
+      const addEventListener = vi.fn();
+      const removeEventListener = vi.fn();
+      Object.defineProperty(window, 'visualViewport', {
+        value: {
+          addEventListener,
+          removeEventListener,
+        },
+        writable: true,
+      });
+
+      const cleanup = createResizeObserver(vi.fn());
+      expect(addEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
+
+      cleanup();
+      expect(removeEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
     });
   });
 });

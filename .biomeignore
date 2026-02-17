@@ -1,0 +1,9 @@
+android
+.github
+docs
+public
+*.md
+*.txt
+pnpm-lock.yaml
+.coderabbit.yaml
+sonar-project.properties

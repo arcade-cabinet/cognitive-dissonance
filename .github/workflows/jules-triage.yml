@@ -1,0 +1,256 @@
+name: Jules Issue Triage
+
+# Automated issue implementation via Jules AI.
+# Flow: CodeRabbit triages issue → applies labels + plan →
+#   functional label triggers this workflow → checks GitHub's native
+#   issue dependency graph for blockers → if unblocked, Jules implements →
+#   PR merges → issue closes → on-unblocked finds newly eligible issues → repeat.
+#
+# Dependencies are configured via GitHub's native "Blocked by" relationships
+# (Settings > Features > Issue Dependencies). The workflow uses the GraphQL
+# blockedBy field to check if all blockers are resolved.
+
+on:
+  issues:
+    types: [labeled, closed]
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  # ── Label-triggered: Jules implements an unblocked issue ───────
+  # When CodeRabbit (or a maintainer) applies a functional label,
+  # check GitHub's native dependency graph for open blockers, then
+  # invoke Jules to implement the issue using CodeRabbit's plan.
+  implement-labeled:
+    name: Implement Labeled Issue
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.action == 'labeled' &&
+      contains(fromJSON('["bug","enhancement","determinism","performance","ai","state-management","old-index-parity","accessibility"]'), github.event.label.name)
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - name: Check native dependency graph for blockers
+        id: issue
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const issueNumber = context.payload.issue.number;
+            const labels = context.payload.issue.labels.map(l => l.name);
+
+            // Use GraphQL to check GitHub's native blockedBy relationships
+            const result = await github.graphql(`
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  issue(number: $number) {
+                    id
+                    number
+                    title
+                    body
+                    blockedBy(first: 20) {
+                      nodes {
+                        number
+                        title
+                        state
+                      }
+                    }
+                    issueDependenciesSummary {
+                      blockedByCount
+                      blockedByOpenCount
+                    }
+                  }
+                }
+              }
+            `, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              number: issueNumber
+            });
+
+            const issue = result.repository.issue;
+            const deps = issue.issueDependenciesSummary;
+            const openBlockers = issue.blockedBy.nodes.filter(n => n.state === 'OPEN');
+            const blocked = openBlockers.length > 0;
+
+            core.setOutput('number', issue.number);
+            core.setOutput('title', issue.title);
+            core.setOutput('body', issue.body || '');
+            core.setOutput('labels', labels.join(', '));
+            core.setOutput('blocked', blocked.toString());
+            core.setOutput('blocker_count', (deps?.blockedByOpenCount || 0).toString());
+            core.setOutput('open_blockers', openBlockers.map(b => `#${b.number}: ${b.title}`).join('; '));
+
+            if (blocked) {
+              core.info(`Issue #${issue.number} is blocked by ${openBlockers.length} open issue(s): ${openBlockers.map(b => '#' + b.number).join(', ')}`);
+            } else {
+              core.info(`Issue #${issue.number} has no open blockers — eligible for Jules`);
+            }
+
+      - name: Skip — issue is blocked
+        if: steps.issue.outputs.blocked == 'true'
+        run: |
+          echo "Issue #${{ steps.issue.outputs.number }} is blocked by ${{ steps.issue.outputs.blocker_count }} open issue(s):"
+          echo "${{ steps.issue.outputs.open_blockers }}"
+          echo "Skipping Jules invocation until blockers are resolved."
+
+      - name: Invoke Jules
+        if: steps.issue.outputs.blocked == 'false'
+        uses: google-labs-code/jules-action@bff7875eaa123cac6742b7cfc51005b95ba4d566 # v1.0.0
+        with:
+          prompt: |
+            ## Issue #${{ steps.issue.outputs.number }}: ${{ steps.issue.outputs.title }}
+
+            **Labels:** ${{ steps.issue.outputs.labels }}
+
+            ### Issue Description
+            ${{ steps.issue.outputs.body }}
+
+            ### Instructions
+            1. Read the issue description carefully — it contains a CodeRabbit-generated implementation plan.
+            2. Follow the plan step by step. If the plan is incomplete, analyze the codebase and fill in gaps.
+            3. For bug fixes: identify the root cause, implement a minimal fix, and add a regression test.
+            4. For enhancements: implement the feature following existing code patterns.
+            5. Run `pnpm lint && pnpm exec tsc --noEmit && pnpm build && pnpm test` to verify.
+            6. Do NOT modify CI/CD workflow files unless the issue specifically requires it.
+            7. Reference the issue number in your PR description so it auto-closes on merge.
+
+            ### Project Context
+            <!-- SYNC: Keep in sync with CLAUDE.md and docs/ARCHITECTURE.md -->
+            - **Stack:** React 19 + TypeScript 5 + React Three Fiber 9 + Miniplex ECS + Tone.js + Yuka.js
+            - **Build:** Vite 7, pnpm, Biome linter
+            - **Tests:** Vitest (unit), Playwright (E2E across 20 device configs)
+            - **Game logic:** Runs in Web Worker (`src/worker/game.worker.ts`)
+            - **AI:** Yuka.js boss AI (`src/lib/ai/boss-ai.ts`), Director FSM (`src/lib/ai/director.ts`)
+            - **Music:** Tone.js adaptive layers (`src/lib/music.ts`)
+            - **State:** useReducer + refs (zustand migration planned, see #104)
+            - **Key constraint:** No bare `Math.random()` in game-state paths (seedrandom migration planned, see #100)
+          jules_api_key: ${{ secrets.GOOGLE_JULES_API_KEY }}
+          starting_branch: main
+          include_last_commit: true
+
+  # ── Unblocked issue detection ──────────────────────────────────
+  # When an issue closes (usually via PR merge), find issues that
+  # were blocked by it and are now ready for implementation.
+  detect-unblocked:
+    name: Find Unblocked Issues
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.issue.state_reason == 'completed'
+    permissions:
+      issues: read
+    outputs:
+      matrix: ${{ steps.finder.outputs.issues }}
+      found: ${{ steps.finder.outputs.has_issues }}
+    steps:
+      - name: Find issues unblocked by closure
+        id: finder
+        uses: BeksOmega/on-unblocked@0e54ef697940f67a5bc41efe624bf282889d105f # v1.0.0
+
+  # ── Implement each newly unblocked issue ───────────────────────
+  implement-unblocked:
+    name: Implement Unblocked Issue
+    needs: detect-unblocked
+    if: needs.detect-unblocked.outputs.found == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        issue-number: ${{ fromJson(needs.detect-unblocked.outputs.matrix) }}
+    steps:
+      - name: Check if issue is fully unblocked via native dependencies
+        id: issue
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const issueNumber = ${{ matrix.issue-number }};
+
+            const result = await github.graphql(`
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  issue(number: $number) {
+                    number
+                    title
+                    body
+                    state
+                    labels(first: 20) { nodes { name } }
+                    blockedBy(first: 20) {
+                      nodes { number state }
+                    }
+                  }
+                }
+              }
+            `, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              number: issueNumber
+            });
+
+            const issue = result.repository.issue;
+            if (issue.state !== 'OPEN') {
+              core.info(`Issue #${issueNumber} is already closed, skipping`);
+              core.setOutput('eligible', 'false');
+              return;
+            }
+
+            const labels = issue.labels.nodes.map(l => l.name);
+            const openBlockers = issue.blockedBy.nodes.filter(n => n.state === 'OPEN');
+            const allResolved = openBlockers.length === 0;
+
+            const actionableLabels = ['bug', 'enhancement', 'determinism', 'performance', 'ai', 'state-management', 'old-index-parity', 'accessibility'];
+            const hasActionableLabel = labels.some(l => actionableLabels.includes(l));
+
+            const eligible = allResolved && hasActionableLabel;
+
+            core.setOutput('number', issue.number);
+            core.setOutput('title', issue.title);
+            core.setOutput('body', issue.body || '');
+            core.setOutput('labels', labels.join(', '));
+            core.setOutput('eligible', eligible.toString());
+
+            if (!eligible) {
+              if (!allResolved) core.info(`Issue #${issueNumber} still has ${openBlockers.length} open blocker(s)`);
+              if (!hasActionableLabel) core.info(`Issue #${issueNumber} has no actionable label`);
+            } else {
+              core.info(`Issue #${issueNumber} is fully unblocked and has actionable label — invoking Jules`);
+            }
+
+      - name: Invoke Jules on unblocked issue
+        if: steps.issue.outputs.eligible == 'true'
+        uses: google-labs-code/jules-action@bff7875eaa123cac6742b7cfc51005b95ba4d566 # v1.0.0
+        with:
+          prompt: |
+            ## Unblocked Issue #${{ steps.issue.outputs.number }}: ${{ steps.issue.outputs.title }}
+
+            **Labels:** ${{ steps.issue.outputs.labels }}
+            **Context:** This issue was previously blocked by a dependency that has now been resolved.
+
+            ### Issue Description
+            ${{ steps.issue.outputs.body }}
+
+            ### Instructions
+            1. This issue's blockers have been resolved. Read the description for the implementation plan.
+            2. Check recent commits on main for the blocker resolution — it may provide context.
+            3. Implement the fix following the plan. Run full validation before submitting.
+            4. Run `pnpm lint && pnpm exec tsc --noEmit && pnpm build && pnpm test` to verify.
+            5. Do NOT modify CI/CD workflow files unless the issue specifically requires it.
+            6. Reference the issue number in your PR description so it auto-closes on merge.
+
+            ### Project Context
+            <!-- SYNC: Keep in sync with CLAUDE.md and docs/ARCHITECTURE.md -->
+            - **Stack:** React 19 + TypeScript 5 + React Three Fiber 9 + Miniplex ECS + Tone.js + Yuka.js
+            - **Build:** Vite 7, pnpm, Biome linter
+            - **Tests:** Vitest (unit), Playwright (E2E across 20 device configs)
+            - **Game logic:** Runs in Web Worker (`src/worker/game.worker.ts`)
+            - **AI:** Yuka.js boss AI (`src/lib/ai/boss-ai.ts`), Director FSM (`src/lib/ai/director.ts`)
+            - **Music:** Tone.js adaptive layers (`src/lib/music.ts`)
+          jules_api_key: ${{ secrets.GOOGLE_JULES_API_KEY }}
+          starting_branch: main
+          include_last_commit: true

@@ -93,6 +93,15 @@ const START_X = -TOTAL_W / 2 + KEY_W / 2;
 // Reusable colors for per-frame updates (avoid allocations)
 const _gray = new THREE.Color('#333333');
 const _full = new THREE.Color();
+const _panicRgb = { r: 0, g: 0, b: 0 };
+
+/** Compute panic-driven RGB (cool cyan -> angry red). Mutates shared object to avoid allocations. */
+function panicToRgb(panic: number): { r: number; g: number; b: number } {
+  _panicRgb.r = Math.min(1, (80 + panic * 2) / 255);
+  _panicRgb.g = Math.max(0.1, (180 - panic * 2) / 255);
+  _panicRgb.b = Math.max(0.15, (220 - panic) / 255);
+  return _panicRgb;
+}
 
 // ─── Main Component ──────────────────────────────────────────
 
@@ -146,10 +155,7 @@ function RGBUnderglow({ panicRef }: { panicRef: React.RefObject<number> }) {
   useFrame(({ clock }) => {
     if (!lightRef.current) return;
     const p = panicRef.current ?? 0;
-    // Shift from cool cyan to angry red with panic
-    const r = Math.min(1, (80 + p * 2) / 255);
-    const g = Math.max(0.1, (180 - p * 2) / 255);
-    const b = Math.max(0.15, (220 - p) / 255);
+    const { r, g, b } = panicToRgb(p);
     lightRef.current.color.setRGB(r, g, b);
     lightRef.current.intensity = 1.5 + Math.sin(clock.elapsedTime * 3) * 0.3;
   });
@@ -242,9 +248,7 @@ function FKey({ keyDef, position, panicRef, cooldownRef, onPress }: FKeyProps) {
     // ── RGB LED strip: panic-driven color ──
     if (ledMatRef.current) {
       const p = panicRef.current ?? 0;
-      const ledR = Math.min(1, (80 + p * 2) / 255);
-      const ledG = Math.max(0.1, (180 - p * 2) / 255);
-      const ledB = Math.max(0.15, (220 - p) / 255);
+      const { r: ledR, g: ledG, b: ledB } = panicToRgb(p);
       ledMatRef.current.emissive.setRGB(ledR, ledG, ledB);
       ledMatRef.current.emissiveIntensity = ready
         ? 0.6 + Math.sin(clock.elapsedTime * 3) * 0.1

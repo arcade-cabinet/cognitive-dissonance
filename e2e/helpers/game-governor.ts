@@ -5,7 +5,8 @@
  * simulating realistic player behavior and decision-making.
  */
 
-import { expect, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { startGame } from './game-helpers';
 
 export interface GovernorConfig {
   /** How aggressively to counter enemies (0-1) */
@@ -42,16 +43,8 @@ export class GameGovernor {
     // Check if game is already running (overlay hidden)
     const overlay = this.page.locator('#overlay');
     if (await overlay.isVisible()) {
-      // Use keyboard instead of click because an unhandled font-fetch
-      // rejection from troika-three-text (offline CI) breaks React 18's
-      // synthetic event dispatch for mouse/pointer events while native
-      // keyboard listeners remain unaffected.
-      const startBtn = this.page.locator('#start-btn');
-      await expect(startBtn).toBeVisible();
-      await this.page.keyboard.press(' ');
-
-      // Wait for game to start
-      await expect(this.page.locator('#overlay')).toHaveClass(/hidden/, { timeout: 10000 });
+      // Use robust helper instead of manual implementation
+      await startGame(this.page);
     }
 
     // Start gameplay loop

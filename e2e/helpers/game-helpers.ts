@@ -32,19 +32,22 @@ export async function navigateToGame(page: Page): Promise<void> {
  *  keyboard listeners remain unaffected. */
 export async function startGame(page: Page): Promise<void> {
   const startBtn = page.locator('#start-btn');
+  const overlay = page.locator('#overlay');
+
   await expect(startBtn).toBeVisible();
-  await page.keyboard.press(' ');
-  await expect(page.locator('#overlay')).toHaveClass(/hidden/, {
-    timeout: GAME_START_TIMEOUT,
-  });
+
+  // Use a retry loop to robustly handle delayed event listener attachment
+  await expect(async () => {
+    if (await overlay.isVisible()) {
+      await page.keyboard.press(' ');
+    }
+    await expect(overlay).toHaveClass(/hidden/);
+  }).toPass({ timeout: GAME_START_TIMEOUT });
 }
 
 /** Start the game by pressing spacebar */
 export async function startGameWithSpacebar(page: Page): Promise<void> {
-  await page.keyboard.press(' ');
-  await expect(page.locator('#overlay')).toHaveClass(/hidden/, {
-    timeout: GAME_START_TIMEOUT,
-  });
+  return startGame(page);
 }
 
 // ─── Verification ────────────────────────────────────────────

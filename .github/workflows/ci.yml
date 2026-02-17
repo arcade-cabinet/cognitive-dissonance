@@ -152,7 +152,7 @@ jobs:
           prompt: |
             ## Code Quality CI Failure — Auto-Fix Request
 
-            **Repository:** arcade-cabinet/psyduck-panic
+            **Repository:** ${{ github.repository }}
             **PR Branch:** ${{ github.head_ref }}
             **Failed Jobs:** ${{ needs.code-quality.outputs.failed_jobs }}
             **PR:** #${{ github.event.pull_request.number }}
@@ -246,7 +246,7 @@ jobs:
           prompt: |
             ## Security Analysis Failure — Auto-Fix Request
 
-            **Repository:** arcade-cabinet/psyduck-panic
+            **Repository:** ${{ github.repository }}
             **PR Branch:** ${{ github.head_ref }}
             **PR:** #${{ github.event.pull_request.number }}
 
@@ -284,7 +284,7 @@ jobs:
     name: E2E Smoke Tests
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.50.0-noble
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
     needs: [security]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -354,7 +354,7 @@ jobs:
           prompt: |
             ## E2E Smoke Test Failure — Auto-Fix Request
 
-            **Repository:** arcade-cabinet/psyduck-panic
+            **Repository:** ${{ github.repository }}
             **PR Branch:** ${{ github.head_ref }}
             **PR:** #${{ github.event.pull_request.number }}
 
@@ -670,10 +670,16 @@ jobs:
               body = [MARKER, `## :hourglass: SonarCloud Analysis`, '', `Analysis did not complete in time. [View on SonarCloud](${dashboardUrl}).`].join('\n');
             } else {
               let data;
-              try { data = JSON.parse(fs.readFileSync('sonar_results.json', 'utf8')); } catch (e) {
+              try {
+                data = JSON.parse(fs.readFileSync('sonar_results.json', 'utf8'));
+              } catch (e) {
                 body = [MARKER, '## :warning: SonarCloud Analysis', '', `Failed to read results: ${e.message}`].join('\n');
               }
-              if (data) body = formatReport(data);
+              if (!data) {
+                // body already set in catch — fall through to post comment
+              } else {
+                body = formatReport(data);
+              }
             }
 
             if (body.length > MAX_BODY) {

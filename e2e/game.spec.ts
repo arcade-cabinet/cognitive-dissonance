@@ -40,8 +40,11 @@ test.describe('Psyduck Panic Game', () => {
     }).toPass({ timeout: 10000 });
 
     // Verify an actual WebGL canvas exists inside the R3F container
-    const canvasCount = await container.locator('canvas').count();
-    expect(canvasCount).toBeGreaterThanOrEqual(1);
+    // Wrapped in toPass because R3F may mount the <canvas> asynchronously
+    await expect(async () => {
+      const canvasCount = await container.locator('canvas').count();
+      expect(canvasCount).toBeGreaterThanOrEqual(1);
+    }).toPass({ timeout: 10000 });
   });
 
   test('should have control buttons', async ({ page }) => {

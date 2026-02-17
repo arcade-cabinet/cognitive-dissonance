@@ -16,7 +16,9 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   const msg = e.data;
   switch (msg.type) {
     case 'START':
-      cancelFrame(animationFrameId);
+      if (animationFrameId !== undefined) {
+        cancelFrame(animationFrameId);
+      }
       running = true;
       if (msg.endless) {
         logic.startEndlessMode();

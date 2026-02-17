@@ -46,6 +46,10 @@ export default function Game() {
   const uiRef = useRef(ui);
   useEffect(() => {
     uiRef.current = ui;
+    // Reset start lock when not playing, to allow restarting
+    if (ui.screen !== 'playing') {
+      startInitiatedRef.current = false;
+    }
   }, [ui]);
 
   const viewportRef = useRef(viewport);
@@ -101,7 +105,7 @@ export default function Game() {
     const attemptStart = (retries = 0) => {
       if (workerRef.current) {
         workerRef.current.postMessage({ type: 'START', endless });
-      } else if (retries < 10) {
+      } else if (retries < 50) {
         setTimeout(() => attemptStart(retries + 1), 200);
       }
     };

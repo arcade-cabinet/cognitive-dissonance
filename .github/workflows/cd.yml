@@ -44,7 +44,7 @@ jobs:
     permissions:
       checks: write
     container:
-      image: mcr.microsoft.com/playwright:v1.50.0-noble
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
     needs: [deploy-web]
     strategy:
       fail-fast: false
@@ -197,18 +197,21 @@ jobs:
         if: steps.reports.outputs.failed_count != '0'
         uses: google-labs-code/jules-action@bff7875eaa123cac6742b7cfc51005b95ba4d566
         with:
+          # SYNC: Values below must stay in sync with these authoritative sources:
+          #   - Device count & projects: playwright.config.ts (projects array)
+          #   - E2E test files: e2e/*.spec.ts
+          #   - DOM element IDs: src/components/Game.tsx, src/styles/game.css
+          #   - Viewport range: playwright.config.ts device definitions
+          #   - E2E helpers: e2e/helpers/game-helpers.ts, e2e/helpers/game-governor.ts
           prompt: |
-            ## CD E2E Matrix Failure — Auto-Fix Request
-
             ## CD E2E Matrix Failure — Auto-Fix Request
 
             **Repository:** ${{ github.repository }}
             **Branch:** main
-            **Branch:** main
             **Commit:** ${{ github.sha }}
 
             ### What Failed
-            The CD pipeline's E2E matrix tests failed after deploying to GitHub Pages. These tests run across 20 device configurations using Playwright.
+            The CD pipeline's E2E matrix tests failed after deploying to GitHub Pages. These tests run across multiple device configurations using Playwright.
 
             ### Failed Test Reports
             ${{ steps.reports.outputs.failed_reports }}
@@ -217,14 +220,14 @@ jobs:
             ${{ steps.reports.outputs.all_reports }}
 
             ### Test Configuration
-            - 20 device projects defined in `playwright.config.ts`
-            - Tests: `e2e/game.spec.ts`, `e2e/playthrough.spec.ts`, `e2e/governor.spec.ts`, `e2e/device-responsive.spec.ts`
-            - The `@matrix` tagged tests in governor.spec.ts (aggressive, defensive, verify-running) only run in CD
-            - Each device uses `--workers=1` with JUnit + line reporters
-            - Traces on first retry, screenshots on failure, video retained on failure
+            - Device projects are defined in `playwright.config.ts` — check there for the full list and viewport sizes.
+            - Tests: check `e2e/*.spec.ts` for the full test suite.
+            - The `@matrix` tagged tests in `e2e/governor.spec.ts` only run in CD.
+            - Each device uses `--workers=1` with JUnit + line reporters.
+            - Traces on first retry, screenshots on failure, video retained on failure.
 
             ### Common CD-Only Failure Patterns
-            1. **Device-specific viewport issues**: Game canvas not fitting within specific device dimensions (especially Galaxy Fold folded at 280px width)
+            1. **Device-specific viewport issues**: Game canvas not fitting within specific device dimensions (check playwright.config.ts for exact viewport sizes)
             2. **Touch interaction failures**: Mobile devices expecting tap() instead of click()
             3. **WebKit-specific issues**: Safari/iPad tests use WebKit which has different behavior
             4. **Timing issues across devices**: Slower rendering on complex viewports
@@ -232,8 +235,8 @@ jobs:
 
             ### Project Context
             - React + Three.js game with HTML overlay UI
-            - Key DOM elements: #gameCanvas, #overlay, #overlay-title, #start-btn, #ui-layer, #wave-display, #score-display, #combo-display, #panic-bar
-            - CSS must handle viewports from 280px (Galaxy Fold folded) to 1366px (iPad Pro 12.9)
+            - Key DOM elements are defined in `src/components/Game.tsx` — inspect the JSX for current IDs and structure
+            - CSS responsive rules are in `src/styles/game.css`
             - E2E helpers: `e2e/helpers/game-helpers.ts`, `e2e/helpers/game-governor.ts`
 
             ### Instructions

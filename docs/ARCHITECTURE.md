@@ -234,6 +234,7 @@ Web App
 ```
 
 ### Device Detection Flow
+
 ```text
 1. App Launch
    ├── Capacitor.isNativePlatform()
@@ -401,7 +402,8 @@ psyduck-panic/
 
 ## Future Enhancements
 
-- [ ] Yuka.js AI governors for boss and enemy behavior
+- [x] Yuka.js AI for boss behavior (Vehicle + Think + GoalEvaluators in boss-ai.ts)
+- [x] AI Director FSM for dynamic difficulty (director.ts)
 - [ ] Proper panic escalation algorithms (logarithmic curves)
 - [ ] Multiplayer mode
 - [ ] Cloud save sync
