@@ -126,17 +126,12 @@ jobs:
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           gemini_model: ${{ vars.GEMINI_MODEL }}
-          upload_artifacts: ${{ vars.UPLOAD_ARTIFACTS || 'false' }}
+          upload_artifacts: 'false'
           workflow_name: gemini-review
           settings: |-
             {
               "model": {
                 "maxSessionTurns": 25
-              },
-              "telemetry": {
-                "enabled": true,
-                "target": "local",
-                "outfile": ".gemini/telemetry.log"
               },
               "mcpServers": {
                 "github": {
