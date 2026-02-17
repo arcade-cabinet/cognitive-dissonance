@@ -1,24 +1,34 @@
 import type { MainMessage, WorkerMessage } from '../lib/events';
 import { GameLogic } from '../lib/game-logic';
 
-const logic = new GameLogic();
+let logic: GameLogic;
 let running = false;
 let lastTime = 0;
 let animationFrameId: number | undefined;
 
-// Polyfill for requestAnimationFrame in worker if needed
-const requestFrame =
-  self.requestAnimationFrame ||
-  ((callback: (t: number) => void) => setTimeout(() => callback(performance.now()), 16));
-const cancelFrame = self.cancelAnimationFrame || clearTimeout;
+try {
+  logic = new GameLogic();
+  // Signal ready
+  const readyMsg: MainMessage = { type: 'READY' };
+  self.postMessage(readyMsg);
+} catch (err) {
+  console.error('[game.worker] Initialization failed:', err); // NOSONAR
+  const errorMsg: MainMessage = {
+    type: 'ERROR',
+    message: err instanceof Error ? err.message : String(err),
+  };
+  self.postMessage(errorMsg);
+}
 
 self.onmessage = (e: MessageEvent<WorkerMessage>) => {
+  if (!logic) return; // Prevent crash if init failed
+
   try {
     const msg = e.data;
     switch (msg.type) {
       case 'START':
         if (animationFrameId !== undefined) {
-          cancelFrame(animationFrameId);
+          clearTimeout(animationFrameId);
         }
         running = true;
         if (msg.endless) {
@@ -32,7 +42,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
       case 'PAUSE':
         running = false;
         if (animationFrameId !== undefined) {
-          cancelFrame(animationFrameId);
+          clearTimeout(animationFrameId);
         }
         break;
       case 'RESUME':
@@ -64,7 +74,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
       case 'TERMINATE':
         running = false;
         if (animationFrameId !== undefined) {
-          cancelFrame(animationFrameId);
+          clearTimeout(animationFrameId);
         }
         self.close();
         return;
@@ -72,9 +82,9 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   } catch (err) {
     running = false;
     if (animationFrameId !== undefined) {
-      cancelFrame(animationFrameId);
+      clearTimeout(animationFrameId);
     }
-    console.error('[game.worker] Unhandled error in message handler:', err);
+    console.error('[game.worker] Unhandled error in message handler:', err); // NOSONAR
     const errorMsg: MainMessage = {
       type: 'ERROR',
       message: err instanceof Error ? err.message : String(err),
@@ -84,24 +94,34 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
 };
 
 function scheduleLoop() {
-  animationFrameId = requestFrame(loop) as number;
+  animationFrameId = setTimeout(() => loop(performance.now()), 16) as unknown as number;
 }
 
 function loop(now: number) {
   if (!running) return;
 
-  const dt = Math.min((now - lastTime) / 16.67, 2); // Frame time factor (approx 1.0 at 60fps)
+  // Use relaxed clamping (60 = 1s) for CI/slow environments to prevent time dilation
+  const dt = Math.min((now - lastTime) / 16.67, 60);
   lastTime = now;
 
-  logic.update(dt, now);
-  const state = logic.getState();
+  try {
+    logic.update(dt, now);
+    const state = logic.getState();
+    const msg: MainMessage = { type: 'STATE', state };
+    self.postMessage(msg);
 
-  const msg: MainMessage = { type: 'STATE', state };
-  self.postMessage(msg);
-
-  if (logic.running) {
-    scheduleLoop();
-  } else {
+    if (logic.running) {
+      scheduleLoop();
+    } else {
+      running = false;
+    }
+  } catch (err) {
+    console.error('[game.worker] Error in game loop:', err); // NOSONAR
     running = false;
+    const errorMsg: MainMessage = {
+      type: 'ERROR',
+      message: err instanceof Error ? err.message : String(err),
+    };
+    self.postMessage(errorMsg);
   }
 }

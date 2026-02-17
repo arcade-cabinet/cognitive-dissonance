@@ -187,10 +187,18 @@ export default function Game() {
     const worker = new GameWorker();
     workerRef.current = worker;
 
+    worker.onerror = (err) => {
+      console.error('[Game] Worker error:', err); // NOSONAR
+    };
+
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
+      if (msg.type === 'READY') {
+        // Worker initialized successfully
+        return;
+      }
       if (msg.type === 'ERROR') {
-        console.error('[game.worker] Worker error:', msg.message);
+        console.error('[game.worker] Worker error:', msg.message); // NOSONAR
         return;
       }
       if (msg.type === 'STATE') {
@@ -574,6 +582,8 @@ export default function Game() {
             type="button"
             className="start-btn"
             id="start-btn"
+            // biome-ignore lint/a11y/noAutofocus: Essential for game start UX and E2E reliability
+            autoFocus
             onClick={handleStartButton}
             aria-label={
               ui.screen === 'start'

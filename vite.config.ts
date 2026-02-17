@@ -39,11 +39,8 @@ export default defineConfig({
           ],
 
           // Game logic chunks
-          'game-logic': [
-            './src/lib/game-logic.ts',
-            './src/lib/constants.ts',
-            './src/lib/events.ts',
-          ],
+          // Note: Avoid manual chunking of worker-specific dependencies (like game-logic),
+          // as it can interfere with the worker's ability to load code correctly.
           'game-ecs': ['./src/ecs/world.ts', './src/ecs/react.ts', './src/ecs/state-sync.ts'],
           'game-utils': [
             './src/lib/audio.ts',
