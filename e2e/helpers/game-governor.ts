@@ -39,16 +39,20 @@ export class GameGovernor {
   async start(): Promise<void> {
     this.isRunning = true;
 
-    // Use keyboard instead of click because an unhandled font-fetch
-    // rejection from troika-three-text (offline CI) breaks React 18's
-    // synthetic event dispatch for mouse/pointer events while native
-    // keyboard listeners remain unaffected.
-    const startBtn = this.page.locator('#start-btn');
-    await expect(startBtn).toBeVisible();
-    await this.page.keyboard.press(' ');
+    // Check if game is already running (overlay hidden)
+    const overlay = this.page.locator('#overlay');
+    if (await overlay.isVisible()) {
+      // Use keyboard instead of click because an unhandled font-fetch
+      // rejection from troika-three-text (offline CI) breaks React 18's
+      // synthetic event dispatch for mouse/pointer events while native
+      // keyboard listeners remain unaffected.
+      const startBtn = this.page.locator('#start-btn');
+      await expect(startBtn).toBeVisible();
+      await this.page.keyboard.press(' ');
 
-    // Wait for game to start
-    await expect(this.page.locator('#overlay')).toHaveClass(/hidden/, { timeout: 10000 });
+      // Wait for game to start
+      await expect(this.page.locator('#overlay')).toHaveClass(/hidden/, { timeout: 10000 });
+    }
 
     // Start gameplay loop
     await this.playLoop();
