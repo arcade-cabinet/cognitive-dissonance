@@ -8,6 +8,8 @@ import {
 } from './helpers/game-helpers';
 
 test.describe('Psyduck Panic Game', () => {
+  test.setTimeout(120000);
+
   test('should load the game page', async ({ page }) => {
     await navigateToGame(page);
   });

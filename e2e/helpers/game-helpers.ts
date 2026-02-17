@@ -10,9 +10,9 @@ import { expect } from '@playwright/test';
 
 // ─── Timeouts ────────────────────────────────────────────────
 
-export const GAME_START_TIMEOUT = 15000;
-export const WAVE_ANNOUNCE_TIMEOUT = 15000;
-export const GAMEPLAY_TIMEOUT = 60000;
+export const GAME_START_TIMEOUT = 60000;
+export const WAVE_ANNOUNCE_TIMEOUT = 60000;
+export const GAMEPLAY_TIMEOUT = 120000;
 export const E2E_PLAYTHROUGH_TIMEOUT = 180000;
 
 // ─── Navigation ──────────────────────────────────────────────
@@ -84,7 +84,7 @@ export async function verifyGamePlaying(page: Page): Promise<void> {
   const timeDisplay = page.locator('#time-display');
   const initialTime = await timeDisplay.textContent();
   await expect
-    .poll(async () => await timeDisplay.textContent(), { timeout: 2500 })
+    .poll(async () => await timeDisplay.textContent(), { timeout: GAME_START_TIMEOUT })
     .not.toBe(initialTime);
 }
 

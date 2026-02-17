@@ -124,7 +124,7 @@ export default function Game() {
       const attemptStart = (retries = 0) => {
         if (workerRef.current) {
           workerRef.current.postMessage({ type: 'START', endless, seed });
-        } else if (retries < 50) {
+        } else if (retries < 250) {
           setTimeout(() => attemptStart(retries + 1), 200);
         }
       };
@@ -186,6 +186,9 @@ export default function Game() {
   useEffect(() => {
     const worker = new GameWorker();
     workerRef.current = worker;
+    worker.onerror = (e) => {
+      console.error('[game.worker] Worker script error:', e.message);
+    };
 
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
@@ -575,6 +578,8 @@ export default function Game() {
             className="start-btn"
             id="start-btn"
             onClick={handleStartButton}
+            // biome-ignore lint/a11y/noAutofocus: ensure keyboard focus for e2e
+            autoFocus={true}
             aria-label={
               ui.screen === 'start'
                 ? 'Start Debate'

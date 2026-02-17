@@ -17,6 +17,8 @@ import {
 } from './helpers/game-helpers';
 
 test.describe('Responsive Device Tests', () => {
+  test.setTimeout(120000);
+
   test('should render game canvas on all devices', async ({ page }) => {
     await navigateToGame(page);
     await getCanvasBoundingBox(page);

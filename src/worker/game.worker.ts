@@ -1,16 +1,26 @@
 import type { MainMessage, WorkerMessage } from '../lib/events';
 import { GameLogic } from '../lib/game-logic';
 
-const logic = new GameLogic();
+let logic: GameLogic;
+try {
+  logic = new GameLogic();
+} catch (err) {
+  const errorMsg = {
+    type: 'ERROR',
+    message: `GameLogic init failed: ${err instanceof Error ? err.message : String(err)}`,
+  };
+  self.postMessage(errorMsg);
+  throw err;
+}
+
 let running = false;
 let lastTime = 0;
 let animationFrameId: number | undefined;
 
 // Polyfill for requestAnimationFrame in worker if needed
-const requestFrame =
-  self.requestAnimationFrame ||
-  ((callback: (t: number) => void) => setTimeout(() => callback(performance.now()), 16));
-const cancelFrame = self.cancelAnimationFrame || clearTimeout;
+const requestFrame = (callback: (t: number) => void) =>
+  setTimeout(() => callback(performance.now()), 16);
+const cancelFrame = clearTimeout;
 
 self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   try {
@@ -90,7 +100,7 @@ function scheduleLoop() {
 function loop(now: number) {
   if (!running) return;
 
-  const dt = Math.min((now - lastTime) / 16.67, 2); // Frame time factor (approx 1.0 at 60fps)
+  const dt = Math.min((now - lastTime) / 16.67, 10); // Frame time factor (approx 1.0 at 60fps)
   lastTime = now;
 
   logic.update(dt, now);
