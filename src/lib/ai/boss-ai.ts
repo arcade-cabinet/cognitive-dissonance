@@ -180,7 +180,7 @@ export class BossAI {
 // ─── Goals ─────────────────────────────────────────────────
 
 /** Burst Attack: spawn cluster at boss position */
-class BurstAttackGoal extends Goal<Vehicle> {
+export class BurstAttackGoal extends Goal<Vehicle> {
   boss: BossAI;
   executed: boolean;
 
@@ -233,7 +233,7 @@ class BurstAttackGoal extends Goal<Vehicle> {
 }
 
 /** Sweep Attack: boss moves across screen spawning a line */
-class SweepAttackGoal extends CompositeGoal<Vehicle> {
+export class SweepAttackGoal extends CompositeGoal<Vehicle> {
   boss: BossAI;
   private sweepTimer: number;
   private sweepDuration: number;
@@ -300,7 +300,7 @@ class SweepAttackGoal extends CompositeGoal<Vehicle> {
 }
 
 /** Spiral Attack: enemies spawn in expanding spiral */
-class SpiralAttackGoal extends Goal<Vehicle> {
+export class SpiralAttackGoal extends Goal<Vehicle> {
   boss: BossAI;
   private spiralTimer: number;
   private spiralAngle: number;
@@ -369,7 +369,7 @@ class SpiralAttackGoal extends Goal<Vehicle> {
 }
 
 /** Reposition: move to a strategic position */
-class RepositionGoal extends Goal<Vehicle> {
+export class RepositionGoal extends Goal<Vehicle> {
   boss: BossAI;
 
   constructor(boss: BossAI) {
@@ -395,7 +395,7 @@ class RepositionGoal extends Goal<Vehicle> {
 }
 
 /** Summon: spawn minion enemies */
-class SummonGoal extends Goal<Vehicle> {
+export class SummonGoal extends Goal<Vehicle> {
   boss: BossAI;
 
   constructor(boss: BossAI) {
@@ -438,7 +438,7 @@ class SummonGoal extends Goal<Vehicle> {
 }
 
 /** Rage: enraged state at low HP — faster attacks, more aggressive */
-class RageGoal extends Goal<Vehicle> {
+export class RageGoal extends Goal<Vehicle> {
   boss: BossAI;
 
   constructor(boss: BossAI) {
@@ -487,7 +487,7 @@ class RageGoal extends Goal<Vehicle> {
 
 // ─── Evaluators ────────────────────────────────────────────
 
-class BurstEvaluator extends GoalEvaluator<Vehicle> {
+export class BurstEvaluator extends GoalEvaluator<Vehicle> {
   boss: BossAI;
 
   constructor(boss: BossAI, bias: number) {
@@ -508,7 +508,7 @@ class BurstEvaluator extends GoalEvaluator<Vehicle> {
   }
 }
 
-class SweepEvaluator extends GoalEvaluator<Vehicle> {
+export class SweepEvaluator extends GoalEvaluator<Vehicle> {
   boss: BossAI;
 
   constructor(boss: BossAI, bias: number) {
@@ -528,7 +528,7 @@ class SweepEvaluator extends GoalEvaluator<Vehicle> {
   }
 }
 
-class SpiralEvaluator extends GoalEvaluator<Vehicle> {
+export class SpiralEvaluator extends GoalEvaluator<Vehicle> {
   boss: BossAI;
 
   constructor(boss: BossAI, bias: number) {
@@ -549,7 +549,7 @@ class SpiralEvaluator extends GoalEvaluator<Vehicle> {
   }
 }
 
-class RepositionEvaluator extends GoalEvaluator<Vehicle> {
+export class RepositionEvaluator extends GoalEvaluator<Vehicle> {
   boss: BossAI;
 
   constructor(boss: BossAI, bias: number) {
@@ -569,7 +569,7 @@ class RepositionEvaluator extends GoalEvaluator<Vehicle> {
   }
 }
 
-class SummonEvaluator extends GoalEvaluator<Vehicle> {
+export class SummonEvaluator extends GoalEvaluator<Vehicle> {
   boss: BossAI;
 
   constructor(boss: BossAI, bias: number) {
@@ -590,7 +590,7 @@ class SummonEvaluator extends GoalEvaluator<Vehicle> {
   }
 }
 
-class RageEvaluator extends GoalEvaluator<Vehicle> {
+export class RageEvaluator extends GoalEvaluator<Vehicle> {
   boss: BossAI;
 
   constructor(boss: BossAI, bias: number) {

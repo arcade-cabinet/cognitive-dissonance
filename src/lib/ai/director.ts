@@ -187,7 +187,7 @@ export class AIDirector extends GameEntity {
 // ─── FSM States ────────────────────────────────────────────
 
 /** BUILDING: Gradually increase tension. Player is doing well. */
-class BuildingState extends State<AIDirector> {
+export class BuildingState extends State<AIDirector> {
   override enter(director: AIDirector): void {
     director.stateTimer = 0;
   }
@@ -218,7 +218,7 @@ class BuildingState extends State<AIDirector> {
 }
 
 /** SUSTAINING: Hold tension steady. Player is balanced. */
-class SustainingState extends State<AIDirector> {
+export class SustainingState extends State<AIDirector> {
   override enter(director: AIDirector): void {
     director.stateTimer = 0;
   }
@@ -244,7 +244,7 @@ class SustainingState extends State<AIDirector> {
 }
 
 /** RELIEVING: Back off. Player needs breathing room. */
-class RelievingState extends State<AIDirector> {
+export class RelievingState extends State<AIDirector> {
   override enter(director: AIDirector): void {
     director.stateTimer = 0;
     // Immediately drop target tension
@@ -266,7 +266,7 @@ class RelievingState extends State<AIDirector> {
 }
 
 /** SURGING: Dramatic intensity spike. Creates memorable moments. */
-class SurgingState extends State<AIDirector> {
+export class SurgingState extends State<AIDirector> {
   override enter(director: AIDirector): void {
     director.stateTimer = 0;
     // Spike tension to near-max
