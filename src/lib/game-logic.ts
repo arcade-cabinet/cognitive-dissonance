@@ -482,18 +482,14 @@ export class GameLogic {
       this.panic = Math.max(0, this.panic - decay);
     }
 
-    // ─── Wave timer (modulo reset prevents floating-point drift) ────
-    this.secondAccumulator += dt * 16.67;
-    if (this.secondAccumulator >= 1000) {
-      this.secondAccumulator = this.secondAccumulator % 1000;
-      this.waveTime--;
-      if (this.waveTime <= 0) {
-        const cfg = WAVES[Math.min(this.wave, WAVES.length - 1)];
-        if (!this.endless && cfg.boss && !this.bossPhase) {
-          this.startBoss(cfg.boss);
-        } else {
-          this.nextWave();
-        }
+    // ─── Wave timer ────
+    this.waveTime -= deltaSec;
+    if (this.waveTime <= 0) {
+      const cfg = WAVES[Math.min(this.wave, WAVES.length - 1)];
+      if (!this.endless && cfg.boss && !this.bossPhase) {
+        this.startBoss(cfg.boss);
+      } else {
+        this.nextWave();
       }
     }
 

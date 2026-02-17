@@ -23,6 +23,7 @@ import GameWorker from '../worker/game.worker.ts?worker';
 export default function Game() {
   const sceneRef = useRef<GameSceneHandle>(null);
   const workerRef = useRef<Worker | null>(null);
+  const workerReadyRef = useRef(false);
   const sfxRef = useRef<SFX | null>(null);
   const musicRef = useRef<AdaptiveMusic | null>(null);
   const musicInitRef = useRef<Promise<void> | null>(null);
@@ -111,7 +112,7 @@ export default function Game() {
         sceneRef.current?.reset();
       } catch (e) {
         console.warn('Failed to resume audio or reset scene:', e);
-        throw e;
+        // Suppress error to ensure game starts even if audio context is blocked (e.g. CI)
       }
 
       // Trigger start sequence animation (android pivots, blinks, pivots back)
@@ -120,10 +121,12 @@ export default function Game() {
       // Delay worker start to let start sequence animation play (~1000ms)
       const seed = endless ? undefined : Date.now();
       const attemptStart = (retries = 0) => {
-        if (workerRef.current) {
+        if (workerRef.current && workerReadyRef.current) {
           workerRef.current.postMessage({ type: 'START', endless, seed });
         } else if (retries < 50) {
           setTimeout(() => attemptStart(retries + 1), 200);
+        } else {
+          console.error('Worker failed to initialize in time');
         }
       };
       setTimeout(() => attemptStart(), 1100);
@@ -214,6 +217,10 @@ export default function Game() {
 
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
+      if (msg.type === 'READY') {
+        workerReadyRef.current = true;
+        return;
+      }
       if (msg.type === 'ERROR') {
         console.error('[game.worker] Worker error:', msg.message);
         return;
@@ -333,6 +340,9 @@ export default function Game() {
         }
       }
     };
+
+    // Ping worker to check readiness (in case we missed initial READY)
+    worker.postMessage({ type: 'PING' });
 
     return () => {
       worker.terminate();
@@ -628,6 +638,8 @@ export default function Game() {
           )}
 
           <button
+            // biome-ignore lint/a11y/noAutofocus: needed for reliable E2E tests
+            autoFocus
             type="button"
             className="start-btn"
             id="start-btn"

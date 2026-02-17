@@ -1,21 +1,35 @@
 import type { MainMessage, WorkerMessage } from '../lib/events';
 import { GameLogic } from '../lib/game-logic';
 
-const logic = new GameLogic();
+let logic: GameLogic;
 let running = false;
 let lastTime = 0;
 let animationFrameId: number | undefined;
 
-// Polyfill for requestAnimationFrame in worker if needed
-const requestFrame =
-  self.requestAnimationFrame ||
-  ((callback: (t: number) => void) => setTimeout(() => callback(performance.now()), 16));
-const cancelFrame = self.cancelAnimationFrame || clearTimeout;
+// Use setTimeout for game loop to prevent throttling in headless CI environments
+const requestFrame = (callback: (t: number) => void) =>
+  setTimeout(() => callback(Date.now()), 16) as unknown as number;
+const cancelFrame = clearTimeout;
+
+try {
+  logic = new GameLogic();
+  // Signal main thread that worker is ready
+  self.postMessage({ type: 'READY' });
+} catch (err) {
+  console.error('[game.worker] Initialization failed:', err);
+  self.postMessage({
+    type: 'ERROR',
+    message: err instanceof Error ? err.message : String(err),
+  });
+}
 
 self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   try {
     const msg = e.data;
     switch (msg.type) {
+      case 'PING':
+        self.postMessage({ type: 'READY' });
+        break;
       case 'START':
         if (animationFrameId !== undefined) {
           cancelFrame(animationFrameId);
@@ -26,7 +40,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
         } else {
           logic.start(msg.seed);
         }
-        lastTime = performance.now();
+        lastTime = Date.now();
         scheduleLoop();
         break;
       case 'PAUSE':
@@ -38,7 +52,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
       case 'RESUME':
         if (!running) {
           running = true;
-          lastTime = performance.now();
+          lastTime = Date.now();
           scheduleLoop();
         }
         break;
@@ -88,20 +102,29 @@ function scheduleLoop() {
 }
 
 function loop(now: number) {
-  if (!running) return;
+  try {
+    if (!running) return;
 
-  const dt = Math.min((now - lastTime) / 16.67, 2); // Frame time factor (approx 1.0 at 60fps)
-  lastTime = now;
+    const dt = Math.min((now - lastTime) / 16.67, 10); // Frame time factor (approx 1.0 at 60fps)
+    lastTime = now;
 
-  logic.update(dt, now);
-  const state = logic.getState();
+    logic.update(dt, now);
+    const state = logic.getState();
 
-  const msg: MainMessage = { type: 'STATE', state };
-  self.postMessage(msg);
+    const msg: MainMessage = { type: 'STATE', state };
+    self.postMessage(msg);
 
-  if (logic.running) {
-    scheduleLoop();
-  } else {
+    if (logic.running) {
+      scheduleLoop();
+    } else {
+      running = false;
+    }
+  } catch (err) {
     running = false;
+    console.error('[game.worker] Game loop error:', err);
+    self.postMessage({
+      type: 'ERROR',
+      message: err instanceof Error ? err.message : String(err),
+    });
   }
 }

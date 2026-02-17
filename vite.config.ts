@@ -37,20 +37,6 @@ export default defineConfig({
             '@capacitor/screen-orientation',
             '@capacitor/status-bar',
           ],
-
-          // Game logic chunks
-          'game-logic': [
-            './src/lib/game-logic.ts',
-            './src/lib/constants.ts',
-            './src/lib/events.ts',
-          ],
-          'game-ecs': ['./src/ecs/world.ts', './src/ecs/react.ts', './src/ecs/state-sync.ts'],
-          'game-utils': [
-            './src/lib/audio.ts',
-            './src/lib/storage.ts',
-            './src/lib/device-utils.ts',
-            './src/lib/capacitor-device.ts',
-          ],
         },
       },
     },

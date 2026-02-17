@@ -49,6 +49,10 @@ export type WorkerMessage =
   | { type: 'ABILITY'; ability: 'reality' | 'history' | 'logic' }
   | { type: 'NUKE' }
   | { type: 'CLICK'; x: number; y: number }
-  | { type: 'TERMINATE' };
+  | { type: 'TERMINATE' }
+  | { type: 'PING' };
 
-export type MainMessage = { type: 'STATE'; state: GameState } | { type: 'ERROR'; message: string };
+export type MainMessage =
+  | { type: 'STATE'; state: GameState }
+  | { type: 'ERROR'; message: string }
+  | { type: 'READY' };

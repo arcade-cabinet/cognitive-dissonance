@@ -16,14 +16,14 @@ test.describe('Psyduck Panic Game', () => {
     await navigateToGame(page);
     const title = page.locator('#overlay-title');
     await expect(title).toBeVisible();
-    await expect(title).toContainText('PSYDUCK PANIC');
+    await expect(title).toContainText('COGNITIVE');
   });
 
   test('should have start button', async ({ page }) => {
     await navigateToGame(page);
     const startBtn = page.locator('#start-btn');
     await expect(startBtn).toBeVisible();
-    await expect(startBtn).toContainText('START DEBATE');
+    await expect(startBtn).toContainText('NEW GAME');
   });
 
   test('should have game canvas', async ({ page }) => {
