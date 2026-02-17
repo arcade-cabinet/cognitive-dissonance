@@ -48,8 +48,7 @@ export function detectDevice(): DeviceInfo {
   const isTouchDevice =
     'ontouchstart' in window ||
     navigator.maxTouchPoints > 0 ||
-    // @ts-expect-error - some browsers
-    navigator.msMaxTouchPoints > 0;
+    (navigator.msMaxTouchPoints ?? 0) > 0;
 
   // Platform detection
   const userAgent = navigator.userAgent.toLowerCase();
@@ -110,8 +109,7 @@ export function detectDevice(): DeviceInfo {
  */
 function detectFoldable(): boolean {
   // Check for Window Segments API (foldable devices)
-  if (window.visualViewport && 'getWindowSegments' in window.visualViewport) {
-    // @ts-expect-error
+  if (window.visualViewport?.getWindowSegments) {
     const segments = window.visualViewport.getWindowSegments();
     return segments && segments.length > 1;
   }
@@ -133,8 +131,7 @@ function detectFoldable(): boolean {
  */
 function detectFoldState(): 'folded' | 'unfolded' | 'tent' | 'book' {
   // Try to use Device Posture API if available
-  if ('devicePosture' in navigator) {
-    // @ts-expect-error experimental API
+  if (navigator.devicePosture) {
     const posture = navigator.devicePosture.type;
     if (posture === 'folded') return 'folded';
     if (posture === 'continuous') return 'unfolded';

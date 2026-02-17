@@ -190,6 +190,30 @@ describe('device-utils', () => {
       expect(vp.width / vp.height).toBeCloseTo(baseWidth / baseHeight);
     });
 
+    test('calculates viewport for desktop wide', () => {
+      const deviceInfo: DeviceInfo = {
+        type: 'desktop',
+        orientation: 'landscape',
+        screenWidth: 1920,
+        screenHeight: 1080,
+        pixelRatio: 1,
+        isTouchDevice: false,
+        isIOS: false,
+        isAndroid: false,
+        hasNotch: false,
+        isFoldable: false,
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      // 1920/1080 = 1.77 > 1.33 (base)
+      // Constrained by height
+      // Max height = 1080 * 0.85 = 918
+      // Or baseHeight * 1.5 = 900
+      // So height should be 900
+      expect(vp.height).toBe(900);
+      expect(vp.width).toBe(1200); // 900 * 1.33
+    });
+
     test('calculates viewport for phone portrait', () => {
       const deviceInfo: DeviceInfo = {
         type: 'phone',
@@ -319,6 +343,40 @@ describe('device-utils', () => {
       // Since we can't easily mock getComputedStyle here for env(), we rely on the hardcoded fallback in calculateSafeInsets
       // top notch is 44px
       expect(vp.offsetY).toBeGreaterThanOrEqual(44);
+    });
+
+    test('reads safe area insets from CSS variables', () => {
+      const getComputedStyleSpy = vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+        getPropertyValue: (prop: string) => {
+          if (prop === '--safe-area-inset-top') return '20px';
+          if (prop === '--safe-area-inset-right') return '10px';
+          if (prop === '--safe-area-inset-bottom') return '20px';
+          if (prop === '--safe-area-inset-left') return '10px';
+          return '';
+        },
+      } as CSSStyleDeclaration);
+
+      const deviceInfo: DeviceInfo = {
+        type: 'phone',
+        orientation: 'landscape',
+        screenWidth: 800,
+        screenHeight: 400,
+        pixelRatio: 2,
+        isTouchDevice: true,
+        isIOS: true,
+        isAndroid: false,
+        hasNotch: true,
+        isFoldable: false,
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      // Available width: 800 - 10 - 10 = 780
+      // Available height: 400 - 20 - 20 = 360
+      // ... logic continues ...
+
+      expect(getComputedStyleSpy).toHaveBeenCalled();
+      // Should have offset due to left inset
+      expect(vp.offsetX).toBeGreaterThanOrEqual(10);
     });
   });
 

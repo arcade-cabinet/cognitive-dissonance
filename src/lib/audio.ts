@@ -12,9 +12,7 @@ export class SFX {
   /** Initialize the AudioContext (must be called after user interaction) */
   init(): void {
     // Support both standard and webkit-prefixed AudioContext for browser compatibility
-    const AudioContextClass =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     this.ctx = new AudioContextClass();
   }
 

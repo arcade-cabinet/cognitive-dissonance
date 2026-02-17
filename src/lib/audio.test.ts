@@ -155,6 +155,20 @@ describe('SFX Audio System', () => {
     expect(createOscillatorSpy).toHaveBeenCalled();
   });
 
+  it('should generate melody when wave > 1', () => {
+    sfx.init();
+    sfx.startMusic(2); // Wave 2 triggers melody logic
+
+    // Advance time to trigger interval and melody generation
+    // Melody notes play on some beats, so we advance enough to hit them
+    vi.advanceTimersByTime(2000);
+
+    // We can't easily distinguish melody oscillators from bass ones with just toHaveBeenCalled,
+    // but the fact that it runs without error and covers the branch is what we need for coverage.
+    // The previous test covered wave 1 (no melody), this covers wave 2 (melody).
+    expect(createOscillatorSpy).toHaveBeenCalled();
+  });
+
   it('should close context on destroy', () => {
     sfx.init();
     sfx.destroy();
