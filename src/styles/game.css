@@ -101,12 +101,10 @@ body {
   }
 }
 
-canvas {
+#game-container canvas {
   display: block;
-  /* biome-ignore lint/complexity/noImportantStyles: Override inline styles from R3F canvas */
-  width: 100% !important; /* NOSONAR */
-  /* biome-ignore lint/complexity/noImportantStyles: Override inline styles from R3F canvas */
-  height: 100% !important; /* NOSONAR */
+  width: 100%;
+  height: 100%;
   max-width: 100%;
 }
 

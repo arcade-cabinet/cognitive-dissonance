@@ -198,15 +198,15 @@ export class BuildingState extends State<AIDirector> {
     const buildRate = 0.03 + skill * 0.05;
     director.targetTension = Math.min(1, director.targetTension + buildRate * director.lastDelta);
 
-    // Transition to SURGING if tension is high and player is still killing it
-    if (director.tension > 0.7 && skill > 0.7 && director.stateTimer > 3) {
-      director.fsm.changeTo('SURGING');
+    // Transition to RELIEVING first — panic > 80 is critical, takes priority
+    if (director.performance.panic > 80) {
+      director.fsm.changeTo('RELIEVING');
       return;
     }
 
-    // Transition to RELIEVING if panic is critical (check first — more specific)
-    if (director.performance.panic > 80) {
-      director.fsm.changeTo('RELIEVING');
+    // Transition to SURGING if tension is high and player is still killing it
+    if (director.tension > 0.7 && skill > 0.7 && director.stateTimer > 3) {
+      director.fsm.changeTo('SURGING');
       return;
     }
 

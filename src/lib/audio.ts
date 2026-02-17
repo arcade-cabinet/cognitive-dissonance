@@ -8,6 +8,7 @@
 export class SFX {
   public ctx: AudioContext | null = null;
   public musicInterval: number | null = null;
+  private pendingTimers: number[] = [];
 
   /** Initialize the AudioContext (must be called after user interaction) */
   init(): void {
@@ -21,6 +22,15 @@ export class SFX {
     if (this.ctx?.state === 'suspended') {
       this.ctx.resume();
     }
+  }
+
+  /** Schedule a delayed callback and track the timer for cleanup */
+  private schedule(fn: () => void, delayMs: number): void {
+    const id = window.setTimeout(() => {
+      this.pendingTimers = this.pendingTimers.filter((t) => t !== id);
+      fn();
+    }, delayMs);
+    this.pendingTimers.push(id);
   }
 
   /** Generate a synthesized tone with envelope decay */
@@ -47,8 +57,8 @@ export class SFX {
   counter(combo: number): void {
     const f = 400 + combo * 40;
     this.tone(f, 'square', 0.08, 0.1);
-    setTimeout(() => this.tone(f * 1.25, 'square', 0.08, 0.08), 50);
-    setTimeout(() => this.tone(f * 1.5, 'triangle', 0.15, 0.06), 100);
+    this.schedule(() => this.tone(f * 1.25, 'square', 0.08, 0.08), 50);
+    this.schedule(() => this.tone(f * 1.5, 'triangle', 0.15, 0.06), 100);
   }
 
   /** Play low-frequency miss sound */
@@ -64,14 +74,14 @@ export class SFX {
   /** Play ascending triple-tone powerup collection jingle */
   powerup(): void {
     this.tone(600, 'triangle', 0.1, 0.08);
-    setTimeout(() => this.tone(800, 'triangle', 0.1, 0.08), 80);
-    setTimeout(() => this.tone(1000, 'triangle', 0.2, 0.06), 160);
+    this.schedule(() => this.tone(800, 'triangle', 0.1, 0.08), 80);
+    this.schedule(() => this.tone(1000, 'triangle', 0.2, 0.06), 160);
   }
 
   /** Play heavy descending nuke activation blast */
   nuke(): void {
     this.tone(200, 'sawtooth', 0.4, 0.13);
-    setTimeout(() => this.tone(100, 'sawtooth', 0.6, 0.1), 100);
+    this.schedule(() => this.tone(100, 'sawtooth', 0.6, 0.1), 100);
   }
 
   /** Play dual-tone boss damage impact */
@@ -83,14 +93,14 @@ export class SFX {
   /** Play escalating victory fanfare when boss is defeated */
   bossDie(): void {
     [0, 80, 160, 240, 320, 400].forEach((d, i) => {
-      setTimeout(() => this.tone(200 + i * 80, 'square', 0.15, 0.1), d);
+      this.schedule(() => this.tone(200 + i * 80, 'square', 0.15, 0.1), d);
     });
   }
 
   /** Play four-note ascending wave start fanfare */
   waveStart(): void {
     [0, 100, 200, 300].forEach((d, i) => {
-      setTimeout(() => this.tone(300 + i * 100, 'square', 0.12, 0.07), d);
+      this.schedule(() => this.tone(300 + i * 100, 'square', 0.12, 0.07), d);
     });
   }
 
@@ -161,6 +171,10 @@ export class SFX {
   /** Clean up all audio resources */
   destroy(): void {
     this.stopMusic();
+    for (const id of this.pendingTimers) {
+      clearTimeout(id);
+    }
+    this.pendingTimers = [];
     if (this.ctx) {
       this.ctx.close().catch(() => {});
       this.ctx = null;

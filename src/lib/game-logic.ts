@@ -430,7 +430,7 @@ export class GameLogic {
     for (const e of this.enemies) {
       const dx = e.x - x;
       const dy = e.y - y;
-      if (Math.sqrt(dx * dx + dy * dy) < 30) {
+      if (dx * dx + dy * dy < 900) {
         return e;
       }
     }

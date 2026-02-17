@@ -178,9 +178,9 @@ export class BossAI {
     this.dispose();
   }
 
-  /** Get HP ratio (0-1) */
+  /** Get HP ratio clamped to [0, 1] */
   getHpRatio(): number {
-    return this.state.hp / this.state.maxHp;
+    return Math.max(0, Math.min(1, this.state.hp / this.state.maxHp));
   }
 
   /** Pick a random enemy type from available types */

@@ -37,6 +37,7 @@ export class AdaptiveMusic {
   private initialized = false;
   private playing = false;
   private panic = 0;
+  private lastBpmPanic = -1;
   private wave = 0;
   private beatIndex = 0;
   private arpIndex = 0;
@@ -159,11 +160,16 @@ export class AdaptiveMusic {
     if (!this.playing || !this.initialized) return;
     this.panic = Math.max(0, Math.min(100, panic));
 
-    // Smooth BPM changes based on panic
-    const baseBPM = 120 + this.wave * 8;
-    const panicBPM = baseBPM + this.panic * 0.4;
-    Tone.getTransport().bpm.cancelScheduledValues(0);
-    Tone.getTransport().bpm.rampTo(panicBPM, 0.5);
+    // Smooth BPM changes based on panic — only reschedule when panic changes
+    // by >=2 to avoid flooding the transport with 60 overlapping ramps/second
+    const panicDelta = Math.abs(this.panic - this.lastBpmPanic);
+    if (panicDelta >= 2) {
+      this.lastBpmPanic = this.panic;
+      const baseBPM = 120 + this.wave * 8;
+      const panicBPM = baseBPM + this.panic * 0.4;
+      Tone.getTransport().bpm.cancelScheduledValues(0);
+      Tone.getTransport().bpm.rampTo(panicBPM, 0.5);
+    }
     // Distortion increases with panic
     if (this.distortion) {
       this.distortion.distortion = this.panic > 60 ? (this.panic - 60) / 200 : 0;
@@ -247,7 +253,7 @@ export class AdaptiveMusic {
       const notes = this.panic > 66 ? PANIC_NOTES : TENSE_NOTES;
       const note = notes[this.arpIndex % notes.length];
       this.arpSynth.triggerAttackRelease(note, '32n', time);
-      this.arpIndex++;
+      this.arpIndex = (this.arpIndex + 1) % 10000;
     }, '16n');
     this.arpLoop.start(0);
   }

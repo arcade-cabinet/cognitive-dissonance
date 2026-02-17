@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { GameGovernor } from './helpers/governor';
 import { navigateToGame, screenshot, startGame, verifyGamePlaying } from './helpers/game-helpers';
+import { GameGovernor } from './helpers/governor';
 
 /**
  * AI Governor-driven playthrough.

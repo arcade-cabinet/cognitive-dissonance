@@ -30,35 +30,46 @@ export default function Landing() {
     if (!bubblesRef.current) return;
 
     const bubbles = bubblesRef.current.querySelectorAll('.bubble');
+    const animations: ReturnType<typeof animate>[] = [];
 
     // Animate each bubble independently using stable data
     bubbles.forEach((bubble, index) => {
       const data = bubbleData[index];
 
       // Set initial position using animate with duration 0
-      animate(bubble as HTMLElement, {
-        left: `${data.initialLeft}%`,
-        bottom: '-5%',
-        opacity: 0,
-        duration: 0,
-      });
+      animations.push(
+        animate(bubble as HTMLElement, {
+          left: `${data.initialLeft}%`,
+          bottom: '-5%',
+          opacity: 0,
+          duration: 0,
+        })
+      );
 
       // Create floating animation with anime.js
-      animate(bubble as HTMLElement, {
-        translateY: -window.innerHeight - 100,
-        translateX: [
-          () => (Math.random() - 0.5) * 200,
-          () => (Math.random() - 0.5) * 200,
-          () => (Math.random() - 0.5) * 200,
-        ],
-        rotate: 360,
-        opacity: [0.4, 0.4, 0],
-        scale: [1, 1.2, 0.8],
-        loop: true,
-        delay: data.delay,
-        duration: data.duration,
-      });
+      animations.push(
+        animate(bubble as HTMLElement, {
+          translateY: -window.innerHeight - 100,
+          translateX: [
+            () => (Math.random() - 0.5) * 200,
+            () => (Math.random() - 0.5) * 200,
+            () => (Math.random() - 0.5) * 200,
+          ],
+          rotate: 360,
+          opacity: [0.4, 0.4, 0],
+          scale: [1, 1.2, 0.8],
+          loop: true,
+          delay: data.delay,
+          duration: data.duration,
+        })
+      );
     });
+
+    return () => {
+      for (const anim of animations) {
+        anim?.pause();
+      }
+    };
   }, [bubbleData]);
 
   return (

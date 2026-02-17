@@ -55,15 +55,16 @@ export function detectDevice(): DeviceInfo {
   const isIOS = /iphone|ipad|ipod/.test(userAgent);
   const isAndroid = /android/.test(userAgent);
 
-  // Notch detection (approximate)
-  const hasNotch =
-    isIOS &&
-    pixelRatio >= 3 &&
-    ((width === 375 && height === 812) || // iPhone X/XS/11 Pro
-      (width === 414 && height === 896) || // iPhone XR/XS Max/11/11 Pro Max
-      (width === 390 && height === 844) || // iPhone 12/13/14
-      (width === 393 && height === 852) || // iPhone 14 Pro
-      (width === 428 && height === 926)); // iPhone 12/13/14 Pro Max
+  // Notch/Dynamic Island detection via CSS env() safe-area-inset
+  // Works for all iPhone models (X through 16+) without hardcoded dimensions
+  let hasNotch = false;
+  if (typeof CSS !== 'undefined' && CSS.supports?.('padding-top: env(safe-area-inset-top)')) {
+    const testDiv = document.createElement('div');
+    testDiv.style.paddingTop = 'env(safe-area-inset-top)';
+    document.body.appendChild(testDiv);
+    hasNotch = parseFloat(getComputedStyle(testDiv).paddingTop) > 0;
+    document.body.removeChild(testDiv);
+  }
 
   // Foldable detection
   const isFoldable = detectFoldable();
