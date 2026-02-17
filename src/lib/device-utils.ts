@@ -58,12 +58,19 @@ export function detectDevice(): DeviceInfo {
   // Notch/Dynamic Island detection via CSS env() safe-area-inset
   // Works for all iPhone models (X through 16+) without hardcoded dimensions
   let hasNotch = false;
-  if (typeof CSS !== 'undefined' && CSS.supports?.('padding-top: env(safe-area-inset-top)')) {
-    const testDiv = document.createElement('div');
-    testDiv.style.paddingTop = 'env(safe-area-inset-top)';
-    document.body.appendChild(testDiv);
-    hasNotch = parseFloat(getComputedStyle(testDiv).paddingTop) > 0;
-    document.body.removeChild(testDiv);
+  if (
+    typeof CSS !== 'undefined' &&
+    typeof document !== 'undefined' &&
+    CSS.supports?.('padding-top: env(safe-area-inset-top)')
+  ) {
+    const root = document.body ?? document.documentElement;
+    if (root) {
+      const testDiv = document.createElement('div');
+      testDiv.style.paddingTop = 'env(safe-area-inset-top)';
+      root.appendChild(testDiv);
+      hasNotch = parseFloat(getComputedStyle(testDiv).paddingTop) > 0;
+      root.removeChild(testDiv);
+    }
   }
 
   // Foldable detection
