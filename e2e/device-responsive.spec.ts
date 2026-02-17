@@ -40,7 +40,7 @@ test.describe('Responsive Device Tests', () => {
     await expect(overlay).toBeVisible();
     await expect(overlay).not.toHaveClass(/hidden/);
 
-    await expect(page.locator('#overlay-title')).toContainText('PSYDUCK');
+    await expect(page.locator('#overlay-title')).toContainText('COGNITIVE');
 
     const startBtn = page.locator('#start-btn');
     await expect(startBtn).toBeVisible();

@@ -122,7 +122,7 @@ describe('Panic System', () => {
     });
 
     it('should have hysteresis when returning from meltdown', () => {
-      // Psyduck -> Panic threshold is 61
+      // Meltdown -> Panicked threshold is 61
       // If at 63, stay meltdown
       expect(getTransformState(63, 'meltdown').state).toBe('meltdown');
       // If at 60, return panic

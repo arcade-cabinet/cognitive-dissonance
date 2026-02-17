@@ -383,7 +383,7 @@ jobs:
             - `test-results/` contains traces, screenshots, and videos from failed tests
 
             ### Project Context
-            - React + Three.js game ("Psyduck Panic")
+            - React + Three.js game ("Cognitive Dissonance")
             - Canvas renderer (#gameCanvas) with HTML overlay UI (#overlay, #ui-layer)
             - Key DOM elements: #overlay, #overlay-title, #start-btn, #ui-layer, #wave-display, #score-display, #combo-display, #panic-bar
             - Game starts via spacebar press or clicking #start-btn

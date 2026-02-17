@@ -1,6 +1,6 @@
 # Automated Workflows Documentation
 
-This document describes the automated workflows for dependency updates and releases in the Psyduck Panic project.
+This document describes the automated workflows for dependency updates and releases in the Cognitive Dissonance project.
 
 ## Overview
 

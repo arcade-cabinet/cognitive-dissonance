@@ -1,8 +1,8 @@
-# Psyduck Panic - Architecture Documentation
+# Cognitive Dissonance - Architecture Documentation
 
 ## Overview
 
-Psyduck Panic is a browser-based retro arcade game built with modern web technologies and native mobile capabilities. The game features a unique premise where players must counter AI hype thought bubbles before their brother transforms into Psyduck from panic overload.
+Cognitive Dissonance is a 3D browser game built with modern web technologies and native mobile capabilities. The game features a unique premise where players must counter cognitive distortions descending as holographic SDF shapes before cognitive overload.
 
 ## Technology Stack
 
@@ -106,10 +106,10 @@ GameScene
 ├── CharacterModel
 │   ├── Normal state (0-33% panic) — calm blue
 │   ├── Panic state (33-66% panic) — yellow, sweat drops
-│   ├── Psyduck state (66-100% panic) — orange, cross-eyes
+│   ├── Overload state (66-100% panic) — orange, cross-eyes
 │   └── Eyes (dynamic pupil tracking, speed scales with panic)
 ├── ECS Systems (driven by Miniplex archetypes)
-│   ├── EnemySystem — colored bubbles with glow, icon, word label
+│   ├── EnemySystem — holographic SDF shapes with glow, icon, word label
 │   ├── BossSystem — pulsing sphere, orbiting orbs, HP display
 │   ├── ParticleSystem — burst particles on counter
 │   ├── TrailSystem — ring trails on counter
@@ -340,7 +340,7 @@ psyduck-panic/
 │   │   ├── Layout.astro          # Astro page layout
 │   │   └── scene/
 │   │       ├── GameScene.tsx     # R3F scene orchestrator
-│   │       ├── CharacterModel.tsx # 3D character (Normal/Panic/Psyduck)
+│   │       ├── CharacterBust.tsx # NS-5 android rear bust (procedural)
 │   │       ├── RoomBackground.tsx # 3D diorama room
 │   │       └── systems/
 │   │           ├── EnemySystem.tsx    # ECS enemy rendering

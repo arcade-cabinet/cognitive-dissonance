@@ -1,4 +1,4 @@
-# Psyduck Panic - Bug Fix & E2E Testing Implementation
+# Cognitive Dissonance - Bug Fix & E2E Testing Implementation
 
 ## Summary
 
@@ -150,7 +150,7 @@ npm run test:e2e:ui
 ### Basic Manual Test
 ```typescript
 test('game playthrough', async ({ page }) => {
-  await page.goto('/psyduck-panic/');
+  await page.goto('/');
   await page.locator('#start-btn').click();
   
   // Game should be playing
@@ -164,7 +164,7 @@ test('game playthrough', async ({ page }) => {
 import { GameGovernor } from './helpers/game-governor';
 
 test('automated playthrough', async ({ page }) => {
-  await page.goto('/psyduck-panic/');
+  await page.goto('/');
   
   const governor = new GameGovernor(page, {
     aggressiveness: 0.8,

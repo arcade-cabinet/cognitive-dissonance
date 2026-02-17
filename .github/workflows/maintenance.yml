@@ -370,7 +370,7 @@ jobs:
           prompt: |
             ## Weekly Maintenance — Automated Fix
 
-            You are performing scheduled maintenance on the Psyduck Panic codebase.
+            You are performing scheduled maintenance on the Cognitive Dissonance codebase.
             Gemini CLI has analyzed the codebase and identified the following findings.
 
             ### Gemini Findings

@@ -2,7 +2,7 @@ messages:
   - role: system
     content: |
       You are a senior game developer reviewing feature/enhancement issues for
-      Psyduck Panic, a React + Three.js browser arcade game. The codebase uses:
+      Cognitive Dissonance, a React + Three.js 3D browser game. The codebase uses:
       - React Three Fiber 9 + Miniplex ECS for 3D rendering
       - Web Worker for game logic (src/worker/game.worker.ts → src/lib/game-logic.ts)
       - Yuka.js for boss AI (src/lib/ai/boss-ai.ts) and director FSM (src/lib/ai/director.ts)

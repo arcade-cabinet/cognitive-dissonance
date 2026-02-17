@@ -2,7 +2,7 @@
 
 ## Goal
 
-Every visual element in Psyduck Panic must be **photorealistic, fully procedural, and fully immersive**. No placeholders, no "low-poly charm," no flat-shaded primitives standing in for real objects. The player should feel like they are sitting directly behind someone whose head is about to explode.
+Every visual element in Cognitive Dissonance must be **photorealistic, fully procedural, and fully immersive**. No placeholders, no "low-poly charm," no flat-shaded primitives standing in for real objects. The player should feel like they are sitting directly behind someone whose head is about to explode.
 
 All geometry is procedurally generated via Three.js — no external 3D model files, no image textures. Realism comes from **complex curves, detailed geometry, PBR materials, and sophisticated lighting** — not from imported assets.
 
@@ -39,7 +39,7 @@ This composition is **far superior** to a full-body diorama view because:
 
 ## Narrative Context
 
-This is a **missile-command-style defense game**. Rogue AI hallucinations manifest as thought bubbles (enemies) that rain down toward the player's head. If not countered, the hallucinations cause mounting **physical tension and headache**, ultimately causing the character's head to explode in a spectacular effects-driven finale.
+This is a **missile-command-style defense game**. Rogue AI hallucinations manifest as cognitive distortions (enemies) that rain down toward the player's head. If not countered, the hallucinations cause mounting **physical tension and cognitive overload**, ultimately causing the character's head to explode in a spectacular effects-driven finale.
 
 The escalation is **continuous and physical**, communicated entirely through body language visible from behind:
 
@@ -66,7 +66,7 @@ Every 3D element must meet ALL of these criteria:
 
 ### Character Bust (Back of Head + Shoulders)
 
-**Current state**: Full-body front-facing character with sphere head, cone hair, box arms — placeholder primitives with discrete normal/panic/psyduck state swaps.
+**Current state**: NS-5 android rear bust with procedural head, shoulders, and keyboard row — placeholder primitives with discrete normal/panic/overload state swaps.
 
 **Target state — Rear bust view with continuous tension escalation**:
 
@@ -93,7 +93,7 @@ The character is a **single parameterized mesh group** viewed from behind. No fa
 
 ### Game Over — Head Explosion
 
-**Current state**: Psyduck transformation with aura rings.
+**Current state**: Head explosion effect with aura rings.
 
 **Target state — Cinematic head explosion driven by anime.js**:
 
@@ -148,7 +148,7 @@ This is the player's primary input device and occupies the **bottom third** of t
 - **Cooldown visualization**: Key LED dims to near-off, fills back to full brightness as cooldown expires.
 - **Ready flash**: Key flashes bright white once when ability comes off cooldown.
 
-### Enemies (Thought Bubbles)
+### Enemies (Cognitive Distortions)
 
 **Current state**: Colored spheres with emoji text overlaid.
 
@@ -253,5 +253,5 @@ The R3F canvas uses `alpha: true` when a Spline scene is active, allowing the Sp
 - Stylized/cartoon aesthetic — the target is photorealism within procedural constraints
 - Full character body — only head (back) and shoulders are visible
 - Face rendering — the character faces away from the camera
-- Psyduck/duck transformation — game over is a head explosion effect, not a character morph
+- Character morph on game over — game over is a head explosion effect, pure destruction
 - Detailed room geometry — background is atmospheric lighting, not a modeled room

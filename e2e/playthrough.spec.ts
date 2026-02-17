@@ -32,8 +32,8 @@ test.describe('Complete Game Playthrough', () => {
     // ── Start screen ──────────────────────────────────
     await expect(page.locator('#overlay')).toBeVisible();
     await expect(page.locator('#overlay')).not.toHaveClass(/hidden/);
-    await expect(page.locator('#overlay-title')).toContainText('PSYDUCK PANIC');
-    await expect(page.locator('#start-btn')).toContainText('START DEBATE');
+    await expect(page.locator('#overlay-title')).toContainText('COGNITIVE');
+    await expect(page.locator('#start-btn')).toContainText('NEW GAME');
     await expect(page.locator('#ui-layer')).toHaveClass(/hidden/);
 
     // ── Start game via spacebar ───────────────────────

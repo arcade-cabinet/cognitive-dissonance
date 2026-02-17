@@ -1,4 +1,4 @@
-# Copilot Instructions — Psyduck Panic
+# Copilot Instructions — Cognitive Dissonance
 
 ## How to Use This File
 

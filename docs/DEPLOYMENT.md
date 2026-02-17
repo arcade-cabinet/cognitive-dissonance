@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers building and deploying Psyduck Panic to various platforms.
+This guide covers building and deploying Cognitive Dissonance to various platforms.
 
 ## Table of Contents
 
