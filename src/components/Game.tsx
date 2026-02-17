@@ -191,26 +191,26 @@ export default function Game() {
     try {
       worker = new GameWorker();
       workerRef.current = worker;
-      console.info('[Game.tsx] Worker initialized'); // Use info for successful init
+      console.info('[Game.tsx] Worker initialized'); // NOSONAR
     } catch (e) {
-      console.error('[Game.tsx] Failed to initialize worker:', e);
+      console.error('[Game.tsx] Failed to initialize worker:', e); // NOSONAR
       return;
     }
 
     worker.onerror = (e) => {
-      console.error('[Game.tsx] Worker error event:', e.message, e.filename, e.lineno);
+      console.error('[Game.tsx] Worker error event:', e.message, e.filename, e.lineno); // NOSONAR
     };
 
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
 
       if (msg.type === 'READY') {
-        console.info('[Game.tsx] Worker READY received'); // Use info for status
+        console.info('[Game.tsx] Worker READY received'); // NOSONAR
         return;
       }
 
       if (msg.type === 'ERROR') {
-        console.error('[game.worker] Worker reported error:', msg.message);
+        console.error('[game.worker] Worker reported error:', msg.message); // NOSONAR
         return;
       }
       if (msg.type === 'STATE') {

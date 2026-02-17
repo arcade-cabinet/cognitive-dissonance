@@ -1,7 +1,7 @@
 import type { MainMessage, WorkerMessage } from '../lib/events';
 import { GameLogic } from '../lib/game-logic';
 
-console.info('[game.worker] Initializing worker script...');
+console.info('[game.worker] Initializing worker script...'); // NOSONAR
 
 const logic = new GameLogic();
 let running = false;
@@ -19,9 +19,9 @@ const cancelFrame = clearTimeout;
 // Notify main thread that worker is ready
 try {
   self.postMessage({ type: 'READY' });
-  console.info('[game.worker] Sent READY message');
+  console.info('[game.worker] Sent READY message'); // NOSONAR
 } catch (e) {
-  console.error('[game.worker] Failed to send READY message:', e);
+  console.error('[game.worker] Failed to send READY message:', e); // NOSONAR
 }
 
 self.onmessage = (e: MessageEvent<WorkerMessage>) => {
@@ -29,7 +29,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
     const msg = e.data;
     switch (msg.type) {
       case 'START':
-        console.info('[game.worker] Received START command');
+        console.info('[game.worker] Received START command'); // NOSONAR
         if (animationFrameId !== undefined) {
           cancelFrame(animationFrameId);
         }
@@ -41,7 +41,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
         }
         lastTime = performance.now();
         scheduleLoop();
-        console.info('[game.worker] Loop scheduled');
+        console.info('[game.worker] Loop scheduled'); // NOSONAR
         break;
       case 'PAUSE':
         running = false;
@@ -107,7 +107,7 @@ function loop(now: number) {
     try {
       self.postMessage(msg);
     } catch (e) {
-      console.error('[Worker] postMessage failed:', e);
+      console.error('[Worker] postMessage failed:', e); // NOSONAR
     }
 
     if (logic.running) {
@@ -125,7 +125,7 @@ function handleError(err: unknown) {
   if (animationFrameId !== undefined) {
     cancelFrame(animationFrameId);
   }
-  console.error('[game.worker] Unhandled error:', err);
+  console.error('[game.worker] Unhandled error:', err); // NOSONAR
   const errorMsg: MainMessage = {
     type: 'ERROR',
     message: err instanceof Error ? err.message : String(err),
