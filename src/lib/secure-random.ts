@@ -15,5 +15,5 @@ export function secureRandom(): number {
   } catch {
     // Fallback to Math.random() if crypto fails
   }
-  return Math.random();
+  return Math.random(); // NOSONAR: Fallback for non-cryptographic game logic
 }
