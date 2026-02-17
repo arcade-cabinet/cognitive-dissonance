@@ -6,6 +6,7 @@
  */
 
 import type { GameState } from './events';
+import { secureRandom } from './secure-random';
 
 export type GameOverStats = {
   totalC: number;
@@ -107,7 +108,7 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
     case 'ADD_FEED':
       return {
         ...state,
-        feed: [{ ...action.item, id: Date.now() + Math.random() }, ...state.feed.slice(0, 2)],
+        feed: [{ ...action.item, id: Date.now() + secureRandom() }, ...state.feed.slice(0, 2)],
       };
     case 'BOSS_START':
       return { ...state, boss: { name: action.name, hp: action.hp, maxHp: action.hp } };

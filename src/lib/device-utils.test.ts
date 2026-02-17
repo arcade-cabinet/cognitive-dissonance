@@ -160,6 +160,42 @@ describe('device-utils', () => {
       const info = detectDevice();
       expect(info.isFoldable).toBe(true);
     });
+
+    test('detects foldable via Device Posture API', () => {
+      // Mock navigator.devicePosture
+      Object.defineProperty(window.navigator, 'devicePosture', {
+        value: { type: 'folded' },
+        configurable: true,
+      });
+
+      // Need to make it detectable as foldable first
+      Object.defineProperty(window, 'innerWidth', { value: 280 });
+      Object.defineProperty(window, 'innerHeight', { value: 653 });
+      Object.defineProperty(window, 'navigator', {
+        value: {
+          userAgent: 'fold', // triggers isFoldableUA
+          maxTouchPoints: 1,
+          devicePosture: { type: 'folded' },
+        },
+      });
+
+      const info = detectDevice();
+      expect(info.isFoldable).toBe(true);
+      expect(info.foldState).toBe('folded');
+    });
+
+    test('detects unfolded via Device Posture API', () => {
+      Object.defineProperty(window, 'navigator', {
+        value: {
+          userAgent: 'fold', // triggers isFoldableUA
+          maxTouchPoints: 1,
+          devicePosture: { type: 'continuous' },
+        },
+      });
+
+      const info = detectDevice();
+      expect(info.foldState).toBe('unfolded');
+    });
   });
 
   describe('calculateViewport', () => {
@@ -342,6 +378,78 @@ describe('device-utils', () => {
       // Ensure offsets account for notch (mocked via CSS check logic fallback)
       // Since we can't easily mock getComputedStyle here for env(), we rely on the hardcoded fallback in calculateSafeInsets
       // top notch is 44px
+      expect(vp.offsetY).toBeGreaterThanOrEqual(44);
+    });
+
+    test('calculates viewport for folded foldable (portrait)', () => {
+      const deviceInfo: DeviceInfo = {
+        type: 'foldable',
+        orientation: 'portrait',
+        screenWidth: 300,
+        screenHeight: 600,
+        pixelRatio: 2,
+        isTouchDevice: true,
+        isIOS: false,
+        isAndroid: true,
+        hasNotch: false,
+        isFoldable: true,
+        foldState: 'folded',
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      // availableWidth = 300, availableHeight = 600
+      // maxDim = min(300, 600 * 0.8) = 300
+      // width = 300
+      // height = 300 / 1.33 = 225
+      expect(vp.width).toBe(300);
+      expect(vp.height).toBe(225);
+    });
+
+    test('calculates viewport for folded foldable (landscape)', () => {
+      const deviceInfo: DeviceInfo = {
+        type: 'foldable',
+        orientation: 'landscape',
+        screenWidth: 600,
+        screenHeight: 300,
+        pixelRatio: 2,
+        isTouchDevice: true,
+        isIOS: false,
+        isAndroid: true,
+        hasNotch: false,
+        isFoldable: true,
+        foldState: 'folded',
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      // availableWidth = 600, availableHeight = 300
+      // maxDim = min(600, 300 * 0.8) = 240
+      // height = 240
+      // width = 240 * 1.33 = 320
+      expect(vp.height).toBe(240);
+      expect(vp.width).toBe(320);
+    });
+
+    test('calculateSafeInsets uses fallback when CSS vars missing', () => {
+      // Mock getComputedStyle to return nothing
+      vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+        getPropertyValue: () => '',
+      } as unknown as CSSStyleDeclaration);
+
+      const deviceInfo: DeviceInfo = {
+        type: 'phone',
+        orientation: 'portrait',
+        screenWidth: 375,
+        screenHeight: 812,
+        pixelRatio: 3,
+        isTouchDevice: true,
+        isIOS: true,
+        isAndroid: false,
+        hasNotch: true,
+        isFoldable: false,
+      };
+
+      const vp = calculateViewport(baseWidth, baseHeight, deviceInfo);
+      // Fallback for notch/portrait: 44
       expect(vp.offsetY).toBeGreaterThanOrEqual(44);
     });
 
