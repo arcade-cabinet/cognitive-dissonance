@@ -44,7 +44,7 @@ jobs:
     permissions:
       checks: write
     container:
-      image: mcr.microsoft.com/playwright:v1.50.0-noble
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
     needs: [deploy-web]
     strategy:
       fail-fast: false
