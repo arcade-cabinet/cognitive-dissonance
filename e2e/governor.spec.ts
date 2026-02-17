@@ -68,6 +68,7 @@ test.describe('Automated Playthrough with Governor', () => {
 
     await screenshot(page, 'governor-aggressive', '02-end');
     expect(result).toBeTruthy();
+    expect(result.score).toBeGreaterThanOrEqual(0);
     console.log(`Aggressive playthrough: ${result.result}, score: ${result.score}`);
   });
 
