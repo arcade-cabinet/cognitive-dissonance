@@ -76,7 +76,7 @@ describe('AIDirector', () => {
         director.stateTimer = 4.0;
         // Mock high skill
         director.performance.accuracy = 1.0;
-        director.performance.combo = 15; // > 15 for max combo factor
+        director.performance.combo = 15; // >= 15 for max combo factor
         director.performance.recentCounters = 10;
 
         director.update(0.016);
