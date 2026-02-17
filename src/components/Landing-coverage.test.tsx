@@ -73,6 +73,8 @@ describe('Landing Component Coverage', () => {
 
     // Check specific call arguments
     // The second call for the first bubble (index 1) has the complex animation
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+    expect(calls[1].length).toBeGreaterThanOrEqual(2);
     const secondCallArgs = calls[1][1];
     expect(secondCallArgs.translateX).toBeDefined();
     expect(Array.isArray(secondCallArgs.translateX)).toBe(true);
