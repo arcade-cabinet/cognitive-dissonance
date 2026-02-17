@@ -42,11 +42,11 @@ export async function startGame(page: Page): Promise<void> {
       await page.keyboard.press(' ');
       // Also try clicking the button as a fallback if keyboard events are swallowed
       if (await startBtn.isVisible()) {
-          try {
-            await startBtn.click({ timeout: 500 });
-          } catch {
-            // Ignore click timeout/errors, we rely primarily on keyboard
-          }
+        try {
+          await startBtn.click({ timeout: 500 });
+        } catch {
+          // Ignore click timeout/errors, we rely primarily on keyboard
+        }
       }
     }
     await expect(overlay).toHaveClass(/hidden/);
