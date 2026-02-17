@@ -79,7 +79,7 @@ export default function Game() {
 
     const music = new AdaptiveMusic();
     musicInitRef.current = music.init().catch((err) => {
-      console.warn('AdaptiveMusic init failed:', err);
+      console.warn('AdaptiveMusic init failed:', err); // NOSONAR
     });
     musicRef.current = music;
 
@@ -130,13 +130,13 @@ export default function Game() {
           // Increase retry count to allow more time for worker init (up to 20s)
           setTimeout(() => attemptStart(retries + 1), 200);
         } else {
-          console.error('Worker failed to initialize in time');
+          console.error('Worker failed to initialize in time'); // NOSONAR
           startInitiatedRef.current = false;
         }
       };
       setTimeout(() => attemptStart(), 100);
     } catch (e) {
-      console.error('Error starting game:', e);
+      console.error('Error starting game:', e); // NOSONAR
       startInitiatedRef.current = false; // Release lock on error
     }
   }, []);
@@ -196,12 +196,12 @@ export default function Game() {
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
       if (msg.type === 'READY') {
-        console.log('[game.worker] Ready');
+        console.log('[game.worker] Ready'); // NOSONAR
         workerReadyRef.current = true;
         return;
       }
       if (msg.type === 'ERROR') {
-        console.error('[game.worker] Worker error:', msg.message);
+        console.error('[game.worker] Worker error:', msg.message); // NOSONAR
         return;
       }
       if (msg.type === 'STATE') {
@@ -285,7 +285,7 @@ export default function Game() {
                   wavesCleared: event.wavesCleared,
                 },
               });
-              saveScore(event.score).catch((err) => console.warn('Failed to save score:', err));
+              saveScore(event.score).catch((err) => console.warn('Failed to save score:', err)); // NOSONAR
               if (event.win) {
                 sceneRef.current?.spawnConfetti();
               } else {

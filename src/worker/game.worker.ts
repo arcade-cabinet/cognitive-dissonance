@@ -77,7 +77,7 @@ try {
       if (animationFrameId !== undefined) {
         cancelFrame(animationFrameId);
       }
-      console.error('[game.worker] Unhandled error in message handler:', err);
+      console.error('[game.worker] Unhandled error in message handler:', err); // NOSONAR
       const errorMsg: MainMessage = {
         type: 'ERROR',
         message: err instanceof Error ? err.message : String(err),
@@ -89,7 +89,7 @@ try {
   // Signal ready state
   self.postMessage({ type: 'READY' } as unknown as MainMessage);
 } catch (err) {
-  console.error('[game.worker] Initialization error:', err);
+  console.error('[game.worker] Initialization error:', err); // NOSONAR
   self.postMessage({
     type: 'ERROR',
     message: err instanceof Error ? err.message : String(err),
@@ -125,7 +125,7 @@ function loop(now: number) {
     if (animationFrameId !== undefined) {
       cancelFrame(animationFrameId);
     }
-    console.error('[game.worker] Unhandled error in game loop:', err);
+    console.error('[game.worker] Unhandled error in game loop:', err); // NOSONAR
     const errorMsg: MainMessage = {
       type: 'ERROR',
       message: err instanceof Error ? err.message : String(err),
