@@ -18,7 +18,7 @@ export type GameOverStats = {
 };
 
 export type UIState = {
-  screen: 'start' | 'playing' | 'gameover';
+  screen: 'start' | 'playing' | 'gameover' | 'paused';
   score: number;
   wave: number;
   panic: number;
@@ -71,7 +71,9 @@ export type UIAction =
   | { type: 'ADD_FEED'; item: { handle: string; text: string; stat: string } }
   | { type: 'BOSS_START'; name: string; hp: number }
   | { type: 'BOSS_HIT'; hp: number; maxHp: number }
-  | { type: 'BOSS_DIE' };
+  | { type: 'BOSS_DIE' }
+  | { type: 'PAUSE' }
+  | { type: 'RESUME' };
 
 export function uiReducer(state: UIState, action: UIAction): UIState {
   switch (action.type) {
@@ -120,6 +122,10 @@ export function uiReducer(state: UIState, action: UIAction): UIState {
       };
     case 'BOSS_DIE':
       return { ...state, boss: null };
+    case 'PAUSE':
+      return { ...state, screen: 'paused' };
+    case 'RESUME':
+      return { ...state, screen: 'playing' };
     default:
       return state;
   }

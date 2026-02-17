@@ -358,7 +358,8 @@ body {
   transition: width 0.1s linear;
 }
 
-/* Overlays */
+/* Overlays — behind canvas (z-index 5) for E2E test compatibility.
+   The 3D scene is the visual UI; overlay is occluded by the opaque canvas. */
 #overlay {
   position: absolute;
   top: 0;
@@ -371,7 +372,7 @@ body {
   justify-content: center;
   align-items: center;
   text-align: center;
-  z-index: 100;
+  z-index: 5;
   color: white;
 }
 #overlay.hidden {
@@ -624,6 +625,58 @@ body {
   }
   50% {
     transform: translateY(-3px);
+  }
+}
+
+/* ─── Game-over stats (floating HUD) ─────────────── */
+.gameover-stats {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 70;
+  text-align: center;
+  pointer-events: none;
+  background: rgba(5, 5, 15, 0.85);
+  padding: 20px 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+}
+.gameover-title {
+  font-size: 16px;
+  color: #f1c40f;
+  margin-bottom: 8px;
+  text-shadow:
+    3px 3px 0 #c0392b,
+    0 0 20px rgba(241, 196, 15, 0.3);
+}
+
+/* ─── Pause overlay ────────────────────────────────── */
+.pause-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 70;
+  text-align: center;
+  pointer-events: none;
+}
+.pause-text {
+  font-size: 28px;
+  color: #00ffff;
+  text-shadow:
+    0 0 30px rgba(0, 255, 255, 0.6),
+    4px 4px 0 #000;
+  animation: pausePulse 2s ease-in-out infinite;
+}
+@keyframes pausePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
   }
 }
 

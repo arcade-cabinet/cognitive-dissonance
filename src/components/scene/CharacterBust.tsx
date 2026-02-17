@@ -45,6 +45,7 @@ interface CharacterBustProps {
   panicRef: React.RefObject<number>;
   targetEnemyRef: React.RefObject<{ x: number; y: number } | null>;
   flinchRef: React.RefObject<number>;
+  startSequenceRef: React.RefObject<number>;
 }
 
 // Smoothed rotation targets (persisted between frames)
@@ -52,8 +53,17 @@ const _smoothRotY = { current: 0 };
 const _smoothTrackY = { current: 0 };
 const _smoothTrackX = { current: 0 };
 const FLINCH_DURATION_MS = 600;
+const START_SEQ_DURATION = 1000;
 
-export function CharacterBust({ panicRef, targetEnemyRef, flinchRef }: CharacterBustProps) {
+// Module-level: shared between CharacterBust useFrame and StatusLEDs
+export const _startBlinkOverride = { current: 0 };
+
+export function CharacterBust({
+  panicRef,
+  targetEnemyRef,
+  flinchRef,
+  startSequenceRef,
+}: CharacterBustProps) {
   const groupRef = useRef<THREE.Group>(null);
   const headRef = useRef<THREE.Group>(null);
   const shoulderLRef = useRef<THREE.Group>(null);
@@ -94,30 +104,61 @@ export function CharacterBust({ panicRef, targetEnemyRef, flinchRef }: Character
     if (headRef.current) {
       headRef.current.position.y = 0.18 + shoulderRise * 0.3 + breathY * 0.3;
 
+      // Start sequence check: pivot toward camera, blink, pivot back
+      const timeSinceStartSeq = now - (startSequenceRef?.current ?? 0);
+      const inStartSeq =
+        (startSequenceRef?.current ?? 0) > 0 && timeSinceStartSeq < START_SEQ_DURATION;
+
       // Flinch check: did we miss recently?
       const timeSinceFlinch = now - (flinchRef.current ?? 0);
-      const inFlinch = flinchRef.current > 0 && timeSinceFlinch < FLINCH_DURATION_MS;
+      const inFlinch = !inStartSeq && flinchRef.current > 0 && timeSinceFlinch < FLINCH_DURATION_MS;
 
       // Compute head rotation targets
       let targetRotY = 0;
       let targetRotX = pNorm * 0.15; // Forward tilt scales with tension
 
-      if (inFlinch) {
-        // Flinch: snap head back toward camera (cognitive dissonance)
-        const flinchProgress = timeSinceFlinch / FLINCH_DURATION_MS;
-        // Quick snap (0-30%) then slow return (30-100%)
-        const flinchIntensity =
-          flinchProgress < 0.3 ? flinchProgress / 0.3 : 1 - (flinchProgress - 0.3) / 0.7;
-        targetRotY = flinchIntensity * 0.35; // Turn toward camera (positive Z)
-        targetRotX = -flinchIntensity * 0.12; // Tilt up (surprise)
-      } else if (targetEnemyRef.current) {
-        // Head tracking: turn toward nearest enemy
-        const enemy = targetEnemyRef.current;
-        // enemy.x is in scene-space (-4 to 4), compute lateral rotation
-        targetRotY = Math.atan2(enemy.x, 4) * 0.4; // Subtle Y rotation toward enemy X
-        // enemy.y is scene-space (3 to -3), compute vertical tilt
-        const verticalOffset = enemy.y - 0.18; // relative to head Y
-        targetRotX = pNorm * 0.15 + Math.atan2(-verticalOffset, 4) * 0.15;
+      if (inStartSeq) {
+        // Start sequence: android acknowledges the player
+        const progress = timeSinceStartSeq / START_SEQ_DURATION;
+        if (progress < 0.4) {
+          // Phase 1: Pivot toward camera (ease-out)
+          const p1 = progress / 0.4;
+          const eased = p1 * (2 - p1);
+          targetRotY = eased * 0.5;
+          targetRotX = -eased * 0.08;
+          _startBlinkOverride.current = 0;
+        } else if (progress < 0.6) {
+          // Phase 2: Hold + blink (LED flash)
+          targetRotY = 0.5;
+          targetRotX = -0.08;
+          const blinkT = (progress - 0.4) / 0.2;
+          _startBlinkOverride.current = blinkT < 0.5 ? blinkT * 2 : (1 - blinkT) * 2;
+        } else {
+          // Phase 3: Pivot back (ease-in)
+          const p3 = (progress - 0.6) / 0.4;
+          const eased = p3 * p3;
+          targetRotY = 0.5 * (1 - eased);
+          targetRotX = -0.08 * (1 - eased);
+          _startBlinkOverride.current = 0;
+        }
+      } else {
+        _startBlinkOverride.current = 0;
+
+        if (inFlinch) {
+          // Flinch: snap head back toward camera (cognitive dissonance)
+          const flinchProgress = timeSinceFlinch / FLINCH_DURATION_MS;
+          // Quick snap (0-30%) then slow return (30-100%)
+          const flinchIntensity =
+            flinchProgress < 0.3 ? flinchProgress / 0.3 : 1 - (flinchProgress - 0.3) / 0.7;
+          targetRotY = flinchIntensity * 0.35;
+          targetRotX = -flinchIntensity * 0.12;
+        } else if (targetEnemyRef.current) {
+          // Head tracking: turn toward nearest enemy
+          const enemy = targetEnemyRef.current;
+          targetRotY = Math.atan2(enemy.x, 4) * 0.4;
+          const verticalOffset = enemy.y - 0.18;
+          targetRotX = pNorm * 0.15 + Math.atan2(-verticalOffset, 4) * 0.15;
+        }
       }
 
       // Smooth interpolation for head tracking
@@ -306,6 +347,17 @@ function StatusLEDs({ panicRef }: { panicRef: React.RefObject<number> }) {
     const panic = panicRef.current ?? 0;
     const t = clock.elapsedTime;
 
+    // Start sequence blink override: bright white flash
+    if (_startBlinkOverride.current > 0) {
+      const refs = [led1Ref, led2Ref, led3Ref];
+      refs.forEach((ref) => {
+        if (!ref.current) return;
+        ref.current.emissive.setRGB(1, 1, 1);
+        ref.current.emissiveIntensity = _startBlinkOverride.current * 5;
+      });
+      return;
+    }
+
     // LED color: green → amber → red with panic
     if (panic < 25) {
       _tempColor.copy(_ledGreen);
@@ -394,7 +446,7 @@ function AndroidNeck({ panicRef }: { panicRef: React.RefObject<number> }) {
 
   // Neck cable curves (4 cables visible from behind)
   const cables = useMemo(() => {
-    const angles = [-0.4, -0.15, 0.15, 0.4];
+    const angles = [-0.4, -0.15, 0.15, 0.4] as const;
     return angles.map((ang) => {
       const x = Math.sin(ang) * 0.065;
       const z = Math.cos(ang) * 0.065;
@@ -403,7 +455,7 @@ function AndroidNeck({ panicRef }: { panicRef: React.RefObject<number> }) {
         new THREE.Vector3(x, 0.0, z - 0.03),
         new THREE.Vector3(x * 1.1, -0.12, z * 1.1 - 0.02),
       ]);
-      return new THREE.TubeGeometry(curve, 16, 0.009, 8, false);
+      return { id: `neck-cable-${ang}`, geo: new THREE.TubeGeometry(curve, 16, 0.009, 8, false) };
     });
   }, []);
 
@@ -425,8 +477,8 @@ function AndroidNeck({ panicRef }: { panicRef: React.RefObject<number> }) {
 
       {/* Cables */}
       <group ref={cableGroupRef}>
-        {cables.map((geo, i) => (
-          <mesh key={`cable-${i}`} geometry={geo}>
+        {cables.map((cable) => (
+          <mesh key={cable.id} geometry={cable.geo}>
             <meshStandardMaterial color={ch.cable} roughness={0.58} metalness={0.28} />
           </mesh>
         ))}
@@ -459,7 +511,7 @@ function ShoulderAssembly({ side }: { side: 'left' | 'right' }) {
 
   // Cable bundle under the shoulder cap
   const shoulderCables = useMemo(() => {
-    const cableGeos: THREE.TubeGeometry[] = [];
+    const result: { id: string; geo: THREE.TubeGeometry }[] = [];
     for (let i = 0; i < 5; i++) {
       const ang = (i / 5) * Math.PI * 0.6 + Math.PI * 0.2;
       const r = 0.03;
@@ -470,10 +522,13 @@ function ShoulderAssembly({ side }: { side: 'left' | 'right' }) {
         new THREE.Vector3(x * 1.3, -0.1, z * 1.2),
         new THREE.Vector3(x * 1.1, -0.22, z * 1.0),
       ]);
-      cableGeos.push(new THREE.TubeGeometry(curve, 12, 0.007, 6, false));
+      result.push({
+        id: `shoulder-cable-${side}-${ang.toFixed(4)}`,
+        geo: new THREE.TubeGeometry(curve, 12, 0.007, 6, false),
+      });
     }
-    return cableGeos;
-  }, []);
+    return result;
+  }, [side]);
 
   return (
     <group scale={[scaleX, 1, 1]}>
@@ -495,8 +550,8 @@ function ShoulderAssembly({ side }: { side: 'left' | 'right' }) {
       </mesh>
 
       {/* Cable bundle */}
-      {shoulderCables.map((geo, i) => (
-        <mesh key={`shoulder-cable-${side}-${i}`} geometry={geo}>
+      {shoulderCables.map((cable) => (
+        <mesh key={cable.id} geometry={cable.geo}>
           <meshStandardMaterial color={ch.cable} roughness={0.58} metalness={0.28} />
         </mesh>
       ))}
@@ -589,33 +644,45 @@ function CableBundles({ panicRef }: { panicRef: React.RefObject<number> }) {
 
   // Cable paths from neck to shoulders (visible between plates)
   const cables = useMemo(() => {
-    const paths = [
+    const paths: { id: string; pts: THREE.Vector3[] }[] = [
       // Left side cables
-      [
-        new THREE.Vector3(-0.08, 0.0, -0.06),
-        new THREE.Vector3(-0.2, -0.15, -0.04),
-        new THREE.Vector3(-0.32, -0.28, -0.02),
-      ],
-      [
-        new THREE.Vector3(-0.06, -0.02, -0.08),
-        new THREE.Vector3(-0.18, -0.18, -0.06),
-        new THREE.Vector3(-0.28, -0.32, -0.04),
-      ],
+      {
+        id: 'bundle-left-outer',
+        pts: [
+          new THREE.Vector3(-0.08, 0.0, -0.06),
+          new THREE.Vector3(-0.2, -0.15, -0.04),
+          new THREE.Vector3(-0.32, -0.28, -0.02),
+        ],
+      },
+      {
+        id: 'bundle-left-inner',
+        pts: [
+          new THREE.Vector3(-0.06, -0.02, -0.08),
+          new THREE.Vector3(-0.18, -0.18, -0.06),
+          new THREE.Vector3(-0.28, -0.32, -0.04),
+        ],
+      },
       // Right side cables
-      [
-        new THREE.Vector3(0.08, 0.0, -0.06),
-        new THREE.Vector3(0.2, -0.15, -0.04),
-        new THREE.Vector3(0.32, -0.28, -0.02),
-      ],
-      [
-        new THREE.Vector3(0.06, -0.02, -0.08),
-        new THREE.Vector3(0.18, -0.18, -0.06),
-        new THREE.Vector3(0.28, -0.32, -0.04),
-      ],
+      {
+        id: 'bundle-right-outer',
+        pts: [
+          new THREE.Vector3(0.08, 0.0, -0.06),
+          new THREE.Vector3(0.2, -0.15, -0.04),
+          new THREE.Vector3(0.32, -0.28, -0.02),
+        ],
+      },
+      {
+        id: 'bundle-right-inner',
+        pts: [
+          new THREE.Vector3(0.06, -0.02, -0.08),
+          new THREE.Vector3(0.18, -0.18, -0.06),
+          new THREE.Vector3(0.28, -0.32, -0.04),
+        ],
+      },
     ];
-    return paths.map((pts) => {
+    return paths.map(({ id, pts }) => {
       const curve = new THREE.CatmullRomCurve3(pts);
-      return new THREE.TubeGeometry(curve, 16, 0.008, 7, false);
+      return { id, geo: new THREE.TubeGeometry(curve, 16, 0.008, 7, false) };
     });
   }, []);
 
@@ -633,8 +700,8 @@ function CableBundles({ panicRef }: { panicRef: React.RefObject<number> }) {
 
   return (
     <group ref={groupRef}>
-      {cables.map((geo, i) => (
-        <mesh key={`bundle-cable-${i}`} geometry={geo}>
+      {cables.map((cable, i) => (
+        <mesh key={cable.id} geometry={cable.geo}>
           <meshStandardMaterial
             ref={(el) => {
               if (el) cableMats.current[i] = el;

@@ -30,7 +30,7 @@ import { AtmosphericBackground } from './AtmosphericBackground';
 import { CharacterBust } from './CharacterBust';
 import { gx, gy } from './coordinates';
 import { HeadExplosion } from './HeadExplosion';
-import { type CooldownState, KeyboardControls } from './KeyboardControls';
+import { type CooldownState, KeyboardControls, type ScreenMode } from './KeyboardControls';
 import { PostProcessing } from './PostProcessing';
 import { BossSystem } from './systems/BossSystem';
 import { EnemySystem } from './systems/EnemySystem';
@@ -42,16 +42,24 @@ export interface GameSceneHandle {
   spawnConfetti: () => void;
   triggerHeadExplosion: () => void;
   triggerFlinch: () => void;
+  triggerStartSequence: () => void;
   reset: () => void;
 }
 
 export interface GameSceneProps {
+  screenMode: ScreenMode;
+  isWin?: boolean;
   onAbility?: (type: 'reality' | 'history' | 'logic') => void;
   onNuke?: () => void;
+  onStart?: () => void;
+  onPause?: () => void;
+  onResume?: () => void;
+  onRetry?: () => void;
+  onEndless?: () => void;
 }
 
 export const GameScene = forwardRef<GameSceneHandle, GameSceneProps>(function GameScene(
-  { onAbility, onNuke },
+  { screenMode, isWin, onAbility, onNuke, onStart, onPause, onResume, onRetry, onEndless },
   ref
 ) {
   const stateRef = useRef<GameState | null>(null);
@@ -64,6 +72,8 @@ export const GameScene = forwardRef<GameSceneHandle, GameSceneProps>(function Ga
   const targetEnemyRef = useRef<{ x: number; y: number } | null>(null);
   // Timestamp of last miss for flinch effect
   const flinchRef = useRef(0);
+  // Timestamp of start sequence animation
+  const startSequenceRef = useRef(0);
   const cooldownRef = useRef<CooldownState>({
     abilityCd: { reality: 0, history: 0, logic: 0 },
     abilityMax: { reality: 1, history: 1, logic: 1 },
@@ -125,10 +135,14 @@ export const GameScene = forwardRef<GameSceneHandle, GameSceneProps>(function Ga
     triggerFlinch() {
       flinchRef.current = performance.now();
     },
+    triggerStartSequence() {
+      startSequenceRef.current = performance.now();
+    },
     reset() {
       explosionActiveRef.current = false;
       targetEnemyRef.current = null;
       flinchRef.current = 0;
+      startSequenceRef.current = 0;
       clearAllEntities();
       panicRef.current = 0;
       waveRef.current = 0;
@@ -156,14 +170,26 @@ export const GameScene = forwardRef<GameSceneHandle, GameSceneProps>(function Ga
       <AtmosphericBackground panicRef={panicRef} />
 
       {/* Character bust (rear view) */}
-      <CharacterBust panicRef={panicRef} targetEnemyRef={targetEnemyRef} flinchRef={flinchRef} />
+      <CharacterBust
+        panicRef={panicRef}
+        targetEnemyRef={targetEnemyRef}
+        flinchRef={flinchRef}
+        startSequenceRef={startSequenceRef}
+      />
 
-      {/* 3D Keyboard Controls — interactive F-keys */}
+      {/* 3D Keyboard Controls — dynamic keycaps as UI */}
       <KeyboardControls
         panicRef={panicRef}
         cooldownRef={cooldownRef}
+        screenMode={screenMode}
+        isWin={isWin}
         onAbility={onAbility ?? noopAbility}
         onNuke={onNuke ?? noopNuke}
+        onStart={onStart ?? noopAbility}
+        onPause={onPause ?? noopAbility}
+        onResume={onResume ?? noopAbility}
+        onRetry={onRetry ?? noopAbility}
+        onEndless={onEndless ?? noopAbility}
       />
 
       {/* ECS-driven entities */}

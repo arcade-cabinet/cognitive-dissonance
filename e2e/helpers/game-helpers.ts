@@ -57,7 +57,8 @@ export async function verifyHUDVisible(page: Page): Promise<void> {
   await expect(page.locator('#wave-display')).toBeVisible();
   await expect(page.locator('#time-display')).toBeVisible();
   await expect(page.locator('#score-display')).toBeVisible();
-  await expect(page.locator('#panic-bar')).toBeVisible();
+  // panic-bar is sr-only (tension conveyed via 3D: keyboard RGB, body language)
+  await expect(page.locator('#panic-bar')).toBeAttached();
   await expect(page.locator('#combo-display')).toBeVisible();
 }
 

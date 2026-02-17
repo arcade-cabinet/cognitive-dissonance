@@ -48,9 +48,8 @@ export default function Game() {
   useEffect(() => {
     uiRef.current = ui;
     // Reset startInitiatedRef when not playing to allow restart.
-    // This is the single source-of-truth for the start debounce lifecycle:
-    // set true in handleStartLogic → reset here once screen leaves 'playing'.
-    if (ui.screen !== 'playing') {
+    // Don't reset during pause — that's still a "playing" session.
+    if (ui.screen !== 'playing' && ui.screen !== 'paused') {
       startInitiatedRef.current = false;
     }
   }, [ui]);
@@ -90,18 +89,17 @@ export default function Game() {
   }, []);
 
   // Start logic — dispatch the screen transition, then notify the worker.
-  // The worker message is delayed via setTimeout to ensure React has time
-  // to commit the screen change before worker state updates arrive.
+  // Includes start sequence animation delay (1000ms) before worker starts.
   const handleStartLogic = useCallback((currentState: UIState) => {
     if (startInitiatedRef.current) return;
     startInitiatedRef.current = true;
 
-    // Safety timeout: release lock if game hasn't started after 2s
+    // Safety timeout: release lock if game hasn't started after 3s
     setTimeout(() => {
       if (uiRef.current.screen !== 'playing') {
         startInitiatedRef.current = false;
       }
-    }, 2000);
+    }, 3000);
 
     try {
       const endless = currentState.win && currentState.screen === 'gameover';
@@ -116,10 +114,10 @@ export default function Game() {
         throw e;
       }
 
-      // Delay worker start to let React commit the screen transition first.
-      // Without this delay, the worker's rapid STATE messages can race with
-      // React 18's concurrent rendering and prevent the commit.
-      // Also includes retry logic in case worker init is slow.
+      // Trigger start sequence animation (android pivots, blinks, pivots back)
+      sceneRef.current?.triggerStartSequence();
+
+      // Delay worker start to let start sequence animation play (~1000ms)
       const seed = endless ? undefined : Date.now();
       const attemptStart = (retries = 0) => {
         if (workerRef.current) {
@@ -128,16 +126,29 @@ export default function Game() {
           setTimeout(() => attemptStart(retries + 1), 200);
         }
       };
-      setTimeout(() => attemptStart(), 100);
+      setTimeout(() => attemptStart(), 1100);
     } catch (e) {
       console.error('Error starting game:', e);
-      startInitiatedRef.current = false; // Release lock on error
+      startInitiatedRef.current = false;
     }
   }, []);
 
-  const handleStartButton = () => {
-    handleStartLogic(ui);
-  };
+  const handleStartButton = useCallback(() => {
+    handleStartLogic(uiRef.current);
+  }, [handleStartLogic]);
+
+  // Pause/Resume
+  const handlePause = useCallback(() => {
+    dispatch({ type: 'PAUSE' });
+    workerRef.current?.postMessage({ type: 'PAUSE' });
+    musicRef.current?.stop();
+  }, []);
+
+  const handleResume = useCallback(() => {
+    dispatch({ type: 'RESUME' });
+    workerRef.current?.postMessage({ type: 'RESUME' });
+    musicRef.current?.resume();
+  }, []);
 
   const handleAbility = useCallback((type: 'reality' | 'history' | 'logic') => {
     workerRef.current?.postMessage({ type: 'ABILITY', ability: type });
@@ -155,16 +166,30 @@ export default function Game() {
         e.preventDefault();
         if (currentUI.screen === 'start' || currentUI.screen === 'gameover') {
           handleStartLogic(currentUI);
+        } else if (currentUI.screen === 'playing') {
+          handlePause();
+        } else if (currentUI.screen === 'paused') {
+          handleResume();
         }
       } else if (e.key === 'F1') {
         e.preventDefault();
         handleAbility('reality');
       } else if (e.key === 'F2') {
         e.preventDefault();
-        handleAbility('history');
+        if (currentUI.screen === 'start') {
+          handleStartLogic(currentUI);
+        } else if (currentUI.screen === 'gameover') {
+          handleStartLogic(currentUI);
+        } else {
+          handleAbility('history');
+        }
       } else if (e.key === 'F3') {
         e.preventDefault();
-        handleAbility('logic');
+        if (currentUI.screen === 'gameover' && currentUI.win) {
+          handleStartLogic(currentUI);
+        } else {
+          handleAbility('logic');
+        }
       } else if (e.key === 'F4') {
         e.preventDefault();
         handleNuke();
@@ -172,7 +197,7 @@ export default function Game() {
         workerRef.current?.postMessage({ type: 'INPUT', key: e.key });
       }
     },
-    [handleStartLogic, handleAbility, handleNuke]
+    [handleStartLogic, handleAbility, handleNuke, handlePause, handleResume]
   );
 
   useLayoutEffect(() => {
@@ -215,7 +240,6 @@ export default function Game() {
           switch (event.type) {
             case 'SFX':
               if (event.name === 'startMusic') {
-                // Ensure init completes before starting adaptive music
                 const wave = (event.args?.[0] as number) ?? 0;
                 if (musicInitRef.current) {
                   musicInitRef.current.then(() => musicRef.current?.start(wave));
@@ -279,7 +303,6 @@ export default function Game() {
               if (event.win) {
                 sceneRef.current?.spawnConfetti();
               } else {
-                // Trigger head explosion effect on game over (loss)
                 sceneRef.current?.triggerHeadExplosion();
               }
               break;
@@ -318,7 +341,6 @@ export default function Game() {
   }, []);
 
   const handleCanvasPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    // Only forward clicks during gameplay — ignore when overlay is showing
     if (uiRef.current.screen !== 'playing') return;
     const rect = e.currentTarget.getBoundingClientRect();
     const currentViewport = viewportRef.current;
@@ -362,7 +384,7 @@ export default function Game() {
           </div>
         )}
 
-        {/* R3F 3D Canvas — transparent when Spline bust is active */}
+        {/* R3F 3D Canvas — always visible, the primary visual layer */}
         <Canvas
           id="gameCanvas"
           style={{
@@ -370,8 +392,8 @@ export default function Game() {
             width: '100%',
             height: '100%',
             display: 'block',
-            position: SPLINE_BUST_URL ? 'relative' : undefined,
-            zIndex: SPLINE_BUST_URL ? 1 : undefined,
+            position: 'relative',
+            zIndex: 10,
           }}
           camera={{ position: [0, 0.3, 4], fov: 45 }}
           dpr={[1, 2]}
@@ -379,11 +401,22 @@ export default function Game() {
           tabIndex={0}
           aria-label="Game Area: Tap enemies to counter them"
         >
-          <GameScene ref={sceneRef} onAbility={handleAbility} onNuke={handleNuke} />
+          <GameScene
+            ref={sceneRef}
+            screenMode={ui.screen}
+            isWin={ui.win}
+            onAbility={handleAbility}
+            onNuke={handleNuke}
+            onStart={handleStartButton}
+            onPause={handlePause}
+            onResume={handleResume}
+            onRetry={handleStartButton}
+            onEndless={handleStartButton}
+          />
         </Canvas>
 
-        {/* HUD Layer */}
-        <div id="ui-layer" className={ui.screen === 'playing' ? '' : 'hidden'}>
+        {/* HUD Layer — floating text over the 3D scene */}
+        <div id="ui-layer" className={ui.screen === 'start' ? 'hidden' : ''}>
           <div id="wave-announce" className={ui.showWave ? 'show' : ''}>
             <div className="wt" id="wa-title">
               {ui.waveTitle}
@@ -407,45 +440,48 @@ export default function Game() {
             </div>
           )}
 
-          <div id="hype-feed">
-            {ui.feed.map((item) => (
-              <div key={item.id} className="feed-item show">
-                <span className="feed-handle">{item.handle}</span>
-                <span className="feed-text">{item.text}</span>
-                <span className="feed-stat">{item.stat}</span>
-              </div>
-            ))}
-          </div>
+          {ui.screen === 'playing' && (
+            <div id="hype-feed">
+              {ui.feed.map((item) => (
+                <div key={item.id} className="feed-item show">
+                  <span className="feed-handle">{item.handle}</span>
+                  <span className="feed-text">{item.text}</span>
+                  <span className="feed-stat">{item.stat}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
-          <div id="powerup-hud">
-            <div className="pu-icon" id="pu-slow" style={{ opacity: ui.pu.slow > 0 ? 1 : 0.15 }}>
-              ⏳
+          {(ui.screen === 'playing' || ui.screen === 'paused') && (
+            <div id="powerup-hud">
+              <div className="pu-icon" id="pu-slow" style={{ opacity: ui.pu.slow > 0 ? 1 : 0.15 }}>
+                ⏳
+              </div>
+              <div
+                className="pu-icon"
+                id="pu-shield"
+                style={{ opacity: ui.pu.shield > 0 ? 1 : 0.15 }}
+              >
+                🛡️
+              </div>
+              <div
+                className="pu-icon"
+                id="pu-double"
+                style={{ opacity: ui.pu.double > 0 ? 1 : 0.15 }}
+              >
+                ⭐
+              </div>
             </div>
-            <div
-              className="pu-icon"
-              id="pu-shield"
-              style={{ opacity: ui.pu.shield > 0 ? 1 : 0.15 }}
-            >
-              🛡️
-            </div>
-            <div
-              className="pu-icon"
-              id="pu-double"
-              style={{ opacity: ui.pu.double > 0 ? 1 : 0.15 }}
-            >
-              ⭐
-            </div>
-          </div>
+          )}
 
           <div className="hud-top">
             <div className="hud-left">
-              {/* No panic bar — tension conveyed entirely through 3D feedback:
-                  robot eye glow, keyboard RGB, shoulder/neck tensing, flinch */}
               <div id="combo-display">COMBO: x{ui.combo}</div>
-              {/* Hidden for E2E test compatibility */}
+              {/* sr-only for E2E test compatibility */}
               <span id="panic-bar" className="sr-only">
                 {Math.round(ui.panic)}%
               </span>
+              <span className="meter-container sr-only" />
             </div>
             <div className="hud-center">
               <div id="wave-display">
@@ -464,8 +500,40 @@ export default function Game() {
             </div>
           </div>
 
-          {/* Controls are now 3D keyboard F-keys in the scene.
-              Hidden HTML buttons kept for accessibility and e2e test IDs. */}
+          {/* Game-over stats — floating HUD over the 3D scene */}
+          {ui.screen === 'gameover' && ui.gameOverStats && gradeInfo && (
+            <div className="gameover-stats">
+              <div className="gameover-title">{ui.win ? 'CRISIS AVERTED' : 'BRAIN MELTDOWN'}</div>
+              <div className={`grade ${gradeInfo.className}`}>{gradeInfo.grade}</div>
+              <div className="stat-row">
+                <span className="stat-label">FINAL SCORE</span>
+                <span className="stat-value">{ui.score.toLocaleString()}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">WAVES CLEARED</span>
+                <span className="stat-value">
+                  {ui.gameOverStats.wavesCleared} / {WAVES.length}
+                </span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">MAX COMBO</span>
+                <span className="stat-value">x{ui.gameOverStats.maxCombo}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">ACCURACY</span>
+                <span className="stat-value">{Math.round(accuracy * 100)}%</span>
+              </div>
+            </div>
+          )}
+
+          {/* Paused indicator */}
+          {ui.screen === 'paused' && (
+            <div className="pause-overlay">
+              <div className="pause-text">PAUSED</div>
+            </div>
+          )}
+
+          {/* Hidden HTML controls for accessibility and E2E test IDs */}
           <div id="controls" className="sr-only">
             <button type="button" id="btn-reality" onClick={() => handleAbility('reality')}>
               REALITY
@@ -482,8 +550,12 @@ export default function Game() {
           </div>
         </div>
 
-        {/* Overlay Layer */}
-        <div id="overlay" className={ui.screen !== 'playing' ? '' : 'hidden'}>
+        {/* Overlay Layer — behind canvas for E2E test compatibility.
+            The 3D scene is the visual UI; this is kept for Playwright selectors. */}
+        <div
+          id="overlay"
+          className={ui.screen === 'playing' || ui.screen === 'paused' ? 'hidden' : ''}
+        >
           <h1 id="overlay-title">
             {ui.screen === 'gameover'
               ? ui.win
@@ -510,11 +582,6 @@ export default function Game() {
                 He closes the laptop. Sunlight enters the room.
                 <br />
                 &quot;Maybe I should touch grass.&quot;
-                <br />
-                <br />
-                <span style={{ color: '#00ffff' }}>
-                  Press <b>SPACE</b> for ENDLESS MODE.
-                </span>
               </>
             )}
             {ui.screen === 'gameover' && !ui.win && (
@@ -525,15 +592,6 @@ export default function Game() {
               </>
             )}
           </p>
-
-          {ui.screen === 'start' && (
-            <p>
-              <b style={{ color: '#e67e22' }}>F1</b> Reality &nbsp;
-              <b style={{ color: '#2ecc71' }}>F2</b> History &nbsp;
-              <b style={{ color: '#9b59b6' }}>F3</b> Logic &nbsp;
-              <b style={{ color: '#e74c3c' }}>F4</b> Nuke
-            </p>
-          )}
 
           {ui.screen === 'gameover' && ui.gameOverStats && gradeInfo && (
             <div id="end-stats">
