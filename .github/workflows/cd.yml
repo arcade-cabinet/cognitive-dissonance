@@ -200,7 +200,10 @@ jobs:
           prompt: |
             ## CD E2E Matrix Failure — Auto-Fix Request
 
-            **Repository:** arcade-cabinet/psyduck-panic
+            ## CD E2E Matrix Failure — Auto-Fix Request
+
+            **Repository:** ${{ github.repository }}
+            **Branch:** main
             **Branch:** main
             **Commit:** ${{ github.sha }}
 
