@@ -85,7 +85,7 @@ describe('BossAI', () => {
     // It might pick move or spawn depending on arbitration, but with bias it should spawn eventually
     // To test specific logic, we test goals directly below.
     // Here just check that update runs without error.
-    expect(actions).toBeDefined();
+    expect(actions.some((a) => a.type === 'spawn_enemies')).toBe(true);
   });
 
   it('should move to target when moveTo is called', () => {
