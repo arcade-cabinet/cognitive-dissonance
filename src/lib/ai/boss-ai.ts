@@ -173,6 +173,10 @@ export class BossAI {
     this.brain.clearSubgoals();
   }
 
+  destroy(): void {
+    this.dispose();
+  }
+
   /** Get HP ratio (0-1) */
   getHpRatio(): number {
     return this.state.hp / this.state.maxHp;
