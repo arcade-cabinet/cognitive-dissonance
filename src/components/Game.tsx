@@ -191,7 +191,6 @@ export default function Game() {
     try {
       worker = new GameWorker();
       workerRef.current = worker;
-      console.info('[Game.tsx] Worker initialized'); // NOSONAR
     } catch (e) {
       console.error('[Game.tsx] Failed to initialize worker:', e); // NOSONAR
       return;
@@ -205,7 +204,6 @@ export default function Game() {
       const msg = e.data;
 
       if (msg.type === 'READY') {
-        console.info('[Game.tsx] Worker READY received'); // NOSONAR
         return;
       }
 
