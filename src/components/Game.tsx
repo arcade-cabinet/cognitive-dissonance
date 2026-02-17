@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber';
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import { SFX } from '../lib/audio';
 import { GAME_HEIGHT, GAME_WIDTH, WAVE_ANNOUNCEMENT_DURATION, WAVES } from '../lib/constants';
 import {
@@ -58,7 +58,7 @@ export default function Game() {
   }, [viewport]);
 
   // Initialize responsive viewport
-  useEffect(() => {
+  useLayoutEffect(() => {
     const deviceInfo = detectDevice();
     const initialViewport = calculateViewport(GAME_WIDTH, GAME_HEIGHT, deviceInfo);
     setViewport(initialViewport);
@@ -152,7 +152,7 @@ export default function Game() {
     [handleStartLogic, handleAbility, handleNuke]
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
