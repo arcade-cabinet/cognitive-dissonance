@@ -191,7 +191,7 @@ export default function Game() {
     try {
       worker = new GameWorker();
       workerRef.current = worker;
-      console.error('[Game.tsx] Worker initialized'); // Force log in production
+      console.info('[Game.tsx] Worker initialized'); // Use info for successful init
     } catch (e) {
       console.error('[Game.tsx] Failed to initialize worker:', e);
       return;
@@ -205,7 +205,7 @@ export default function Game() {
       const msg = e.data;
 
       if (msg.type === 'READY') {
-        console.error('[Game.tsx] Worker READY received');
+        console.info('[Game.tsx] Worker READY received'); // Use info for status
         return;
       }
 
