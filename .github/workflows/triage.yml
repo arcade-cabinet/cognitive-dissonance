@@ -251,9 +251,13 @@ jobs:
 
       - name: Skip — issue is blocked
         if: steps.issue.outputs.blocked == 'true'
+        env:
+          ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
+          BLOCKER_COUNT: ${{ steps.issue.outputs.blocker_count }}
+          OPEN_BLOCKERS: ${{ steps.issue.outputs.open_blockers }}
         run: |
-          echo "Issue #${{ steps.issue.outputs.number }} is blocked by ${{ steps.issue.outputs.blocker_count }} open issue(s):"
-          echo "${{ steps.issue.outputs.open_blockers }}"
+          echo "Issue #${ISSUE_NUMBER} is blocked by ${BLOCKER_COUNT} open issue(s):"
+          echo "${OPEN_BLOCKERS}"
           echo "Skipping Jules invocation until blockers are resolved."
 
       - name: Invoke Jules
