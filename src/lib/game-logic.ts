@@ -491,8 +491,6 @@ export class GameLogic {
         const cfg = WAVES[Math.min(this.wave, WAVES.length - 1)];
         if (!this.endless && cfg.boss && !this.bossPhase) {
           this.startBoss(cfg.boss);
-        } else if (this.endless) {
-          this.nextWave();
         } else {
           this.nextWave();
         }

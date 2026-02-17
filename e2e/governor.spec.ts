@@ -2,6 +2,26 @@ import { expect, test } from '@playwright/test';
 import { navigateToGame, screenshot, startGame, verifyGamePlaying } from './helpers/game-helpers';
 import { GameGovernor } from './helpers/governor';
 
+/** Race a playthrough against a timeout, cleaning up the timer on resolution. */
+async function raceWithTimeout(
+  governor: GameGovernor,
+  playthroughPromise: Promise<{ result: string; score: number }>,
+  ms: number
+): Promise<{ result: string; score: number }> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<{ result: 'loss'; score: number }>((resolve) => {
+    timeoutId = setTimeout(() => {
+      governor.stop();
+      resolve({ result: 'loss', score: 0 });
+    }, ms);
+  });
+  try {
+    return await Promise.race([playthroughPromise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 /**
  * AI Governor-driven playthrough.
  *
@@ -24,18 +44,10 @@ test.describe('Automated Playthrough with Governor', () => {
     await page.waitForTimeout(5000);
     await screenshot(page, 'governor', '03-mid-game');
 
-    const result = await Promise.race([
-      playthroughPromise,
-      new Promise<{ result: 'win' | 'loss'; score: number }>((resolve) =>
-        setTimeout(() => {
-          governor.stop();
-          resolve({ result: 'loss', score: 0 });
-        }, 60000)
-      ),
-    ]);
+    const result = await raceWithTimeout(governor, playthroughPromise, 60000);
 
     await screenshot(page, 'governor', '04-end');
-    expect(result).toBeTruthy();
+    expect(result.result).toMatch(/^(win|loss)$/);
     expect(result.score).toBeGreaterThanOrEqual(0);
     console.log(`Playthrough completed with result: ${result.result}, score: ${result.score}`);
   });
@@ -46,7 +58,7 @@ test.describe('Automated Playthrough with Governor', () => {
 
     const governor = new GameGovernor(page, {
       aggressiveness: 0.9,
-      accuracy: 0.9,
+      accuracy: 1,
       reactionTime: 200,
       useSpecials: true,
     });
@@ -56,15 +68,7 @@ test.describe('Automated Playthrough with Governor', () => {
     await page.waitForTimeout(5000);
     await screenshot(page, 'governor-aggressive', '01-gameplay');
 
-    const aggressiveResult = await Promise.race([
-      playthroughPromise,
-      new Promise<{ result: 'loss'; score: number }>((resolve) =>
-        setTimeout(() => {
-          governor.stop();
-          resolve({ result: 'loss', score: 0 });
-        }, 60000)
-      ),
-    ]);
+    const aggressiveResult = await raceWithTimeout(governor, playthroughPromise, 60000);
 
     await screenshot(page, 'governor-aggressive', '02-end');
     expect(aggressiveResult.result).toMatch(/^(win|loss)$/);
@@ -79,7 +83,7 @@ test.describe('Automated Playthrough with Governor', () => {
 
     const governor = new GameGovernor(page, {
       aggressiveness: 0.5,
-      accuracy: 0.6,
+      accuracy: 1,
       reactionTime: 500,
       useSpecials: false,
     });
@@ -89,15 +93,7 @@ test.describe('Automated Playthrough with Governor', () => {
     await page.waitForTimeout(5000);
     await screenshot(page, 'governor-defensive', '01-gameplay');
 
-    const defensiveResult = await Promise.race([
-      playthroughPromise,
-      new Promise<{ result: 'loss'; score: number }>((resolve) =>
-        setTimeout(() => {
-          governor.stop();
-          resolve({ result: 'loss', score: 0 });
-        }, 60000)
-      ),
-    ]);
+    const defensiveResult = await raceWithTimeout(governor, playthroughPromise, 60000);
 
     await screenshot(page, 'governor-defensive', '02-end');
     expect(defensiveResult.result).toMatch(/^(win|loss)$/);

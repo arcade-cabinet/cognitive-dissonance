@@ -4,7 +4,7 @@ import { GameLogic } from '../lib/game-logic';
 const logic = new GameLogic();
 let running = false;
 let lastTime = 0;
-let animationFrameId: number;
+let animationFrameId: number | undefined;
 
 // Polyfill for requestAnimationFrame in worker if needed
 const requestFrame =
@@ -31,7 +31,9 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
         break;
       case 'PAUSE':
         running = false;
-        cancelFrame(animationFrameId);
+        if (animationFrameId !== undefined) {
+          cancelFrame(animationFrameId);
+        }
         break;
       case 'RESUME':
         if (!running) {
@@ -69,7 +71,9 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
     }
   } catch (err) {
     running = false;
-    cancelFrame(animationFrameId);
+    if (animationFrameId !== undefined) {
+      cancelFrame(animationFrameId);
+    }
     console.error('[game.worker] Unhandled error in message handler:', err);
     const errorMsg: MainMessage = {
       type: 'ERROR',

@@ -181,7 +181,7 @@ jobs:
     needs: [dispatch, review, invoke]
     if: >-
       always() && !cancelled() &&
-      (failure() || needs.dispatch.outputs.command == 'skip') &&
+      failure() &&
       needs.dispatch.outputs.command != 'skip'
     runs-on: ubuntu-latest
     permissions:

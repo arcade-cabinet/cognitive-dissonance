@@ -241,7 +241,7 @@ export class AdaptiveMusic {
 
       const notes = this.panic > 66 ? PANIC_NOTES : this.panic > 33 ? TENSE_NOTES : CALM_NOTES;
       const idx = this.melodyIndex % notes.length;
-      this.melodyIndex++;
+      this.melodyIndex = (this.melodyIndex + 1) % 10000;
       // Skip every 3rd and 7th note for rhythm variation (deterministic pattern)
       if (this.melodyIndex % 3 !== 0 && this.melodyIndex % 7 !== 0) {
         this.leadSynth.triggerAttackRelease(notes[idx], '16n', time);

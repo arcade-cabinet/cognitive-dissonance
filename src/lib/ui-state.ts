@@ -18,7 +18,7 @@ export type GameOverStats = {
 };
 
 export type UIState = {
-  screen: 'start' | 'playing' | 'gameover' | 'endless_transition';
+  screen: 'start' | 'playing' | 'gameover';
   score: number;
   wave: number;
   panic: number;
