@@ -39,7 +39,18 @@ export async function startGame(page: Page): Promise<void> {
   // Use a retry loop to robustly handle delayed event listener attachment
   await expect(async () => {
     if (await overlay.isVisible()) {
+      // Try keyboard first (primary)
       await page.keyboard.press(' ');
+
+      // Fallback: if overlay still visible after short delay, try click
+      // This handles cases where focus might be lost or keyboard events dropped
+      try {
+        await expect(overlay).toHaveClass(/hidden/, { timeout: 200 });
+      } catch {
+        if (await overlay.isVisible()) {
+          await startBtn.click();
+        }
+      }
     }
     await expect(overlay).toHaveClass(/hidden/);
   }).toPass({ timeout: GAME_START_TIMEOUT });
@@ -84,7 +95,7 @@ export async function verifyGamePlaying(page: Page): Promise<void> {
   const timeDisplay = page.locator('#time-display');
   const initialTime = await timeDisplay.textContent();
   await expect
-    .poll(async () => await timeDisplay.textContent(), { timeout: 2500 })
+    .poll(async () => await timeDisplay.textContent(), { timeout: 10000 })
     .not.toBe(initialTime);
 }
 

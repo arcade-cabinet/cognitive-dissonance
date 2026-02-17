@@ -1,16 +1,22 @@
 import type { MainMessage, WorkerMessage } from '../lib/events';
 import { GameLogic } from '../lib/game-logic';
 
-const logic = new GameLogic();
+let logic: GameLogic;
+try {
+  logic = new GameLogic();
+} catch (e) {
+  console.error('Failed to initialize GameLogic in worker:', e);
+  self.postMessage({ type: 'ERROR', message: String(e) });
+}
+
 let running = false;
 let lastTime = 0;
 let animationFrameId: number | undefined;
 
 // Polyfill for requestAnimationFrame in worker if needed
-const requestFrame =
-  self.requestAnimationFrame ||
-  ((callback: (t: number) => void) => setTimeout(() => callback(performance.now()), 16));
-const cancelFrame = self.cancelAnimationFrame || clearTimeout;
+// Force setTimeout to ensure reliable loop in headless/CI environments where RAF might be throttled
+const requestFrame = (callback: (t: number) => void) => setTimeout(() => callback(performance.now()), 16);
+const cancelFrame = clearTimeout;
 
 self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   try {
@@ -90,18 +96,31 @@ function scheduleLoop() {
 function loop(now: number) {
   if (!running) return;
 
-  const dt = Math.min((now - lastTime) / 16.67, 2); // Frame time factor (approx 1.0 at 60fps)
-  lastTime = now;
+  try {
+    const dt = Math.min((now - lastTime) / 16.67, 2); // Frame time factor (approx 1.0 at 60fps)
+    lastTime = now;
 
-  logic.update(dt, now);
-  const state = logic.getState();
+    logic.update(dt, now);
+    const state = logic.getState();
 
-  const msg: MainMessage = { type: 'STATE', state };
-  self.postMessage(msg);
+    const msg: MainMessage = { type: 'STATE', state };
+    self.postMessage(msg);
 
-  if (logic.running) {
-    scheduleLoop();
-  } else {
+    if (logic.running) {
+      scheduleLoop();
+    } else {
+      running = false;
+    }
+  } catch (err) {
     running = false;
+    if (animationFrameId !== undefined) {
+      cancelFrame(animationFrameId);
+    }
+    console.error('[game.worker] Unhandled error in game loop:', err);
+    const errorMsg: MainMessage = {
+      type: 'ERROR',
+      message: err instanceof Error ? err.message : String(err),
+    };
+    self.postMessage(errorMsg);
   }
 }

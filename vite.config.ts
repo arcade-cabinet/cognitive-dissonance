@@ -65,7 +65,7 @@ export default defineConfig({
     strictPort: true,
   },
   worker: {
-    format: 'iife',
+    format: 'es',
   },
   optimizeDeps: {
     exclude: ['@capacitor/core', '@capacitor/app'],

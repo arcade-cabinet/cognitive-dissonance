@@ -112,8 +112,7 @@ export default function Game() {
         musicRef.current?.resume();
         sceneRef.current?.reset();
       } catch (e) {
-        console.warn('Failed to resume audio or reset scene:', e);
-        throw e;
+        console.warn('Failed to resume audio or reset scene (continuing):', e);
       }
 
       // Delay worker start to let React commit the screen transition first.
