@@ -49,7 +49,7 @@ test.describe('Automated Playthrough with Governor', () => {
     await screenshot(page, 'governor', '04-end');
     expect(result.result).toMatch(/^(win|loss)$/);
     expect(result.score).toBeGreaterThanOrEqual(0);
-    console.log(`Playthrough completed with result: ${result.result}, score: ${result.score}`);
+    console.info(`Playthrough completed with result: ${result.result}, score: ${result.score}`);
   });
 
   // Extended governor tests — only run in full matrix (CD), tagged with @matrix
@@ -73,7 +73,7 @@ test.describe('Automated Playthrough with Governor', () => {
     await screenshot(page, 'governor-aggressive', '02-end');
     expect(aggressiveResult.result).toMatch(/^(win|loss)$/);
     expect(aggressiveResult.score).toBeGreaterThanOrEqual(0);
-    console.log(
+    console.info(
       `Aggressive playthrough: ${aggressiveResult.result}, score: ${aggressiveResult.score}`
     );
   });
@@ -98,7 +98,7 @@ test.describe('Automated Playthrough with Governor', () => {
     await screenshot(page, 'governor-defensive', '02-end');
     expect(defensiveResult.result).toMatch(/^(win|loss)$/);
     expect(defensiveResult.score).toBeGreaterThanOrEqual(0);
-    console.log(
+    console.info(
       `Defensive playthrough: ${defensiveResult.result}, score: ${defensiveResult.score}`
     );
   });
@@ -119,7 +119,7 @@ test.describe('Automated Playthrough with Governor', () => {
       }).toPass({ timeout: 10000 });
       workerActive = true;
     } catch {
-      console.log('Worker did not send state updates within timeout, skipping time assertions');
+      console.info('Worker did not send state updates within timeout, skipping time assertions');
     }
 
     await verifyGamePlaying(page);

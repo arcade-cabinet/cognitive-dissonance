@@ -129,7 +129,7 @@ export async function screenshot(page: Page, prefix: string, stage: string): Pro
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.log(`Screenshot failed (${message}), retrying... (${prefix}-${stage})`);
+    console.info(`Screenshot failed (${message}), retrying... (${prefix}-${stage})`);
     await page.waitForTimeout(500);
     await page.screenshot({
       path: `test-results/screenshots/${prefix}-${stage}.png`,

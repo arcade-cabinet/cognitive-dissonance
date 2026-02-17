@@ -112,7 +112,7 @@ export async function captureWithRetry(
       }
     } catch (error) {
       if (i === maxRetries - 1) throw error;
-      console.log(`Screenshot attempt ${i + 1} failed, retrying...`);
+      console.info(`Screenshot attempt ${i + 1} failed, retrying...`);
     }
   }
 }
