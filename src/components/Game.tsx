@@ -91,8 +91,12 @@ export default function Game() {
     if (startInitiatedRef.current) return;
     startInitiatedRef.current = true;
 
-    sfxRef.current?.resume();
-    musicRef.current?.resume();
+    try {
+      sfxRef.current?.resume();
+      musicRef.current?.resume().catch((err) => console.warn('Music resume failed:', err));
+    } catch (e) {
+      console.warn('Audio resume failed:', e);
+    }
     sceneRef.current?.reset();
 
     const endless = currentState.win && currentState.screen === 'gameover';
