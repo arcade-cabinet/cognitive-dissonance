@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { GameGovernor } from './helpers/game-governor';
+import { GameGovernor } from './helpers/governor';
 import { navigateToGame, screenshot, startGame, verifyGamePlaying } from './helpers/game-helpers';
 
 /**
