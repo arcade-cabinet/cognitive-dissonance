@@ -103,20 +103,33 @@ function scheduleLoop() {
 function loop(now: number) {
   if (!running) return;
 
-  // Frame time factor (approx 1.0 at 60fps)
-  // Clamped to 10 (~160ms) to allow catching up on slow devices/CI without spiraling
-  const dt = Math.min((now - lastTime) / 16.67, 10);
-  lastTime = now;
+  try {
+    // Frame time factor (approx 1.0 at 60fps)
+    // Clamped to 10 (~160ms) to allow catching up on slow devices/CI without spiraling
+    const dt = Math.min((now - lastTime) / 16.67, 10);
+    lastTime = now;
 
-  logic.update(dt, now);
-  const state = logic.getState();
+    logic.update(dt, now);
+    const state = logic.getState();
 
-  const msg: MainMessage = { type: 'STATE', state };
-  self.postMessage(msg);
+    const msg: MainMessage = { type: 'STATE', state };
+    self.postMessage(msg);
 
-  if (logic.running) {
-    scheduleLoop();
-  } else {
+    if (logic.running) {
+      scheduleLoop();
+    } else {
+      running = false;
+    }
+  } catch (err) {
     running = false;
+    if (animationFrameId !== undefined) {
+      cancelFrame(animationFrameId);
+    }
+    console.error('[game.worker] Unhandled error in game loop:', err);
+    const errorMsg: MainMessage = {
+      type: 'ERROR',
+      message: err instanceof Error ? err.message : String(err),
+    };
+    self.postMessage(errorMsg);
   }
 }

@@ -23,6 +23,7 @@ import GameWorker from '../worker/game.worker.ts?worker';
 export default function Game() {
   const sceneRef = useRef<GameSceneHandle>(null);
   const workerRef = useRef<Worker | null>(null);
+  const workerReadyRef = useRef(false);
   const sfxRef = useRef<SFX | null>(null);
   const musicRef = useRef<AdaptiveMusic | null>(null);
   const musicInitRef = useRef<Promise<void> | null>(null);
@@ -122,10 +123,15 @@ export default function Game() {
       // Also includes retry logic in case worker init is slow.
       const seed = endless ? undefined : Date.now();
       const attemptStart = (retries = 0) => {
-        if (workerRef.current) {
+        // Wait for both worker instance AND ready signal
+        if (workerRef.current && workerReadyRef.current) {
           workerRef.current.postMessage({ type: 'START', endless, seed });
-        } else if (retries < 50) {
+        } else if (retries < 100) {
+          // Increase retry count to allow more time for worker init (up to 20s)
           setTimeout(() => attemptStart(retries + 1), 200);
+        } else {
+          console.error('Worker failed to initialize in time');
+          startInitiatedRef.current = false;
         }
       };
       setTimeout(() => attemptStart(), 100);
@@ -189,6 +195,11 @@ export default function Game() {
 
     worker.onmessage = (e: MessageEvent) => {
       const msg = e.data;
+      if (msg.type === 'READY') {
+        console.log('[game.worker] Ready');
+        workerReadyRef.current = true;
+        return;
+      }
       if (msg.type === 'ERROR') {
         console.error('[game.worker] Worker error:', msg.message);
         return;
