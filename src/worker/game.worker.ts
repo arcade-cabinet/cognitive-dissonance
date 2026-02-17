@@ -87,13 +87,15 @@ try {
   };
 
   // Signal ready state
-  self.postMessage({ type: 'READY' } as unknown as MainMessage);
+  const readyMsg: MainMessage = { type: 'READY' };
+  self.postMessage(readyMsg);
 } catch (err) {
   console.error('[game.worker] Initialization error:', err); // NOSONAR
-  self.postMessage({
+  const errorMsg: MainMessage = {
     type: 'ERROR',
     message: err instanceof Error ? err.message : String(err),
-  } as MainMessage);
+  };
+  self.postMessage(errorMsg);
 }
 
 function scheduleLoop() {
