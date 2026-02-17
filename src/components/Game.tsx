@@ -46,7 +46,9 @@ export default function Game() {
   const uiRef = useRef(ui);
   useEffect(() => {
     uiRef.current = ui;
-    // Reset start lock when not playing, to allow restarting
+    // Reset startInitiatedRef when not playing to allow restart.
+    // This is the single source-of-truth for the start debounce lifecycle:
+    // set true in handleStartLogic → reset here once screen leaves 'playing'.
     if (ui.screen !== 'playing') {
       startInitiatedRef.current = false;
     }
@@ -132,13 +134,6 @@ export default function Game() {
     }
   }, []);
 
-  // Reset start debounce when game is playing
-  useEffect(() => {
-    if (ui.screen === 'playing') {
-      startInitiatedRef.current = false;
-    }
-  }, [ui.screen]);
-
   const handleStartButton = () => {
     handleStartLogic(ui);
   };
@@ -199,6 +194,11 @@ export default function Game() {
       }
       if (msg.type === 'STATE') {
         const state = msg.state as GameState;
+
+        // Expose enemy counters for E2E governor (no DOM elements in 3D scene)
+        (window as unknown as Record<string, unknown>).__gameEnemyCounters = state.enemies.map(
+          (e) => e.counter
+        );
 
         // Update 3D scene via ref
         sceneRef.current?.updateState(state);

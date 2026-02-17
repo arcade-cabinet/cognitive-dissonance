@@ -131,26 +131,47 @@ export class GameGovernor {
     });
   }
 
+  /** Map enemy counter type to its keyboard shortcut */
+  private static readonly COUNTER_MAP: Record<string, string> = {
+    reality: 'F1',
+    history: 'F2',
+    logic: 'F3',
+  };
+
   /**
-   * Try to counter visible enemies
+   * Try to counter visible enemies using exposed game state
    */
   private async tryCounterEnemies(): Promise<void> {
-    // Deterministic decision based on accuracy
+    // Simulate human error based on accuracy
     if (this.rng() > this.config.accuracy) {
-      // Miss intentionally to simulate human error
-      const randomKey = ['F1', 'F2', 'F3'][Math.floor(this.rng() * 3)];
-      await this.page.keyboard.press(randomKey);
+      const keys = ['F1', 'F2', 'F3'];
+      await this.page.keyboard.press(keys[Math.floor(this.rng() * 3)]);
       return;
     }
 
-    // Try to counter enemies intelligently
-    // In a real implementation, we'd analyze the canvas or game state
-    // For now, cycle through abilities
-    const abilities = ['F1', 'F2', 'F3'];
-    const ability = abilities[Math.floor(this.rng() * abilities.length)];
+    // Read enemy counter types from exposed game state (set by Game.tsx)
+    const counters: string[] = await this.page.evaluate(
+      () => ((window as unknown as Record<string, unknown>).__gameEnemyCounters as string[]) || []
+    );
 
-    if (this.rng() < this.config.aggressiveness) {
-      await this.page.keyboard.press(ability);
+    if (counters.length > 0) {
+      // Pick the most common enemy type and press its counter ability
+      const freq: Record<string, number> = {};
+      for (const c of counters) {
+        freq[c] = (freq[c] || 0) + 1;
+      }
+      const bestCounter = Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];
+      const key = GameGovernor.COUNTER_MAP[bestCounter] || 'F1';
+
+      if (this.rng() < this.config.aggressiveness) {
+        await this.page.keyboard.press(key);
+      }
+    } else {
+      // No enemy info available — fall back to cycling abilities
+      const keys = ['F1', 'F2', 'F3'];
+      if (this.rng() < this.config.aggressiveness) {
+        await this.page.keyboard.press(keys[Math.floor(this.rng() * 3)]);
+      }
     }
   }
 

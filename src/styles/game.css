@@ -664,3 +664,45 @@ canvas {
     transform: translateY(-3px);
   }
 }
+
+/* ─── Focus-visible: keyboard accessibility ─────────────── */
+.btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+  box-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.4),
+    0 0 0 4px rgba(255, 255, 255, 0.25);
+}
+.start-btn:focus-visible {
+  outline: 3px solid #00ffff;
+  outline-offset: 3px;
+  box-shadow:
+    0 6px 0 #7b241c,
+    0 0 0 6px rgba(0, 255, 255, 0.25);
+}
+
+/* ─── Reduced motion: respect user preference ───────────── */
+@media (prefers-reduced-motion: reduce) {
+  #game-container::after {
+    animation: none;
+    border: 2px solid rgba(0, 255, 255, 0.25);
+  }
+  .feed-item {
+    animation: none;
+    opacity: 0.6;
+  }
+  #wave-announce.show {
+    animation: none;
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  #overlay h1 {
+    animation: none;
+  }
+  .grade-s {
+    animation: none;
+  }
+  .pu-icon.active {
+    animation: none;
+  }
+}

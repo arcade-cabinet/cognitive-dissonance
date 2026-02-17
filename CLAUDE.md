@@ -19,6 +19,7 @@ React + Three.js (R3F) typing/counter game where a developer character transform
 ## State Management (Current)
 
 **No zustand.** State is fragmented across:
+
 - `useReducer` in Game.tsx (`uiReducer` from `src/lib/ui-state.ts`) for UI state
 - `useRef` in GameScene.tsx for game state (`panicRef`, `waveRef`, `cooldownRef`, `stateRef`)
 - `GameLogic` singleton in worker (source of truth)
@@ -26,7 +27,18 @@ React + Three.js (R3F) typing/counter game where a developer character transform
 
 ## Determinism (Seeded RNG)
 
-Game-state randomness uses `src/lib/rng.ts` (mulberry32 PRNG), seeded via `seedRng(Date.now())` at game start. Entity IDs use `nextId()` counter.
+Game-state randomness uses `src/lib/rng.ts` (mulberry32 PRNG). Entity IDs use `nextId()` counter.
+
+**Per-session determinism:** Currently `start(seed?)` defaults to `seedRng(seed ?? Date.now())`, making runs repeatable within a session only if the same seed is used. The seed is generated in `Game.tsx` and passed through the `START` worker message.
+
+**Key symbols:** `seedRng()`, `rng()`, `nextId()`, `resetIds()` in `src/lib/rng.ts`; `start(seed?)` in `game-logic.ts`; `{ type: 'START', seed }` in `events.ts`.
+
+**Cross-session reproducibility (not yet implemented):**
+
+1. Accept a user-provided seed (e.g., URL query param or game modal input) and persist it (localStorage)
+2. Log/expose the generated seed at game start so a session can be replayed later
+
+**Files using seeded RNG:**
 
 - `game-logic.ts`: All 12 calls use `rng()` + `nextId()`
 - `boss-ai.ts`: All 22+ calls use `rng()`
@@ -86,12 +98,14 @@ Game-state randomness uses `src/lib/rng.ts` (mulberry32 PRNG), seeded via `seedR
 
 ## Completed Work (PR #45)
 
-### Commits pushed to `claude/fix-outstanding-issues-jwlJ3`:
-1. `01c29ab` - Fix PR review findings across CI/CD, components, and tests (22 files)
-2. `e00ec3b` - Cull enemies leaving top of arena + unique power-up instance IDs
-3. `9af6083` - Least-privilege CI permissions + remove dead useConditionalWait branch
+### Commits pushed to `claude/fix-outstanding-issues-jwlJ3`
 
-### Fixes applied:
+1. `01c29ab` - Fix PR review findings across CI/CD, components, and tests (22 files)
+1. `e00ec3b` - Cull enemies leaving top of arena + unique power-up instance IDs
+1. `9af6083` - Least-privilege CI permissions + remove dead useConditionalWait branch
+
+### Fixes applied
+
 - dependabot.yml: removed [skip ci] from prefix
 - automerge.yml: added issues permission, fixed script injection via env vars
 - ci.yml: fixed script injection (BRANCH_NAME env), least-privilege workflow permissions
@@ -116,61 +130,56 @@ Game-state randomness uses `src/lib/rng.ts` (mulberry32 PRNG), seeded via `seedR
 - device-utils.test.ts: enhanced viewport assertions (4 new tests)
 - game-helpers.ts: removed dead useConditionalWait branch
 
-## Comprehensive Code Review Findings
+## Code Review Findings
 
-### P0 - Bugs / Resource Leaks
-1. ~~boss-ai.ts:159 - No destroy() method~~ **FIXED** - destroy() added, forwards to dispose()
-2. Landing.tsx:29-62 - anime.js animations not cancelled on unmount
-3. audio.ts:87-96 - setTimeout chains not tracked; fire after destroy()
-4. game-logic.ts:420 - Math.sqrt() in findEnemyAt(); use squared distance
+### Resolved
 
-### P1 - Logic / State Issues
-5. ui-state.ts:19 - 'endless_transition' screen state declared but never dispatched
-6. game-logic.ts:469-472 - Floating-point drift in secondAccumulator
-7. director.ts:200-216 - BuildingState checks SURGING before RELIEVING
-8. ~~music.ts:163 - setPanic() calls bpm.rampTo() every frame~~ **FIXED** - cancelScheduledValues() called before rampTo()
-9. music.ts:244 - arpIndex increments without bound
+1. ~~boss-ai.ts: No destroy() method~~ **FIXED** - dispose() added
+1. ~~music.ts: setPanic() calls bpm.rampTo() every frame~~ **FIXED** - cancelScheduledValues() before rampTo()
+1. ~~game.worker.ts: No error boundary~~ **FIXED** - try-catch with ERROR postMessage
+1. ~~ui-state.ts: Feed IDs use Date.now()+Math.random()~~ **FIXED** - Sequential counter
+1. ~~game.css: feedScroll/titleFloat ignore prefers-reduced-motion~~ **FIXED** - Added reduced-motion guards
+1. ~~game.css: Buttons missing :focus-visible~~ **FIXED** - Added focus-visible styles
 
-### P2 - Robustness
-10. game.worker.ts:7 - animationFrameId uninitialized
-11. ~~game.worker.ts:15-58 - No error boundary in worker message handler~~ **FIXED** - try-catch with ERROR postMessage
-12. boss-ai.ts:167 - getHpRatio() not clamped
-13. device-utils.ts:63-67 - Hardcoded iPhone notch dimensions (missing 15/16)
+### Open
 
-### P3 - Test Coverage Gaps
-14. music.ts - No unit tests at all
-15. game.worker.ts - No unit tests
-16. E2E - No canvas touch-tap test
-17. device-responsive.spec.ts - Aspect ratio tolerance too loose (1.2-1.5)
-
-### P4 - CSS / Accessibility
-18. game.css:268-294 - feedScroll/titleFloat ignore prefers-reduced-motion
-19. game.css:327-340 - Buttons missing :focus-visible styles
-20. game.css:168 - Panic bar relies on color alone (colorblind)
-21. game.css:99-101 - Canvas uses !important to override R3F
-
-### P5 - Code Smell
-22. ui-state.ts:83 - maxCombo updated redundantly
-23. ~~ui-state.ts:110 - Feed IDs use Date.now()+Math.random() (collision-prone)~~ **FIXED** - Sequential counter
-24. grading.ts:22 - calculateAccuracy returns 0-100, callers divide by 100
+1. Landing.tsx:29-62 - anime.js animations not cancelled on unmount
+1. audio.ts:87-96 - setTimeout chains not tracked; fire after destroy()
+1. game-logic.ts:420 - Math.sqrt() in findEnemyAt(); use squared distance
+1. ui-state.ts:19 - 'endless_transition' screen state declared but never dispatched
+1. game-logic.ts:469-472 - Floating-point drift in secondAccumulator
+1. director.ts:200-216 - BuildingState checks SURGING before RELIEVING
+1. music.ts:244 - arpIndex increments without bound
+1. game.worker.ts:7 - animationFrameId uninitialized
+1. boss-ai.ts:167 - getHpRatio() not clamped
+1. device-utils.ts:63-67 - Hardcoded iPhone notch dimensions (missing 15/16)
+1. music.ts - No unit tests
+1. game.worker.ts - No unit tests
+1. game.css:168 - Panic bar relies on color alone (colorblind)
+1. game.css:99-101 - Canvas uses !important to override R3F
+1. ui-state.ts:83 - maxCombo updated redundantly
+1. grading.ts:22 - calculateAccuracy returns 0-100, callers divide by 100
 
 ## Old index.html Translation Gaps
 
-### Missing from 3D:
-1. **Speeder variant** - 1.8x speed enemies with yellow ring (completely absent)
-2. **Damage numbers** - Floating "+8 PANIC", "COUNTERED!", "MISS!" text
-3. **CRT scanlines** - Horizontal line overlay effect
-4. **RGB border glow** - Animated cyan->magenta->yellow border (6s cycle)
+### Missing from 3D
 
-### Changed from original:
-5. **Panic drain mechanic** removed - Old: combo >= 6 drained panic continuously. New: momentum perks (score bonus, CD reduction)
-6. **Slow powerup multiplier** - Old: 0.35x, New: 0.5x
-7. **Nuke boss damage** - Old: variable, New: fixed 3 HP
-8. **Keyboard shortcuts** - Old: 1/2/3/Q, New: F1/F2/F3/F4
+1. **Speeder variant** - 1.8x speed enemies with yellow ring (completely absent)
+1. **Damage numbers** - Floating "+8 PANIC", "COUNTERED!", "MISS!" text
+1. **CRT scanlines** - Horizontal line overlay effect
+1. **RGB border glow** - Animated cyan->magenta->yellow border (6s cycle)
+
+### Changed from original
+
+1. **Panic drain mechanic** removed - Old: combo >= 6 drained panic continuously. New: momentum perks (score bonus, CD reduction)
+1. **Slow powerup multiplier** - Old: 0.35x, New: 0.5x
+1. **Nuke boss damage** - Old: variable, New: fixed 3 HP
+1. **Keyboard shortcuts** - Old: 1/2/3/Q, New: F1/F2/F3/F4
 
 ## Procedural Generation Status
 
 All visual elements are fully procedural Three.js geometry (no image assets):
+
 - Enemies: Colored spheres with glow, emoji icons, word labels
 - Bosses: Pulsing sphere with orbiting color orbs, emoji, HP display
 - Character Normal: Sphere body/head, cone hair, box arms/legs
@@ -182,29 +191,31 @@ All visual elements are fully procedural Three.js geometry (no image assets):
 
 ## E2E Governor Status
 
-The E2E governor (`e2e/helpers/game-governor.ts`) does NOT use Yuka.js. It is a simple random decision-maker:
-- Reads DOM state (panic bar width, score display)
-- Randomly presses F1/F2/F3 abilities
-- Does not analyze visible enemies or their types
-- Does not make intelligent counter decisions
-- aggressiveness/accuracy config parameters barely used
+The E2E governor (`e2e/helpers/game-governor.ts`) uses deterministic seeded PRNG and reads enemy counter types from exposed game state (`window.__gameEnemyCounters`):
+
+- Reads DOM state (panic bar width, score display) and enemy counter types
+- Maps enemy types to counter abilities (reality->F1, history->F2, logic->F3)
+- Picks the most common enemy type and presses its counter
+- Falls back to random ability selection when no enemy info is available
+- aggressiveness/accuracy config controls decision-making probability
 
 ## Documentation Gaps
 
 - `docs/ARCHITECTURE.md` line 404: Lists "Yuka.js AI governors" as Future Enhancement but it's already implemented
-- No CLAUDE.md memory bank existed (now created)
 
 ## Next Steps (Tracked as GitHub Issues)
 
 ### Milestone: Deterministic Game Engine
+
 - ~~Replace all game-state Math.random() with seedrandom~~ **DONE** (mulberry32 in `src/lib/rng.ts`)
+- Persist/expose seed for cross-session replay (localStorage or URL param)
 - Implement proper game chronometer (microsecond precision)
 - Adjective-adjective-noun seed phrase system
 - New game modal with difficulty selection
 - Seed input with shuffle button
-- Tie seed to state for reproducible gameplay
 
 ### Milestone: Zustand State Architecture
+
 - Install zustand
 - Create game state store (replace useRef pattern)
 - Create UI state store (replace useReducer)
@@ -212,6 +223,7 @@ The E2E governor (`e2e/helpers/game-governor.ts`) does NOT use Yuka.js. It is a 
 - Extract worker communication to custom hook
 
 ### Milestone: Missing Features from Old Index
+
 - Add speeder variant
 - Add floating damage numbers
 - Add CRT scanline post-processing effect
@@ -219,10 +231,12 @@ The E2E governor (`e2e/helpers/game-governor.ts`) does NOT use Yuka.js. It is a 
 - Restore panic drain mechanic (or document removal decision)
 
 ### Milestone: Code Quality
+
 - ~~Add boss-ai destroy() method~~ **DONE** (dispose() added)
 - Fix Landing.tsx animation cleanup
 - Track audio setTimeout IDs
 - Add music.ts unit tests
 - ~~Add worker error boundary~~ **DONE** (try-catch with ERROR postMessage)
-- Fix accessibility (focus-visible, reduced-motion, colorblind panic bar)
+- ~~Fix accessibility (focus-visible, reduced-motion)~~ **DONE** (CSS guards added)
+- Colorblind panic bar indicator (still open)
 - Upgrade E2E governor to use Yuka-based decision making
