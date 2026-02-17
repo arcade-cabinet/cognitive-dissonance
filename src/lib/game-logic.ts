@@ -602,7 +602,10 @@ export class GameLogic {
 
         case 'spawn_enemies':
           if (action.enemies) {
+            const cfg = WAVES[Math.min(this.wave, WAVES.length - 1)];
+            const maxEnemies = cfg.max + this.director.modifiers.maxEnemyAdjustment;
             for (const partial of action.enemies) {
+              if (this.enemies.length >= maxEnemies + 10) break; // Boss gets small buffer
               this.spawnBossEnemy(partial);
             }
           }
