@@ -267,6 +267,14 @@ export class AdaptiveMusic {
     this.masterGain?.dispose();
     this.reverbSend?.dispose();
     this.distortion?.dispose();
+    this.bassSynth = null;
+    this.leadSynth = null;
+    this.arpSynth = null;
+    this.kickSynth = null;
+    this.hihatSynth = null;
+    this.masterGain = null;
+    this.reverbSend = null;
+    this.distortion = null;
     this.initialized = false;
   }
 }
