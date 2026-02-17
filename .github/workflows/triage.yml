@@ -3,17 +3,23 @@ name: Issue Triage
 # Multi-system automated issue triage pipeline.
 #
 # Flow:
-#   1. CodeRabbit triages new issues → applies functional labels + plan + `triage` label
+#   1. Issue opened → Gemini CLI triages + CodeRabbit labels/plans + `triage` label
 #   2. `triage` label triggers GitHub AI assessment → evaluates quality/risk →
 #      posts assessment comment + `ai:*` labels → removes `triage` label
 #   3. Functional label triggers dependency check → if unblocked, Jules implements
-#   4. PR merges → issue closes → on-unblocked finds newly eligible issues → repeat
+#   4. Jules opens PR → dispatch.yml routes to review.yml → Gemini reviews →
+#      auto-merge gate decides → PR merges → issue closes
+#   5. on-unblocked finds newly eligible issues → repeat from step 3
 #
 # Systems:
+#   - Gemini CLI: issue triage + labeling (.gemini/prompts/gemini-triage.toml)
 #   - CodeRabbit: auto-labeling + planning (.coderabbit.yaml)
 #   - GitHub AI Models: issue quality assessment (.github/prompts/)
 #   - Jules: automated implementation (google-labs-code/jules-action)
 #   - on-unblocked: dependency cascade (BeksOmega/on-unblocked)
+#
+# PR-side automation (review, auto-merge) is handled by:
+#   - dispatch.yml → review.yml → automerge.yml
 #
 # Dependencies are configured via GitHub's native "Blocked by" relationships
 # (Settings > Features > Issue Dependencies). The workflow uses the GraphQL
@@ -21,7 +27,7 @@ name: Issue Triage
 
 on:
   issues:
-    types: [labeled, closed]
+    types: [opened, reopened, labeled, closed]
 
 permissions:
   contents: read
@@ -29,6 +35,116 @@ permissions:
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 jobs:
+
+  # ── Gemini Issue Triage ────────────────────────────────────────────
+  # When a new issue is opened/reopened, Gemini CLI analyzes it and
+  # applies labels. This runs alongside CodeRabbit's auto-labeling to
+  # provide redundant classification from multiple AI systems.
+  gemini-triage:
+    name: Gemini Triage
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.action == 'opened' ||
+      github.event.action == 'reopened'
+    outputs:
+      available_labels: ${{ steps.get_labels.outputs.available_labels }}
+      selected_labels: ${{ env.SELECTED_LABELS }}
+    permissions:
+      contents: read
+      id-token: write
+      issues: read
+    steps:
+      - name: Get repository labels
+        id: get_labels
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const labels = [];
+            for await (const response of github.paginate.iterator(github.rest.issues.listLabelsForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            })) {
+              labels.push(...response.data);
+            }
+
+            if (!labels || labels.length === 0) {
+              core.setFailed('There are no issue labels in this repository.');
+              return;
+            }
+
+            const labelNames = labels.map(l => l.name).sort();
+            core.setOutput('available_labels', labelNames.join(','));
+            core.info(`Found ${labelNames.length} labels: ${labelNames.join(', ')}`);
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run Gemini issue analysis
+        if: steps.get_labels.outputs.available_labels != ''
+        uses: google-github-actions/run-gemini-cli@b7c22b00bd5a02e52eec973dc4b3bd391eb31512 # v0.1.20
+        env:
+          GITHUB_TOKEN: '' # Do NOT pass auth tokens — runs on untrusted input
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          AVAILABLE_LABELS: ${{ steps.get_labels.outputs.available_labels }}
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_model: ${{ vars.GEMINI_MODEL }}
+          upload_artifacts: ${{ vars.UPLOAD_ARTIFACTS || 'false' }}
+          workflow_name: gemini-triage
+          settings: |-
+            {
+              "model": {
+                "maxSessionTurns": 25
+              },
+              "tools": {
+                "core": [
+                  "run_shell_command(echo)"
+                ]
+              }
+            }
+          prompt: /gemini-triage
+
+  # ── Apply Gemini labels ────────────────────────────────────────────
+  apply-gemini-labels:
+    name: Apply Gemini Labels
+    needs: gemini-triage
+    if: needs.gemini-triage.outputs.selected_labels != ''
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Apply labels
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          AVAILABLE_LABELS: ${{ needs.gemini-triage.outputs.available_labels }}
+          SELECTED_LABELS: ${{ needs.gemini-triage.outputs.selected_labels }}
+        with:
+          script: |
+            const availableLabels = (process.env.AVAILABLE_LABELS || '').split(',')
+              .map(l => l.trim())
+              .sort();
+
+            // Validate against available labels to prevent prompt injection
+            const selectedLabels = (process.env.SELECTED_LABELS || '').split(',')
+              .map(l => l.trim())
+              .filter(l => availableLabels.includes(l))
+              .sort();
+
+            const issueNumber = parseInt(process.env.ISSUE_NUMBER, 10);
+            if (selectedLabels.length > 0) {
+              // Use addLabels to merge with CodeRabbit's labels (not replace)
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: selectedLabels,
+              });
+              core.info(`Applied Gemini labels: ${selectedLabels.join(', ')}`);
+            } else {
+              core.info('No valid labels selected by Gemini');
+            }
 
   # ── AI Quality Assessment ──────────────────────────────────────────
   # When CodeRabbit (or a maintainer) applies the `triage` label,

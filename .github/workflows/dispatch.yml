@@ -1,0 +1,197 @@
+name: AI Dispatch
+
+# Central event router for AI-powered automation.
+#
+# Routes GitHub events to the appropriate handler workflow:
+#   - PR opened → review.yml (Gemini reviews, decides auto-merge)
+#   - PR review comment → review.yml (re-review with context)
+#   - Issue opened → triage.yml (Gemini + AI assessment label)
+#   - @gemini-cli mention → invoke Gemini CLI with context
+#
+# The dispatch pattern ensures:
+#   1. Single entry point for all AI agent interactions
+#   2. Access control (only OWNER/MEMBER/COLLABORATOR can invoke)
+#   3. Acknowledgment comments for user requests
+#   4. Fallthrough handling for failures
+
+on:
+  pull_request:
+    types: [opened]
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  # ── Command extraction and routing ─────────────────────────
+  dispatch:
+    name: Route Event
+    # PRs: only from non-fork repos
+    # Review comments: always (they're on our repo)
+    # Issue comments: only if @gemini-cli mentioned by authorized user
+    if: >-
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.fork == false
+      ) || (
+        github.event_name == 'pull_request_review' &&
+        github.event.review.state == 'commented'
+      ) || (
+        github.event.sender.type == 'User' &&
+        contains(github.event.comment.body || github.event.review.body || '', '@gemini-cli') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association || github.event.review.author_association || '')
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    outputs:
+      command: ${{ steps.extract.outputs.command }}
+      additional_context: ${{ steps.extract.outputs.additional_context }}
+      issue_number: ${{ github.event.pull_request.number || github.event.issue.number }}
+    steps:
+      - name: Extract command
+        id: extract
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          EVENT_TYPE: ${{ github.event_name }}.${{ github.event.action }}
+          REQUEST: ${{ github.event.comment.body || github.event.review.body || '' }}
+        with:
+          script: |
+            const eventType = process.env.EVENT_TYPE;
+            const request = process.env.REQUEST;
+            core.setOutput('request', request);
+
+            if (eventType === 'pull_request.opened') {
+              core.setOutput('command', 'review');
+              core.info('PR opened → routing to review');
+            } else if (request.startsWith('@gemini-cli /review')) {
+              core.setOutput('command', 'review');
+              const ctx = request.replace(/^@gemini-cli \/review/, '').trim();
+              core.setOutput('additional_context', ctx);
+              core.info(`@gemini-cli /review → routing to review (context: ${ctx || 'none'})`);
+            } else if (request.startsWith('@gemini-cli')) {
+              const ctx = request.replace(/^@gemini-cli/, '').trim();
+              core.setOutput('command', 'invoke');
+              core.setOutput('additional_context', ctx);
+              core.info(`@gemini-cli → routing to invoke (context: ${ctx})`);
+            } else {
+              core.setOutput('command', 'skip');
+              core.info('No actionable command found, skipping');
+            }
+
+      - name: Acknowledge request
+        if: >-
+          steps.extract.outputs.command != 'skip' &&
+          (github.event.comment.body || github.event.review.body || '') != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" \
+            --body "🤖 Hi @${{ github.actor }}, I've received your request and I'm working on it now! You can track my progress [in the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
+
+  # ── PR Review (Gemini + auto-merge decision) ───────────────
+  review:
+    name: Review PR
+    needs: dispatch
+    if: needs.dispatch.outputs.command == 'review'
+    uses: ./.github/workflows/review.yml
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+      pull-requests: write
+    with:
+      additional_context: ${{ needs.dispatch.outputs.additional_context }}
+    secrets: inherit
+
+  # ── Gemini CLI invocation (freeform) ───────────────────────
+  invoke:
+    name: Invoke Gemini CLI
+    needs: dispatch
+    if: needs.dispatch.outputs.command == 'invoke'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run Gemini CLI
+        uses: google-github-actions/run-gemini-cli@b7c22b00bd5a02e52eec973dc4b3bd391eb31512 # v0.1.20
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          REPOSITORY: ${{ github.repository }}
+          ADDITIONAL_CONTEXT: ${{ needs.dispatch.outputs.additional_context }}
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_model: ${{ vars.GEMINI_MODEL }}
+          upload_artifacts: ${{ vars.UPLOAD_ARTIFACTS || 'false' }}
+          workflow_name: gemini-invoke
+          settings: |-
+            {
+              "model": {
+                "maxSessionTurns": 25
+              },
+              "mcpServers": {
+                "github": {
+                  "command": "docker",
+                  "args": [
+                    "run", "-i", "--rm",
+                    "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+                    "ghcr.io/github/github-mcp-server:v0.27.0"
+                  ],
+                  "env": {
+                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+                  }
+                }
+              },
+              "tools": {
+                "core": [
+                  "run_shell_command(cat)",
+                  "run_shell_command(echo)",
+                  "run_shell_command(grep)",
+                  "run_shell_command(head)",
+                  "run_shell_command(tail)"
+                ]
+              }
+            }
+          prompt: ${{ needs.dispatch.outputs.additional_context }}
+
+  # ── Fallthrough (failure handling) ─────────────────────────
+  fallthrough:
+    name: Handle Failure
+    needs: [dispatch, review, invoke]
+    if: >-
+      always() && !cancelled() &&
+      (failure() || needs.dispatch.outputs.command == 'skip') &&
+      needs.dispatch.outputs.command != 'skip'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Post failure comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" \
+            --body "🤖 I'm sorry @${{ github.actor }}, but I was unable to process your request. Please [see the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details."

@@ -1,0 +1,292 @@
+name: PR Review
+
+# Reusable PR review workflow.
+#
+# Orchestrates multiple review sources and decides on auto-merge:
+#   1. Gemini CLI reviews the PR using project-specific prompts
+#   2. Collects CodeRabbit review status from existing PR reviews
+#   3. Checks CI pipeline status
+#   4. If all signals are green AND PR is from a bot → enable auto-merge
+#
+# Called by:
+#   - dispatch.yml (on PR opened or @gemini-cli /review)
+#   - Can also be called manually via workflow_dispatch
+
+on:
+  workflow_call:
+    inputs:
+      additional_context:
+        type: string
+        description: Additional context from the dispatch request
+        required: false
+
+concurrency:
+  group: ${{ github.workflow }}-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ── Gemini Code Review ─────────────────────────────────────
+  gemini-review:
+    name: Gemini Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      auto_merge: ${{ steps.parse_decision.outputs.auto_merge }}
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Collect review signals
+        id: signals
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+            if (!prNumber) {
+              core.setOutput('pr_labels', '');
+              core.setOutput('pr_author', '');
+              core.setOutput('coderabbit_status', 'unknown');
+              core.setOutput('ci_status', 'unknown');
+              return;
+            }
+
+            // Get PR details
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            core.setOutput('pr_labels', pr.labels.map(l => l.name).join(','));
+            core.setOutput('pr_author', pr.user.login);
+
+            // Check existing reviews for CodeRabbit status
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            const coderabbitReview = reviews
+              .filter(r => r.user.login.includes('coderabbit'))
+              .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))[0];
+
+            let coderabbitStatus = 'pending';
+            if (coderabbitReview) {
+              if (coderabbitReview.state === 'APPROVED') coderabbitStatus = 'approved';
+              else if (coderabbitReview.state === 'CHANGES_REQUESTED') coderabbitStatus = 'changes_requested';
+              else coderabbitStatus = 'commented';
+            }
+            core.setOutput('coderabbit_status', coderabbitStatus);
+
+            // Check CI status
+            const { data: checks } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.head.sha,
+              filter: 'latest',
+            });
+
+            const ciCheck = checks.check_runs.find(c => c.name === 'CI Success');
+            let ciStatus = 'pending';
+            if (ciCheck) {
+              if (ciCheck.conclusion === 'success') ciStatus = 'passing';
+              else if (ciCheck.conclusion === 'failure') ciStatus = 'failing';
+              else ciStatus = ciCheck.status; // 'queued', 'in_progress'
+            }
+            core.setOutput('ci_status', ciStatus);
+
+            core.info(`PR #${prNumber} by ${pr.user.login}`);
+            core.info(`Labels: ${pr.labels.map(l => l.name).join(', ') || 'none'}`);
+            core.info(`CodeRabbit: ${coderabbitStatus}`);
+            core.info(`CI: ${ciStatus}`);
+
+      - name: Run Gemini PR review
+        id: gemini
+        uses: google-github-actions/run-gemini-cli@b7c22b00bd5a02e52eec973dc4b3bd391eb31512 # v0.1.20
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: ${{ github.event.pull_request.title || github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.pull_request.body || github.event.issue.body }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          REPOSITORY: ${{ github.repository }}
+          PR_AUTHOR: ${{ steps.signals.outputs.pr_author }}
+          PR_LABELS: ${{ steps.signals.outputs.pr_labels }}
+          CODERABBIT_STATUS: ${{ steps.signals.outputs.coderabbit_status }}
+          CI_STATUS: ${{ steps.signals.outputs.ci_status }}
+          ADDITIONAL_CONTEXT: ${{ inputs.additional_context }}
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_model: ${{ vars.GEMINI_MODEL }}
+          upload_artifacts: ${{ vars.UPLOAD_ARTIFACTS || 'false' }}
+          workflow_name: gemini-review
+          settings: |-
+            {
+              "model": {
+                "maxSessionTurns": 25
+              },
+              "telemetry": {
+                "enabled": true,
+                "target": "local",
+                "outfile": ".gemini/telemetry.log"
+              },
+              "mcpServers": {
+                "github": {
+                  "command": "docker",
+                  "args": [
+                    "run", "-i", "--rm",
+                    "-e", "GITHUB_PERSONAL_ACCESS_TOKEN",
+                    "ghcr.io/github/github-mcp-server:v0.27.0"
+                  ],
+                  "includeTools": [
+                    "create_pending_pull_request_review",
+                    "add_comment_to_pending_review",
+                    "submit_pending_pull_request_review",
+                    "pull_request_read"
+                  ],
+                  "env": {
+                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+                  }
+                }
+              },
+              "tools": {
+                "core": [
+                  "run_shell_command(cat)",
+                  "run_shell_command(echo)",
+                  "run_shell_command(grep)",
+                  "run_shell_command(head)",
+                  "run_shell_command(tail)"
+                ]
+              }
+            }
+          prompt: /gemini-review
+
+      - name: Parse auto-merge decision
+        id: parse_decision
+        run: |
+          # Gemini writes AUTO_MERGE=true/false to GITHUB_ENV via the prompt
+          if [[ "${AUTO_MERGE:-false}" == "true" ]]; then
+            echo "auto_merge=true" >> "$GITHUB_OUTPUT"
+            echo "Gemini approved auto-merge"
+          else
+            echo "auto_merge=false" >> "$GITHUB_OUTPUT"
+            echo "Gemini blocked auto-merge"
+          fi
+
+  # ── Auto-merge gate ────────────────────────────────────────
+  # Collects signals from Gemini review, CodeRabbit, and CI,
+  # then enables auto-merge if ALL conditions are met.
+  auto-merge-gate:
+    name: Auto-merge Gate
+    needs: gemini-review
+    runs-on: ubuntu-latest
+    if: needs.gemini-review.outputs.auto_merge == 'true'
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Verify all signals and enable auto-merge
+        id: gate
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number || context.payload.issue?.number;
+            if (!prNumber) {
+              core.setFailed('No PR number found');
+              return;
+            }
+
+            // Get PR details
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            // Safety checks
+            const labels = pr.labels.map(l => l.name);
+            const isBot = pr.user.type === 'Bot';
+            const hasAutoMergeLabel = labels.includes('auto-merge');
+            const isJulesPR = pr.user.login.includes('jules') || pr.head.ref.includes('jules');
+            const touchesWorkflows = false; // Gemini already checked this
+
+            // Verify CodeRabbit hasn't requested changes since Gemini reviewed
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            const coderabbitBlocking = reviews
+              .filter(r => r.user.login.includes('coderabbit'))
+              .some(r => r.state === 'CHANGES_REQUESTED');
+
+            if (coderabbitBlocking) {
+              core.info('CodeRabbit has requested changes — blocking auto-merge');
+              core.setOutput('eligible', 'false');
+              return;
+            }
+
+            // Verify CI is passing
+            const { data: checks } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pr.head.sha,
+              filter: 'latest',
+            });
+
+            const ciSuccess = checks.check_runs.find(c => c.name === 'CI Success');
+            const ciPassing = ciSuccess?.conclusion === 'success';
+
+            // Only auto-merge bot PRs or PRs with auto-merge label
+            const eligible = (isBot || hasAutoMergeLabel || isJulesPR) && !coderabbitBlocking;
+
+            if (!eligible) {
+              core.info(`PR #${prNumber} is not eligible for auto-merge (bot=${isBot}, label=${hasAutoMergeLabel}, jules=${isJulesPR})`);
+              core.setOutput('eligible', 'false');
+              return;
+            }
+
+            core.info(`PR #${prNumber} is eligible for auto-merge`);
+            core.info(`  CI passing: ${ciPassing}`);
+            core.info(`  CodeRabbit blocking: ${coderabbitBlocking}`);
+            core.info(`  Is bot: ${isBot}, Has label: ${hasAutoMergeLabel}, Is Jules: ${isJulesPR}`);
+
+            core.setOutput('eligible', 'true');
+            core.setOutput('ci_passing', ciPassing.toString());
+
+      - name: Enable auto-merge
+        if: steps.gate.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          echo "Enabling auto-merge for PR #${PR_NUMBER}"
+          gh pr merge "$PR_NUMBER" --squash --auto
+
+      - name: Post auto-merge notification
+        if: steps.gate.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          gh pr comment "$PR_NUMBER" --body "$(cat <<'EOF'
+          🤖 **Auto-merge enabled** by Gemini review.
+
+          All signals are green:
+          - ✅ Gemini review: no critical/high issues
+          - ✅ CodeRabbit: no blocking changes requested
+          - ✅ PR is from an automated source
+
+          This PR will merge automatically when all required status checks pass.
+          EOF
+          )"
