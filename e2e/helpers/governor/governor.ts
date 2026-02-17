@@ -84,8 +84,6 @@ export class GameGovernor {
     } finally {
       this.isRunning = false;
     }
-  }
-  }
 }
 
 /** Helper function to run automated playthrough */
