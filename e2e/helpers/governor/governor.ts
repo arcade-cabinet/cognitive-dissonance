@@ -85,7 +85,6 @@ export class GameGovernor {
       this.isRunning = false;
     }
   }
-  }
 }
 
 /** Helper function to run automated playthrough */
@@ -98,5 +97,4 @@ export async function runAutomatedPlaythrough(
     ...(config ?? {}),
   });
   return governor.playthrough();
-}
 }

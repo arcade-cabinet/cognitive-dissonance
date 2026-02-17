@@ -163,7 +163,9 @@ export class GameGovernor {
       const bestCounter = Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];
       const key = GameGovernor.COUNTER_MAP[bestCounter];
       if (!key) {
-        console.warn(`[GameGovernor] Unknown enemy counter type: ${bestCounter}, falling back to F1`);
+        console.warn(
+          `[GameGovernor] Unknown enemy counter type: ${bestCounter}, falling back to F1`
+        );
       }
       const pressKey = key || 'F1';
 

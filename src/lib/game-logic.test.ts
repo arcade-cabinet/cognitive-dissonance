@@ -450,7 +450,8 @@ describe('GameLogic', () => {
       game.running = true;
       game.wave = 4; // Last normal wave (index 4 = wave 5)
       // Trigger via boss wave transition logic
-      (game as unknown as { bossWaveTransitionFrames: number }).bossWaveTransitionFrames = 1;
+      // biome-ignore lint/suspicious/noExplicitAny: access private for test
+      (game as any).bossWaveTransitionTimer = 0.01;
 
       // Mock nextWave behavior through update which is called when transition frames hit 0
       // If !this.endless && wave >= WAVES.length - 1, it calls endGame(true).

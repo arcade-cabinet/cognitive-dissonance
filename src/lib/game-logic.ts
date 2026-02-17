@@ -52,7 +52,7 @@ export class GameLogic {
   private recentEscapes: number;
   private recentCounters: number;
   private recentResetTimer: number;
-  private bossWaveTransitionFrames: number;
+  private bossWaveTransitionTimer: number;
 
   /** Last game-clock timestamp from update(), used by methods called outside the loop */
   private nowMs: number;
@@ -102,7 +102,7 @@ export class GameLogic {
     this.recentEscapes = 0;
     this.recentCounters = 0;
     this.recentResetTimer = 0;
-    this.bossWaveTransitionFrames = 0;
+    this.bossWaveTransitionTimer = 0;
     this.nowMs = 0;
 
     this.reset();
@@ -148,7 +148,7 @@ export class GameLogic {
     this.recentEscapes = 0;
     this.recentCounters = 0;
     this.recentResetTimer = 0;
-    this.bossWaveTransitionFrames = 0;
+    this.bossWaveTransitionTimer = 0;
     this.nowMs = 0;
   }
 
@@ -360,7 +360,7 @@ export class GameLogic {
         this.fl = 0.4;
         this.flCol = '#2ecc71';
         this.events.push({ type: 'CONFETTI', x: W / 2, y: 120, color: 'random' });
-        this.bossWaveTransitionFrames = 90;
+        this.bossWaveTransitionTimer = 1.5;
       }
     }
     for (let i = this.enemies.length - 1; i >= 0; i--) {
@@ -441,6 +441,8 @@ export class GameLogic {
     if (!this.running) return;
     this.nowMs = now;
 
+    const deltaSec = (dt * 16.67) / 1000; // Convert frame-time factor to seconds
+
     // Boss wave transition (frame-based delay to allow confetti)
     if (this.bossWaveTransitionTimer > 0) {
       this.bossWaveTransitionTimer -= deltaSec;
@@ -448,8 +450,6 @@ export class GameLogic {
         this.nextWave();
       }
     }
-
-    const deltaSec = (dt * 16.67) / 1000; // Convert frame-time factor to seconds
 
     // ─── Update AI Director ─────────────────────────────
     this.recentResetTimer += deltaSec;
