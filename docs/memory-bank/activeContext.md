@@ -68,3 +68,7 @@ All 15 items from the Turn 164 "deep audit" are implemented. The game is feature
 - Visual quality human eye-test in desktop browser
 - XR hand tracking → keycap interaction wiring
 - Accessibility: prefers-reduced-motion behavior in 3D components
+### Release Planning
+
+- Comprehensive production alignment plan: `docs/memory-bank/release-2.0-alignment-plan.md`
+

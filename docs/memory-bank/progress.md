@@ -59,6 +59,7 @@
 
 ## What's Left
 
+- [ ] Execute `docs/memory-bank/release-2.0-alignment-plan.md` for production 2.0 alignment closure
 - [ ] Physics keys (Ammo.js) — stubbed
 - [ ] XR hand tracking → keycap interaction — stub only
 - [ ] Visual quality human eye-test
