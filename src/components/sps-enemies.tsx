@@ -5,6 +5,14 @@ import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 import { useLevelStore } from '@/store/level-store';
 
+/**
+ * SPS (SolidParticleSystem) atmospheric enemy rain.
+ *
+ * This provides visual density — glowing boxes raining down — separate from
+ * the Yuka-driven gameplay enemies in enemy-spawner.tsx. The SPS particles
+ * are purely decorative; they don't interact with the sphere or add tension.
+ * Actual gameplay enemies are tracked in Miniplex and driven by Yuka AI.
+ */
 export default function SPSEnemies() {
   const scene = useScene();
   const spsRef = useRef<BABYLON.SolidParticleSystem | null>(null);

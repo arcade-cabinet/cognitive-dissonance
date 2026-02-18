@@ -4,6 +4,7 @@ import * as BABYLON from '@babylonjs/core';
 import gsap from 'gsap';
 import { useCallback, useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
+import { world } from '@/game/world';
 import { createCelestialShaderMaterial } from '@/lib/shaders/celestial';
 import { useGameStore } from '@/store/game-store';
 import { useLevelStore } from '@/store/level-store';
@@ -21,6 +22,10 @@ export default function AISphere() {
   const explodedRef = useRef(false);
   /** Guards against re-triggering clarity while the pulse animation plays */
   const clarityActiveRef = useRef(false);
+  // Miniplex entity for ECS tracking — ref holds it to prevent GC
+  const _sphereEntity = useRef(
+    world.add({ aiSphere: true, tension: 0.12, coherence: 25, exploded: false, crackLevel: 0 }),
+  );
 
   /**
    * Create (or recreate) both sphere meshes + materials.

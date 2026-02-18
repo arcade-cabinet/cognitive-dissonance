@@ -18,6 +18,8 @@ interface Pattern {
   speed: number;
   angle: number;
   particleSystem: BABYLON.ParticleSystem;
+  /** Miniplex entity reference for proper ECS tracking */
+  entity: import('@/game/world').GameEntity;
 }
 
 export default function PatternStabilizer() {
@@ -52,6 +54,15 @@ export default function PatternStabilizer() {
       ps.createPointEmitter(new BABYLON.Vector3(-0.05, -0.05, -0.05), new BABYLON.Vector3(0.05, 0.05, 0.05));
       ps.start();
 
+      // Add to Miniplex ECS for tracking
+      const entity = world.add({
+        pattern: true,
+        progress: 0,
+        speed,
+        color: `hsl(${kc.hue}, 85%, 65%)`,
+        colorIndex,
+      });
+
       const pattern: Pattern = {
         id: patternId,
         colorIndex,
@@ -60,17 +71,10 @@ export default function PatternStabilizer() {
         speed,
         angle: rng() * 360 * (Math.PI / 180),
         particleSystem: ps,
+        entity,
       };
 
       activePatterns.current.push(pattern);
-
-      // Also add to Miniplex for any ECS consumers
-      world.add({
-        pattern: true,
-        progress: 0,
-        speed,
-        color: `hsl(${kc.hue}, 85%, 65%)`,
-      });
     };
 
     const observer = scene.onBeforeRenderObservable.add(() => {
@@ -98,6 +102,9 @@ export default function PatternStabilizer() {
           p.progress = Math.max(0, p.progress - 2.4 * dt);
         }
 
+        // Sync progress to Miniplex entity
+        if (p.entity.progress !== undefined) p.entity.progress = p.progress;
+
         // Reached rim → tension spike + dispatch escape event for spatial audio
         if (p.progress >= 1.0) {
           useLevelStore.getState().setTension(Math.min(1, curTension + 0.22));
@@ -108,6 +115,7 @@ export default function PatternStabilizer() {
           );
           p.particleSystem.stop();
           p.particleSystem.dispose();
+          world.remove(p.entity);
           activePatterns.current.splice(i, 1);
           continue;
         }
@@ -122,6 +130,7 @@ export default function PatternStabilizer() {
           );
           p.particleSystem.stop();
           p.particleSystem.dispose();
+          world.remove(p.entity);
           activePatterns.current.splice(i, 1);
         }
       }

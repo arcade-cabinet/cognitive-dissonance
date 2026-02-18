@@ -4,6 +4,7 @@ import * as BABYLON from '@babylonjs/core';
 import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 import * as YUKA from 'yuka';
+import { type GameEntity, world } from '@/game/world';
 import { generateFromSeed } from '@/lib/seed-factory';
 import { createCrystallineCubeMaterial } from '@/lib/shaders/crystalline-cube';
 import { createNeonRaymarcherMaterial } from '@/lib/shaders/neon-raymarcher';
@@ -18,6 +19,8 @@ interface Enemy {
   health: number;
   yukaVehicle: YUKA.Vehicle;
   behavior: string;
+  /** Miniplex entity for ECS tracking */
+  entity: GameEntity;
 }
 
 export default function EnemySpawner() {
@@ -33,17 +36,18 @@ export default function EnemySpawner() {
 
     const spawnWave = () => {
       const { enemyConfig } = generateFromSeed();
+      const rng = useSeedStore.getState().rng;
       const curTension = useLevelStore.getState().tension;
       const currentLevel = useLevelStore.getState().currentLevel;
       const levelMultiplier = 1.35 ** (currentLevel - 1);
-      const isBossWave = curTension > 0.7 && Math.random() > 0.6;
+      const isBossWave = curTension > 0.7 && rng() > 0.6;
 
       const count = Math.floor(enemyConfig.amount * levelMultiplier);
 
       for (let i = 0; i < Math.min(count, 16); i++) {
-        const startY = 8 + Math.random() * 5 * levelMultiplier;
-        const startX = (Math.random() - 0.5) * 6;
-        const startZ = -2 + Math.random() * 4;
+        const startY = 8 + rng() * 5 * levelMultiplier;
+        const startX = (rng() - 0.5) * 6;
+        const startZ = -2 + rng() * 4;
 
         const eid = enemyIdCounter.current++;
         const plane = BABYLON.MeshBuilder.CreatePlane(
@@ -62,7 +66,7 @@ export default function EnemySpawner() {
           mat.setFloat('u_lightIntensity', 2.8);
         } else {
           mat = createNeonRaymarcherMaterial(scene);
-          mat.setFloat('u_amount', Math.floor(3 + Math.random() * 5));
+          mat.setFloat('u_amount', Math.floor(3 + rng() * 5));
         }
 
         plane.material = mat;
@@ -94,6 +98,15 @@ export default function EnemySpawner() {
 
         yukaManager.current.add(vehicle);
 
+        // Track in Miniplex ECS
+        const entity = world.add({
+          enemy: true,
+          position: { x: startX, y: startY, z: startZ },
+          health: isBossWave && i === 0 ? 8 : 3,
+          type: behavior as GameEntity['type'],
+          isBoss: isBossWave && i === 0,
+        });
+
         enemies.current.push({
           mesh: plane,
           material: mat,
@@ -102,6 +115,7 @@ export default function EnemySpawner() {
           health: isBossWave && i === 0 ? 8 : 3,
           yukaVehicle: vehicle,
           behavior,
+          entity,
         });
       }
     };
@@ -159,14 +173,23 @@ export default function EnemySpawner() {
               childVehicle.steering.add(new YUKA.SeekBehavior(sphereTarget.current));
               yukaManager.current.add(childVehicle);
 
+              const childEntity = world.add({
+                enemy: true,
+                position: { x: splitPos.x + offset, y: splitPos.y, z: splitPos.z + offset },
+                health: 1,
+                type: 'seek',
+                isBoss: false,
+              });
+
               enemies.current.push({
                 mesh: childPlane,
                 material: childMat,
                 speed: e.speed * 1.5,
                 isBoss: false,
-                health: 1, // Children die on contact
+                health: 1,
                 yukaVehicle: childVehicle,
                 behavior: 'seek',
+                entity: childEntity,
               });
             }
           } else {
@@ -177,12 +200,13 @@ export default function EnemySpawner() {
           yukaManager.current.remove(e.yukaVehicle);
           e.mesh.dispose();
           e.material.dispose();
+          world.remove(e.entity);
           enemies.current.splice(i, 1);
         }
       }
 
       // Spawn waves based on tension
-      if (Math.random() < curTension * 1.1 * dt * (3 + useLevelStore.getState().currentLevel * 0.8)) {
+      if (useSeedStore.getState().rng() < curTension * 1.1 * dt * (3 + useLevelStore.getState().currentLevel * 0.8)) {
         spawnWave();
       }
     });
@@ -195,6 +219,7 @@ export default function EnemySpawner() {
       enemies.current.forEach((e) => {
         e.mesh.dispose();
         e.material.dispose();
+        world.remove(e.entity);
       });
       enemies.current = [];
       spawnWave();
@@ -207,6 +232,7 @@ export default function EnemySpawner() {
         yukaManager.current.remove(e.yukaVehicle);
         e.mesh.dispose();
         e.material.dispose();
+        world.remove(e.entity);
       });
       enemies.current = [];
     };
