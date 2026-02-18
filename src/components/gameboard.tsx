@@ -29,10 +29,10 @@ export default function GameBoard() {
   const [runStats, setRunStats] = useState({ peakCoherence: 0, levelsSurvived: 1 });
 
   // ── Accessibility: reduced motion ──
-  const reducedMotion = useRef(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      reducedMotion.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      setReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     }
   }, []);
 
@@ -48,7 +48,7 @@ export default function GameBoard() {
   const handleRestart = useCallback(() => {
     useLevelStore.getState().reset();
     useSeedStore.getState().generateNewSeed();
-    useGameStore.getState().setPhase('playing');
+    useGameStore.getState().triggerRestart();
     setShowGameOver(false);
     setGameOverOpacity(0);
     setSeedCopied(false);
@@ -70,30 +70,43 @@ export default function GameBoard() {
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
 
-    // Loading screen holds for 2s, then fades → title sizzle
-    timers.push(
-      setTimeout(() => {
-        setLoadingOpacity(0);
-        timers.push(
-          setTimeout(() => {
-            setShowLoading(false);
-            setShowTitle(true);
-            setTitleOpacity(1);
-            timers.push(
-              setTimeout(() => {
-                setTitleOpacity(0);
-                timers.push(setTimeout(() => setShowTitle(false), 900));
-              }, 2400),
-            );
-          }, 600),
-        );
-      }, 2000),
-    );
+    if (reducedMotion) {
+      setShowLoading(false);
+      setLoadingOpacity(0);
+      setShowTitle(true);
+      setTitleOpacity(1);
+      timers.push(
+        setTimeout(() => {
+          setTitleOpacity(0);
+          timers.push(setTimeout(() => setShowTitle(false), 120));
+        }, 500),
+      );
+    } else {
+      // Loading screen holds for 2s, then fades → title sizzle
+      timers.push(
+        setTimeout(() => {
+          setLoadingOpacity(0);
+          timers.push(
+            setTimeout(() => {
+              setShowLoading(false);
+              setShowTitle(true);
+              setTitleOpacity(1);
+              timers.push(
+                setTimeout(() => {
+                  setTitleOpacity(0);
+                  timers.push(setTimeout(() => setShowTitle(false), 900));
+                }, 2400),
+              );
+            }, 600),
+          );
+        }, 2000),
+      );
+    }
 
     return () => {
       for (const t of timers) clearTimeout(t);
     };
-  }, []);
+  }, [reducedMotion]);
 
   // Initialize audio on first interaction
   useEffect(() => {
@@ -125,6 +138,7 @@ export default function GameBoard() {
       saveHighScore(newHigh);
       setHighScore(newHigh);
 
+      useGameStore.getState().setPhase('gameover');
       setShowGameOver(true);
       setGameOverOpacity(1);
       setSrAnnouncement('Cognition shattered. The sphere has broken.');
@@ -141,10 +155,13 @@ export default function GameBoard() {
       setShowClarity(true);
       setClarityOpacity(1);
       setSrAnnouncement('Coherence maintained. A moment of clarity.');
-      fadeTimer = setTimeout(() => {
-        setClarityOpacity(0);
-        hideTimer = setTimeout(() => setShowClarity(false), 900);
-      }, 2000);
+      fadeTimer = setTimeout(
+        () => {
+          setClarityOpacity(0);
+          hideTimer = setTimeout(() => setShowClarity(false), reducedMotion ? 120 : 900);
+        },
+        reducedMotion ? 400 : 2000,
+      );
     };
     window.addEventListener('coherenceMaintained', handleClarity);
     return () => {
@@ -152,7 +169,7 @@ export default function GameBoard() {
       clearTimeout(fadeTimer);
       clearTimeout(hideTimer);
     };
-  }, []);
+  }, [reducedMotion]);
 
   // Sync tension to audio store + screen reader announcements
   useEffect(() => {
@@ -194,8 +211,8 @@ export default function GameBoard() {
       {showLoading && (
         <div
           data-testid="loading-overlay"
-          className="absolute inset-0 z-40 flex items-center justify-center bg-black transition-opacity duration-600"
-          style={{ opacity: loadingOpacity }}
+          className="absolute inset-0 z-40 flex items-center justify-center bg-black transition-opacity duration-[var(--ovl)]"
+          style={{ opacity: loadingOpacity, ['--ovl' as string]: reducedMotion ? '120ms' : '600ms' }}
         >
           <h1 className="font-mono text-[32px] tracking-[16px] text-white/60 animate-pulse">INITIALIZING CORE</h1>
         </div>
@@ -205,8 +222,8 @@ export default function GameBoard() {
       {showTitle && (
         <div
           data-testid="title-overlay"
-          className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 transition-opacity duration-900"
-          style={{ opacity: titleOpacity }}
+          className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 transition-opacity duration-[var(--title)]"
+          style={{ opacity: titleOpacity, ['--title' as string]: reducedMotion ? '120ms' : '900ms' }}
         >
           <div className="text-center">
             <h1 className="font-mono text-[92px] tracking-[12px] text-white">COGNITIVE</h1>
@@ -219,8 +236,8 @@ export default function GameBoard() {
       {showClarity && (
         <div
           data-testid="clarity-overlay"
-          className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none transition-opacity duration-900"
-          style={{ opacity: clarityOpacity }}
+          className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none transition-opacity duration-[var(--clarity)]"
+          style={{ opacity: clarityOpacity, ['--clarity' as string]: reducedMotion ? '120ms' : '900ms' }}
         >
           <h1 className="font-mono text-[48px] tracking-[8px] text-blue-400/80">COHERENCE MAINTAINED</h1>
         </div>
@@ -230,8 +247,8 @@ export default function GameBoard() {
       {showGameOver && (
         <div
           data-testid="gameover-overlay"
-          className="absolute inset-0 z-30 flex items-center justify-center bg-black/90 transition-opacity duration-1200 cursor-pointer"
-          style={{ opacity: gameOverOpacity }}
+          className="absolute inset-0 z-30 flex items-center justify-center bg-black/90 transition-opacity duration-[var(--go)] cursor-pointer"
+          style={{ opacity: gameOverOpacity, ['--go' as string]: reducedMotion ? '120ms' : '1200ms' }}
           onClick={handleRestart}
           role="dialog"
           aria-label="Game over. Cognition shattered."
@@ -267,7 +284,7 @@ export default function GameBoard() {
 
       {/* 3D Game Layer */}
       <div className="absolute inset-0 z-10" style={{ touchAction: 'none' }}>
-        <GameScene coherence={coherence} />
+        <GameScene coherence={coherence} reducedMotion={reducedMotion} />
       </div>
     </div>
   );

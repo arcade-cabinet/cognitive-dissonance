@@ -13,7 +13,11 @@ function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 
-export default function AISphere() {
+interface AISphereProps {
+  reducedMotion: boolean;
+}
+
+export default function AISphere({ reducedMotion }: AISphereProps) {
   const scene = useScene();
   const outerSphereRef = useRef<BABYLON.Mesh | null>(null);
   const innerSphereRef = useRef<BABYLON.Mesh | null>(null);
@@ -37,59 +41,78 @@ export default function AISphere() {
    * Create (or recreate) both sphere meshes + materials.
    * Called on initial mount and on restart after shatter.
    */
-  const buildSpheres = useCallback((scn: BABYLON.Scene) => {
-    // Outer glass sphere
-    const outerSphere = BABYLON.MeshBuilder.CreateSphere('aiSphereOuter', { diameter: 0.52, segments: 64 }, scn);
-    outerSphere.position.y = 0.4;
-    outerSphereRef.current = outerSphere;
+  const buildSpheres = useCallback(
+    (scn: BABYLON.Scene) => {
+      // Outer glass sphere
+      const outerSphere = BABYLON.MeshBuilder.CreateSphere('aiSphereOuter', { diameter: 0.52, segments: 64 }, scn);
+      outerSphere.position.y = 0.4;
+      outerSphereRef.current = outerSphere;
 
-    const glassMat = new BABYLON.PBRMaterial('glassMat', scn);
-    glassMat.albedoColor = new BABYLON.Color3(0.02, 0.04, 0.09);
-    glassMat.roughness = 0.02;
-    glassMat.metallic = 0.05;
-    glassMat.subSurface.isRefractionEnabled = true;
-    glassMat.subSurface.indexOfRefraction = 1.52;
-    glassMat.alpha = 0.3;
-    glassMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
-    outerSphere.material = glassMat;
-    glassMatRef.current = glassMat;
+      const glassMat = new BABYLON.PBRMaterial('glassMat', scn);
+      glassMat.albedoColor = new BABYLON.Color3(0.02, 0.04, 0.09);
+      glassMat.roughness = 0.02;
+      glassMat.metallic = 0.05;
+      glassMat.subSurface.isRefractionEnabled = true;
+      glassMat.subSurface.indexOfRefraction = 1.52;
+      glassMat.alpha = 0.3;
+      glassMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+      outerSphere.material = glassMat;
+      glassMatRef.current = glassMat;
 
-    // Inner celestial nebula sphere
-    const innerSphere = BABYLON.MeshBuilder.CreateSphere('aiSphereInner', { diameter: 0.49, segments: 64 }, scn);
-    innerSphere.position.y = 0.4;
-    innerSphereRef.current = innerSphere;
+      // Inner celestial nebula sphere
+      const innerSphere = BABYLON.MeshBuilder.CreateSphere('aiSphereInner', { diameter: 0.49, segments: 64 }, scn);
+      innerSphere.position.y = 0.4;
+      innerSphereRef.current = innerSphere;
 
-    const celestialMat = createCelestialShaderMaterial(scn);
-    innerSphere.material = celestialMat;
-    innerMatRef.current = celestialMat;
+      const celestialMat = createCelestialShaderMaterial(scn);
+      innerSphere.material = celestialMat;
+      innerMatRef.current = celestialMat;
 
-    // Emerge animation: scale from nothing
-    outerSphere.scaling.setAll(0.01);
-    innerSphere.scaling.setAll(0.01);
-    gsap.to(outerSphere.scaling, { x: 1, y: 1, z: 1, duration: 3.8, ease: 'power4.out', delay: 2.6 });
-    gsap.to(innerSphere.scaling, { x: 1, y: 1, z: 1, duration: 3.8, ease: 'power4.out', delay: 2.6 });
+      // Emerge animation: scale from nothing
+      outerSphere.scaling.setAll(0.01);
+      innerSphere.scaling.setAll(0.01);
+      const emergeDuration = reducedMotion ? 0.6 : 3.8;
+      const emergeDelay = reducedMotion ? 0 : 2.6;
+      gsap.to(outerSphere.scaling, {
+        x: 1,
+        y: 1,
+        z: 1,
+        duration: emergeDuration,
+        ease: 'power4.out',
+        delay: emergeDelay,
+      });
+      gsap.to(innerSphere.scaling, {
+        x: 1,
+        y: 1,
+        z: 1,
+        duration: emergeDuration,
+        ease: 'power4.out',
+        delay: emergeDelay,
+      });
 
-    // Emissive pulse on emergence (blue → white → off)
-    gsap.fromTo(
-      glassMat,
-      { emissiveIntensity: 0 },
-      {
-        emissiveIntensity: 0.8,
-        duration: 1.5,
-        delay: 3.0,
-        yoyo: true,
-        repeat: 1,
-        ease: 'sine.inOut',
-        onStart: () => {
-          glassMat.emissiveColor = new BABYLON.Color3(0.1, 0.4, 1.0);
+      // Emissive pulse on emergence (blue → white → off)
+      gsap.fromTo(
+        glassMat,
+        { emissiveIntensity: 0 },
+        {
+          emissiveIntensity: 0.8,
+          duration: reducedMotion ? 0.3 : 1.5,
+          delay: reducedMotion ? 0.1 : 3.0,
+          yoyo: true,
+          repeat: 1,
+          ease: 'sine.inOut',
+          onStart: () => {
+            glassMat.emissiveColor = new BABYLON.Color3(0.1, 0.4, 1.0);
+          },
+          onComplete: () => {
+            glassMat.emissiveColor = BABYLON.Color3.Black();
+            glassMat.emissiveIntensity = 0;
+          },
         },
-        onComplete: () => {
-          glassMat.emissiveColor = BABYLON.Color3.Black();
-          glassMat.emissiveIntensity = 0;
-        },
-      },
-    );
-  }, []);
+      );
+    },
+    [reducedMotion],
+  );
 
   // Initial sphere creation
   useEffect(() => {
@@ -112,7 +135,8 @@ export default function AISphere() {
   // Restart ritual: listen for phase transitions to recreate after shatter
   useEffect(() => {
     const unsub = useGameStore.subscribe((state, prev) => {
-      if (state.phase === 'playing' && prev.phase !== 'playing' && explodedRef.current && scene) {
+      const restarted = state.restartToken !== prev.restartToken;
+      if (state.phase === 'playing' && restarted && explodedRef.current && scene) {
         // Sphere was shattered — recreate it as the "dream again" ritual
         explodedRef.current = false;
         clarityActiveRef.current = false;
@@ -159,7 +183,7 @@ export default function AISphere() {
             { emissiveIntensity: 0 },
             {
               emissiveIntensity: 1.5,
-              duration: 1.5,
+              duration: reducedMotion ? 0.35 : 1.5,
               yoyo: true,
               repeat: 1,
               ease: 'sine.inOut',
@@ -211,10 +235,11 @@ export default function AISphere() {
 
         // Physical jitter / bounce
         if (outerSphereRef.current) {
-          outerSphereRef.current.position.x = Math.sin(t * 14) * cur * 0.06;
-          outerSphereRef.current.position.z = Math.cos(t * 17) * cur * 0.04;
-          outerSphereRef.current.rotation.x = Math.sin(t * 6) * cur * 0.12;
-          outerSphereRef.current.rotation.z = Math.cos(t * 8) * cur * 0.09;
+          const jitterScale = reducedMotion ? 0.25 : 1;
+          outerSphereRef.current.position.x = Math.sin(t * 14) * cur * 0.06 * jitterScale;
+          outerSphereRef.current.position.z = Math.cos(t * 17) * cur * 0.04 * jitterScale;
+          outerSphereRef.current.rotation.x = Math.sin(t * 6) * cur * 0.12 * jitterScale;
+          outerSphereRef.current.rotation.z = Math.cos(t * 8) * cur * 0.09 * jitterScale;
         }
 
         // Mirror jitter on inner sphere
@@ -276,7 +301,7 @@ export default function AISphere() {
     return () => {
       scene.onBeforeRenderObservable.remove(observer);
     };
-  }, [scene]);
+  }, [scene, reducedMotion]);
 
   return null; // Meshes created imperatively
 }

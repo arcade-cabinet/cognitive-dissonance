@@ -5,7 +5,11 @@ import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 import { useLevelStore } from '@/store/level-store';
 
-export default function PostProcessCorruption() {
+interface PostProcessCorruptionProps {
+  reducedMotion: boolean;
+}
+
+export default function PostProcessCorruption({ reducedMotion }: PostProcessCorruptionProps) {
   const scene = useScene();
   const effectRef = useRef<BABYLON.PostProcess | null>(null);
 
@@ -56,7 +60,8 @@ export default function PostProcessCorruption() {
     );
 
     postProcess.onApply = (effect) => {
-      effect.setFloat('u_tension', useLevelStore.getState().tension);
+      const scale = reducedMotion ? 0.4 : 1;
+      effect.setFloat('u_tension', useLevelStore.getState().tension * scale);
       effect.setFloat('u_time', performance.now() / 1000);
     };
 
@@ -65,7 +70,7 @@ export default function PostProcessCorruption() {
     return () => {
       postProcess.dispose();
     };
-  }, [scene]);
+  }, [scene, reducedMotion]);
 
   return null;
 }

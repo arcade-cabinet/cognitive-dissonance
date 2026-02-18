@@ -72,3 +72,10 @@ All 15 items from the Turn 164 "deep audit" are implemented. The game is feature
 
 - Comprehensive production alignment plan: `docs/memory-bank/release-2.0-alignment-plan.md`
 
+
+### Release plan execution (current pass)
+
+- Deterministic fixed-step scheduling added for pattern and enemy spawning.
+- Game phase lifecycle hardened with explicit `gameover` phase + restart token semantics.
+- Audio store now tracks/disposes Tone resources on shutdown to avoid duplicate/leaked graphs.
+- Reduced-motion behavior now applied in overlays, sphere motion, and post-process intensity.
