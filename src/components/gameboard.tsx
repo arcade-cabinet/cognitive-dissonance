@@ -162,9 +162,9 @@ export default function GameBoard() {
     }
   }, [tension]);
 
-  // Expose Zustand stores on window for E2E test bridge (dev only)
+  // Expose Zustand stores on window for E2E test bridge + debugging
   useEffect(() => {
-    if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    if (typeof window !== 'undefined') {
       const w = window as Window & {
         __zustand_level?: typeof useLevelStore;
         __zustand_input?: typeof useInputStore;
