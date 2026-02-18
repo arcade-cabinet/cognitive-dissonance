@@ -7,6 +7,7 @@ test.describe('Gameplay tests', () => {
     await waitForCanvas(page);
   });
 
+  // Intentional pre-condition check: verifies canvas is present before gameplay tests
   test('3D scene is visible after title fade', async ({ page }) => {
     await waitForTitleFade(page);
     const canvas = page.locator('#reactylon-canvas, canvas').first();

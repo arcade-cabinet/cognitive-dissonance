@@ -56,8 +56,10 @@ export default function ATCShader({ className = '' }: ATCShaderProps) {
   const errorRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current!;
-    const errorEl = errorRef.current!;
+    const canvas = canvasRef.current;
+    const errorEl = errorRef.current;
+    if (!canvas || !errorEl) return;
+
     const gl = canvas.getContext('webgl2', { premultipliedAlpha: false });
 
     if (!gl) {
@@ -75,9 +77,12 @@ export default function ATCShader({ className = '' }: ATCShaderProps) {
       return shader;
     };
 
+    const vertShader = compile(gl.VERTEX_SHADER, vertSrc);
+    const fragShader = compile(gl.FRAGMENT_SHADER, fragSrc);
+
     const program = gl.createProgram()!;
-    gl.attachShader(program, compile(gl.VERTEX_SHADER, vertSrc));
-    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragSrc));
+    gl.attachShader(program, vertShader);
+    gl.attachShader(program, fragShader);
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
@@ -127,6 +132,10 @@ export default function ATCShader({ className = '' }: ATCShaderProps) {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
+      gl.deleteBuffer(buffer);
+      gl.deleteProgram(program);
+      gl.deleteShader(vertShader);
+      gl.deleteShader(fragShader);
     };
   }, []);
 

@@ -7,6 +7,7 @@ import { world } from '@/game/world';
 import { generateFromSeed } from '@/lib/seed-factory';
 import { useInputStore } from '@/store/input-store';
 import { useLevelStore } from '@/store/level-store';
+import { useSeedStore } from '@/store/seed-store';
 
 interface Pattern {
   id: number;
@@ -17,24 +18,24 @@ interface Pattern {
   particleSystem: BABYLON.ParticleSystem;
 }
 
-interface PatternStabilizerProps {
-  tension: number;
-}
-
-export default function PatternStabilizer({ tension }: PatternStabilizerProps) {
+export default function PatternStabilizer() {
   const scene = useScene();
   const activePatterns = useRef<Pattern[]>([]);
+  const idCounter = useRef(0);
 
   useEffect(() => {
     if (!scene) return;
 
     const spawnPattern = () => {
+      const rng = useSeedStore.getState().rng;
       const { enemyConfig } = generateFromSeed();
       const hue = parseFloat(enemyConfig.colorTint.match(/\d+/)?.[0] || '180');
       const color = BABYLON.Color3.FromHSV(hue, 0.85, 0.65);
-      const speed = 0.3 + Math.random() * tension * 1.2;
+      const curTension = useLevelStore.getState().tension;
+      const speed = 0.3 + rng() * curTension * 1.2;
 
-      const ps = new BABYLON.ParticleSystem(`pattern${Date.now()}`, 60, scene);
+      const patternId = idCounter.current++;
+      const ps = new BABYLON.ParticleSystem(`pattern${patternId}`, 60, scene);
       ps.emitter = new BABYLON.Vector3(0, 0.4, 0);
       ps.minSize = 0.015;
       ps.maxSize = 0.045;
@@ -47,11 +48,11 @@ export default function PatternStabilizer({ tension }: PatternStabilizerProps) {
       ps.start();
 
       const pattern: Pattern = {
-        id: Date.now(),
+        id: patternId,
         color,
         progress: 0,
         speed,
-        angle: (Date.now() % 360) * (Math.PI / 180),
+        angle: rng() * 360 * (Math.PI / 180),
         particleSystem: ps,
       };
 
@@ -71,7 +72,7 @@ export default function PatternStabilizer({ tension }: PatternStabilizerProps) {
       const curTension = useLevelStore.getState().tension;
 
       // Spawn new patterns based on tension
-      if (Math.random() < curTension * 1.6 * dt * 7) {
+      if (useSeedStore.getState().rng() < curTension * 1.6 * dt * 7) {
         spawnPattern();
       }
 
@@ -116,7 +117,7 @@ export default function PatternStabilizer({ tension }: PatternStabilizerProps) {
       });
       activePatterns.current = [];
     };
-  }, [scene, tension]);
+  }, [scene]);
 
   return null;
 }

@@ -36,6 +36,7 @@ export default function DiegeticGUI({ coherence }: DiegeticGUIProps) {
     return () => {
       ring.dispose();
       mat.dispose();
+      ringMatRef.current = null;
     };
   }, [scene]);
 

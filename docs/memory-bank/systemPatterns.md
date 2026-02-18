@@ -2,7 +2,7 @@
 
 ## Architecture
 
-```
+```text
 Next.js 16 App Router (Turbopack)
 ├── src/app/page.tsx: dynamic import of GameBoard with ssr: false
 ├── GameBoard (2D React + Tailwind):

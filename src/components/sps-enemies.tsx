@@ -5,11 +5,7 @@ import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 import { useLevelStore } from '@/store/level-store';
 
-interface SPSEnemiesProps {
-  tension: number;
-}
-
-export default function SPSEnemies({ tension }: SPSEnemiesProps) {
+export default function SPSEnemies() {
   const scene = useScene();
   const spsRef = useRef<BABYLON.SolidParticleSystem | null>(null);
 
@@ -23,6 +19,7 @@ export default function SPSEnemies({ tension }: SPSEnemiesProps) {
 
     const mesh = SPS.buildMesh();
     const mat = new BABYLON.StandardMaterial('spsMat', scene);
+    // TODO: color should come from design tokens instead of hardcoded values
     mat.emissiveColor = new BABYLON.Color3(0.2, 0.8, 1.0);
     mat.alpha = 0.7;
     mesh.material = mat;
@@ -74,6 +71,7 @@ export default function SPSEnemies({ tension }: SPSEnemiesProps) {
 
     return () => {
       scene.onBeforeRenderObservable.remove(observer);
+      mat.dispose();
       SPS.dispose();
     };
   }, [scene]);

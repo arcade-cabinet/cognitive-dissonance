@@ -11,7 +11,7 @@
         "noUnusedFunctionParameters": "warn"
       },
       "suspicious": {
-        "noExplicitAny": "off"
+        "noExplicitAny": "warn"
       },
       "a11y": {
         "useKeyWithClickEvents": "off",

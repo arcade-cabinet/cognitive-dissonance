@@ -3,6 +3,9 @@ import { waitForCanvas, waitForTitleFade } from './helpers/game-helpers';
 
 test.describe('Governor (automated player) tests', () => {
   test.beforeEach(async ({ page }) => {
+    page.on('pageerror', (error) => {
+      throw new Error(`Unhandled page exception: ${error.message}`);
+    });
     await page.goto('/');
     await waitForCanvas(page);
     await waitForTitleFade(page);

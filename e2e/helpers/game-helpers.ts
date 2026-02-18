@@ -6,7 +6,7 @@ export async function waitForCanvas(page: Page, timeout = 30_000) {
   return canvas.first();
 }
 
-export async function getCanvasDimensions(page: Page) {
+export async function getCanvasDimensions(page: Page): Promise<{ width: number; height: number } | null> {
   return page.evaluate(() => {
     const canvas = document.querySelector('#reactylon-canvas') ?? document.querySelector('canvas');
     if (!canvas) return null;
@@ -21,7 +21,7 @@ export async function getGameState(page: Page) {
 export async function waitForTitleFade(page: Page, timeout = 10_000) {
   await page.waitForFunction(
     () => {
-      const title = document.querySelector('[class*="z-30"]');
+      const title = document.querySelector('[data-testid="title-overlay"]');
       return !title || getComputedStyle(title).opacity === '0';
     },
     { timeout },

@@ -8,6 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // bg-black is intentional — game renders on a black background, not a missing design token
   return (
     <html lang="en" className="bg-black">
       <body>{children}</body>

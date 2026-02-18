@@ -3,11 +3,7 @@
 import { useEffect } from 'react';
 import { useScene } from 'reactylon';
 
-interface SpatialAudioProps {
-  tension: number;
-}
-
-export default function SpatialAudio({ tension }: SpatialAudioProps) {
+export default function SpatialAudio() {
   const scene = useScene();
 
   useEffect(() => {

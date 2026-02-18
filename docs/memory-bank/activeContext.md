@@ -5,6 +5,7 @@
 ### Branch: `feat/reactylon-migration`
 
 ### What's Done
+
 - Full foundation fix: Next.js 16.1.6 + Turbopack + Babylon.js 8 + Reactylon 3.5.4
 - React 19, TypeScript 5.9, Tailwind 4
 - Biome 2.4.1 for linting/formatting (replaced ESLint)
@@ -22,6 +23,7 @@
 - ATC WebGL2 background shader (CSP-safe)
 
 ### What's NOT Done (Runtime Visual Verification)
+
 - 3D scene rendering not visually verified (renders 200 OK but no human eye-test)
 - Glass sphere + celestial shader visual quality untested
 - Platter geometry + GSAP garage-door animation untested
@@ -33,6 +35,7 @@
 - Physics keys (Ammo.js) stubbed
 
 ### Next Steps (Priority Order)
+
 1. Visual smoke test: run dev, verify 3D scene renders correctly in browser
 2. Debug glass sphere + celestial shader display
 3. Verify platter geometry + GSAP garage-door animations
@@ -44,6 +47,7 @@
 9. XR hand tracking setup
 
 ### Open Decisions
+
 - Physics engine (Ammo.js) for keycap press weight — currently stubbed
 - XR hand tracking session setup — not implemented
 - Spatial audio (Tone.js Panner3D) — placeholder only

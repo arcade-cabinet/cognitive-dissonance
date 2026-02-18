@@ -51,17 +51,17 @@ function SceneContent({ tension, coherence }: GameSceneProps) {
       />
 
       {/* Core 3D elements (created imperatively) */}
-      <AISphere tension={tension} />
+      <AISphere />
       <Platter tension={tension} />
 
       {/* Gameplay systems */}
-      <PatternStabilizer tension={tension} />
+      <PatternStabilizer />
       <EnemySpawner tension={tension} />
 
       {/* Polish systems */}
       <PostProcessCorruption tension={tension} />
-      <SpatialAudio tension={tension} />
-      <SPSEnemies tension={tension} />
+      <SpatialAudio />
+      <SPSEnemies />
       <DiegeticGUI coherence={coherence} />
       <AudioEngineSystem />
     </>

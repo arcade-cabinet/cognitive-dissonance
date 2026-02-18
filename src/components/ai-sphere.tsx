@@ -11,11 +11,7 @@ function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t;
 }
 
-interface AISphereProps {
-  tension: number;
-}
-
-export default function AISphere({ tension }: AISphereProps) {
+export default function AISphere() {
   const scene = useScene();
   const outerSphereRef = useRef<BABYLON.Mesh | null>(null);
   const innerSphereRef = useRef<BABYLON.Mesh | null>(null);

@@ -5,7 +5,6 @@ import { useAudioStore } from '@/store/audio-store';
 import { useLevelStore } from '@/store/level-store';
 
 export default function AudioEngineSystem() {
-  const _initialize = useAudioStore((s) => s.initialize);
   const updateTension = useAudioStore((s) => s.updateTension);
   const shutdown = useAudioStore((s) => s.shutdown);
 

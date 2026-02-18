@@ -71,6 +71,7 @@ export default function GameBoard() {
       {/* Opening Title Sizzle */}
       {showTitle && (
         <div
+          data-testid="title-overlay"
           className="absolute inset-0 z-30 flex items-center justify-center bg-black/80 transition-opacity duration-900"
           style={{ opacity: titleOpacity }}
         >
