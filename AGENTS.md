@@ -94,8 +94,8 @@ pnpm dev          # Development server (Turbopack)
 pnpm build        # Production build
 pnpm start        # Production server
 pnpm lint         # Biome check (0 errors, 0 warnings)
-pnpm test         # Vitest unit tests (48 tests)
-pnpm test:e2e     # Playwright E2E via xvfb-run (17 tests, headed WebGL)
+pnpm test         # Vitest unit tests (59 tests)
+pnpm test:e2e     # Playwright E2E via xvfb-run (18 tests, headed WebGL)
 ```
 
 ---
