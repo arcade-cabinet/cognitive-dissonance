@@ -11,7 +11,8 @@
     "format": "biome format --write src/",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "pnpm build && xvfb-run --auto-servernum pnpm exec playwright test"
+    "test:e2e": "pnpm build && xvfb-run --auto-servernum pnpm exec playwright test",
+    "test:e2e:headed": "pnpm build && xvfb-run --auto-servernum pnpm exec playwright test --headed"
   },
   "dependencies": {
     "@babylonjs/core": "^8.51.2",
