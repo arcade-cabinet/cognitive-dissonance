@@ -61,8 +61,8 @@ export default function GameBoard() {
       await navigator.clipboard.writeText(seed);
       setSeedCopied(true);
       setTimeout(() => setSeedCopied(false), 2000);
-    } catch {
-      // Clipboard API may fail in insecure contexts — silently ignore
+    } catch (err) {
+      console.error('[Clipboard] Failed to copy seed:', err);
     }
   }, []);
 

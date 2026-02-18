@@ -141,7 +141,6 @@ export default function EnemySpawner() {
 
         // Set orbiting box positions for neon-raymarcher (relative to billboard center)
         if (!e.isBoss) {
-          const _amount = e.material.getEffect()?.getUniform('u_amount') !== undefined ? 4 : 0;
           const posArray: number[] = [];
           for (let j = 0; j < 16; j++) {
             const angle = (t + j) * 1.5;

@@ -34,7 +34,8 @@ export function loadHighScore(): HighScoreData {
       levelsSurvived: clampNonNegativeInt(parsed.levelsSurvived, 0),
       seed: typeof parsed.seed === 'string' ? parsed.seed : '',
     };
-  } catch {
+  } catch (err) {
+    console.error('[HighScore] Failed to load:', err);
     return DEFAULT_HIGH_SCORE;
   }
 }
@@ -43,7 +44,7 @@ export function saveHighScore(data: HighScoreData): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {
-    // localStorage full or unavailable — silently ignore
+  } catch (err) {
+    console.error('[HighScore] Failed to save:', err);
   }
 }

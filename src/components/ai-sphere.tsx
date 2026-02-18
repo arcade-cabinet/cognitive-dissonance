@@ -22,9 +22,15 @@ export default function AISphere() {
   const explodedRef = useRef(false);
   /** Guards against re-triggering clarity while the pulse animation plays */
   const clarityActiveRef = useRef(false);
-  // Miniplex entity for ECS tracking — ref holds it to prevent GC
-  const _sphereEntity = useRef(
-    world.add({ aiSphere: true, tension: 0.12, coherence: 25, exploded: false, crackLevel: 0 }),
+  /** Miniplex entity — synced every frame with current tension/coherence/exploded state */
+  const sphereEntityRef = useRef(
+    world.add({
+      aiSphere: true,
+      tension: 0.12 as number | undefined,
+      coherence: 25 as number | undefined,
+      exploded: false as boolean | undefined,
+      crackLevel: 0 as number | undefined,
+    }),
   );
 
   /**
@@ -122,6 +128,12 @@ export default function AISphere() {
       const coherence = useLevelStore.getState().coherence;
       const t = performance.now() / 1000;
 
+      // Sync Miniplex entity with current state
+      const entity = sphereEntityRef.current;
+      entity.tension = cur;
+      entity.coherence = coherence;
+      entity.crackLevel = cur;
+
       // ── Moment of Clarity ──
       // When coherence reaches 100, the AI mind is briefly whole.
       // A beautiful calm before the inevitable.
@@ -213,6 +225,7 @@ export default function AISphere() {
       // ── Max tension shatter ──
       if (cur >= 0.99 && !explodedRef.current) {
         explodedRef.current = true;
+        sphereEntityRef.current.exploded = true;
 
         // Remove this observer to prevent running on disposed meshes
         scene.onBeforeRenderObservable.remove(observer);

@@ -65,16 +65,15 @@ export default function PhysicsKeys() {
               // Lock X and Z translation, lock all rotation
               body.setLinearDamping(5);
               body.setAngularDamping(10);
-            } catch {
-              // Individual mesh physics failure — continue with others
+            } catch (err) {
+              console.error(`[Physics] Failed to add body to ${mesh.name}:`, err);
             }
           }
         });
 
         console.info('[Physics] Havok physics initialized on keycaps');
       } catch (err) {
-        // Havok WASM failed to load — graceful fallback
-        console.info('[Physics] Havok not available:', err instanceof Error ? err.message : String(err));
+        console.error('[Physics] Havok WASM failed to load:', err);
       }
     };
 

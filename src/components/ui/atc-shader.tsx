@@ -80,10 +80,16 @@ export default function ATCShader({ className = '' }: ATCShaderProps) {
 
     const vertShader = compile(gl.VERTEX_SHADER, vertSrc);
     const fragShader = compile(gl.FRAGMENT_SHADER, fragSrc);
-    if (!vertShader || !fragShader) return;
+    if (!vertShader || !fragShader) {
+      errorEl.textContent = 'Failed to create shaders';
+      return;
+    }
 
     const program = gl.createProgram();
-    if (!program) return;
+    if (!program) {
+      errorEl.textContent = 'Failed to create program';
+      return;
+    }
     gl.attachShader(program, vertShader);
     gl.attachShader(program, fragShader);
     gl.linkProgram(program);
@@ -97,7 +103,10 @@ export default function ATCShader({ className = '' }: ATCShaderProps) {
     gl.useProgram(program);
 
     const buffer = gl.createBuffer();
-    if (!buffer) return;
+    if (!buffer) {
+      errorEl.textContent = 'Failed to create buffer';
+      return;
+    }
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
 
@@ -106,7 +115,10 @@ export default function ATCShader({ className = '' }: ATCShaderProps) {
 
     const uRes = gl.getUniformLocation(program, 'u_res');
     const uTime = gl.getUniformLocation(program, 'u_time');
-    if (!uRes || !uTime) return;
+    if (!uRes || !uTime) {
+      errorEl.textContent = 'Failed to get uniform locations';
+      return;
+    }
 
     const resize = () => {
       const dpr = Math.min(2, window.devicePixelRatio || 1);

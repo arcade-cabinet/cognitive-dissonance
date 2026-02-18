@@ -61,13 +61,11 @@ export default function XRSession() {
           if (handTracking) {
             console.info('[XR] Hand tracking enabled');
           }
-        } catch {
-          // Hand tracking not available — graceful fallback
-          console.info('[XR] Hand tracking not available on this device');
+        } catch (err) {
+          console.warn('[XR] Hand tracking unavailable:', err);
         }
       } catch (err) {
-        // WebXR setup failed — graceful fallback
-        console.info('[XR] WebXR not available:', err instanceof Error ? err.message : String(err));
+        console.warn('[XR] WebXR setup failed:', err);
       }
     };
 
