@@ -66,6 +66,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Generate Test Coverage
+        run: pnpm run test:coverage
+      - name: Verify Coverage Report
+        run: |
+          if [ ! -f coverage/lcov.info ]; then
+            echo "Error: coverage/lcov.info not found"
+            exit 1
+          fi
+          echo "Coverage report found at coverage/lcov.info"
+          ls -lh coverage/
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
