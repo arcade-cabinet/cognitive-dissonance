@@ -41,6 +41,7 @@
     "scripts",
     "android",
     "ios",
+    "native",
     "e2e"
   ]
 }

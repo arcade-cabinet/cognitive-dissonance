@@ -12,6 +12,7 @@ import Platter from '@/components/platter';
 import PostProcessCorruption from '@/components/post-process-corruption';
 import SpatialAudio from '@/components/spatial-audio';
 import SPSEnemies from '@/components/sps-enemies';
+import XRSession from '@/components/xr-session';
 
 interface GameSceneProps {
   coherence: number;
@@ -63,6 +64,7 @@ function SceneContent({ coherence }: { coherence: number }) {
       <SPSEnemies />
       <DiegeticGUI coherence={coherence} />
       <AudioEngineSystem />
+      <XRSession />
     </>
   );
 }
