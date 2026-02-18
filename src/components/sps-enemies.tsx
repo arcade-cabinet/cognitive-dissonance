@@ -19,7 +19,6 @@ export default function SPSEnemies() {
 
     const mesh = SPS.buildMesh();
     const mat = new BABYLON.StandardMaterial('spsMat', scene);
-    // TODO: color should come from design tokens instead of hardcoded values
     mat.emissiveColor = new BABYLON.Color3(0.2, 0.8, 1.0);
     mat.alpha = 0.7;
     mesh.material = mat;
