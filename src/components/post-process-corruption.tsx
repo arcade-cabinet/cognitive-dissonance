@@ -5,11 +5,7 @@ import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 import { useLevelStore } from '@/store/level-store';
 
-interface PostProcessCorruptionProps {
-  tension: number;
-}
-
-export default function PostProcessCorruption({ tension }: PostProcessCorruptionProps) {
+export default function PostProcessCorruption() {
   const scene = useScene();
   const effectRef = useRef<BABYLON.PostProcess | null>(null);
 

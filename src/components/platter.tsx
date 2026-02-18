@@ -18,11 +18,7 @@ CustomEase.create('heavyMechanical', 'M0,0 C0.05,0 0.18,0.12 0.35,0.68 0.52,0.95
 CustomEase.create('mechSettle', 'M0,0 C0.12,0 0.25,0.62 0.42,0.82 0.58,1.08 0.75,0.96 1,1');
 CustomEase.create('gearWobble', 'M0,0 C0.18,0.35 0.35,0.72 0.52,0.48 0.68,0.25 0.82,0.9 1,1');
 
-interface PlatterProps {
-  tension: number;
-}
-
-export default function Platter({ tension }: PlatterProps) {
+export default function Platter() {
   const scene = useScene();
   const platterGroupRef = useRef<BABYLON.TransformNode | null>(null);
   const playTopRef = useRef<BABYLON.Mesh | null>(null);

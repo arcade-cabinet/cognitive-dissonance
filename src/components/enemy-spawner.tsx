@@ -20,11 +20,7 @@ interface Enemy {
   behavior: string;
 }
 
-interface EnemySpawnerProps {
-  tension: number;
-}
-
-export default function EnemySpawner({ tension }: EnemySpawnerProps) {
+export default function EnemySpawner() {
   const scene = useScene();
   const enemies = useRef<Enemy[]>([]);
   const yukaManager = useRef(new YUKA.EntityManager());

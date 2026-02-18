@@ -14,11 +14,10 @@ import SpatialAudio from '@/components/spatial-audio';
 import SPSEnemies from '@/components/sps-enemies';
 
 interface GameSceneProps {
-  tension: number;
   coherence: number;
 }
 
-function SceneContent({ tension, coherence }: GameSceneProps) {
+function SceneContent({ coherence }: { coherence: number }) {
   return (
     <>
       {/* Lighting */}
@@ -52,14 +51,14 @@ function SceneContent({ tension, coherence }: GameSceneProps) {
 
       {/* Core 3D elements (created imperatively) */}
       <AISphere />
-      <Platter tension={tension} />
+      <Platter />
 
       {/* Gameplay systems */}
       <PatternStabilizer />
-      <EnemySpawner tension={tension} />
+      <EnemySpawner />
 
       {/* Polish systems */}
-      <PostProcessCorruption tension={tension} />
+      <PostProcessCorruption />
       <SpatialAudio />
       <SPSEnemies />
       <DiegeticGUI coherence={coherence} />
@@ -68,7 +67,7 @@ function SceneContent({ tension, coherence }: GameSceneProps) {
   );
 }
 
-export default function GameScene({ tension, coherence }: GameSceneProps) {
+export default function GameScene({ coherence }: GameSceneProps) {
   return (
     <Engine
       forceWebGL={true}
@@ -85,7 +84,7 @@ export default function GameScene({ tension, coherence }: GameSceneProps) {
           scene.clearColor = new BABYLON.Color4(0.04, 0.04, 0.06, 1);
         }}
       >
-        <SceneContent tension={tension} coherence={coherence} />
+        <SceneContent coherence={coherence} />
       </Scene>
     </Engine>
   );

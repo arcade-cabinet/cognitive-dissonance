@@ -100,7 +100,7 @@ export default function GameBoard() {
 
       {/* 3D Game Layer */}
       <div className="absolute inset-0 z-10">
-        <GameScene tension={tension} coherence={coherence} />
+        <GameScene coherence={coherence} />
       </div>
     </div>
   );
