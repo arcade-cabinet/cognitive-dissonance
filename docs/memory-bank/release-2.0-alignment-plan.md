@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the authoritative execution plan to close all design/code/documentation gaps and ship a full production-grade **Cognitive Dissonance v2.0** release.
+This document is the authoritative execution plan to close all design/code/documentation gaps and ship a full production-grade **Cognitive Dissonance 2.0** release.
 
 It consolidates:
 
