@@ -1,6 +1,6 @@
 # Design Vision — Cognitive Dissonance v2
 
-> Design decisions distilled from original Grok conversations (raw files removed, value extracted).
+> Full design corpus in `docs/memory-bank/grok-doc/`. Start with `main-conversation/INDEX.md`.
 > For the definitive memory bank, see `docs/memory-bank/`.
 
 ## Core Vision

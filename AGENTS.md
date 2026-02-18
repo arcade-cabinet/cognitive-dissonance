@@ -4,7 +4,7 @@
 > Read this file at the start of every task. Update it after significant changes.
 > Deep context lives in `docs/memory-bank/` — read those files for full detail.
 >
-> The raw Grok conversation files have been removed (value extracted via scripts). Definitive code extractions remain in `docs/memory-bank/grok-doc/definitive/` for reference only — the live code in `src/` is the source of truth.
+> The full Grok conversation corpus is in `docs/memory-bank/grok-doc/` (165 indexed turns, 52 prose docs, 7 shader-port turns, 26 definitive code extractions) and `docs/code-fragments/` (170 versioned iterations). Read `docs/memory-bank/grok-doc/main-conversation/INDEX.md` first — it maps every design decision. The live code in `src/` is the implementation; the corpus is the design intent.
 
 ---
 

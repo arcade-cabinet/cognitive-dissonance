@@ -10,7 +10,7 @@ This file contains **Claude-specific** development instructions. For project doc
 
 Always read AGENTS.md before starting work. Update AGENTS.md and docs/memory-bank/ after significant changes.
 
-> Raw Grok conversation files have been removed (value extracted via scripts). Definitive code extractions remain in `docs/memory-bank/grok-doc/definitive/` for reference — live code in `src/` is the source of truth.
+> The full Grok conversation corpus lives in `docs/memory-bank/grok-doc/` and `docs/code-fragments/`. Start with `docs/memory-bank/grok-doc/main-conversation/INDEX.md` to navigate. Read `docs/memory-bank/handoff.md` for the complete implementation roadmap.
 
 ## Design Vision (Critical)
 
