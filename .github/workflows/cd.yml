@@ -1,7 +1,7 @@
 name: CD
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: cd-${{ github.ref }}
   cancel-in-progress: true
 
 on:
@@ -11,268 +11,27 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
-  deploy-web:
-    name: Deploy to GitHub Pages
+  build-and-test:
+    name: Build + E2E
     runs-on: ubuntu-latest
-    outputs:
-      page_url: ${{ steps.deployment.outputs.page_url }}
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - run: pnpm build
-      - name: Setup Pages
-        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
-        with:
-          path: './dist'
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
-
-  # Comprehensive E2E matrix on the deployed build
-  e2e-matrix:
-    name: E2E Matrix - ${{ matrix.project }}
-    runs-on: ubuntu-latest
-    permissions:
-      checks: write
-    container:
-      image: mcr.microsoft.com/playwright:v1.58.2-noble
-    needs: [deploy-web]
-    strategy:
-      fail-fast: false
-      matrix:
-        project:
-          - 'Desktop Chrome'
-          - 'Desktop Firefox'
-          - 'Desktop Safari'
-          - 'iPhone 12 Portrait'
-          - 'iPhone 12 Pro Portrait'
-          - 'iPhone 13 Portrait'
-          - 'iPhone 14 Portrait'
-          - 'iPhone 12 Landscape'
-          - 'iPad Pro 11 Portrait'
-          - 'iPad Pro 11 Landscape'
-          - 'iPad Pro 12.9 Portrait'
-          - 'Pixel 5 Portrait'
-          - 'Pixel 5 Landscape'
-          - 'Galaxy S21 Portrait'
-          - 'Samsung Galaxy Fold Folded Portrait'
-          - 'Samsung Galaxy Fold Folded Landscape'
-          - 'Samsung Galaxy Fold Unfolded Portrait'
-          - 'Samsung Galaxy Fold Unfolded Landscape'
-          - 'Surface Duo Portrait'
-          - 'Surface Duo Landscape'
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: ./.github/actions/setup
-      - name: Set project slug
-        id: slug
-        run: |
-          PROJECT_SLUG=$(echo "${{ matrix.project }}" | sed 's/ /-/g')
-          echo "project_slug=${PROJECT_SLUG}" >> $GITHUB_OUTPUT
-      - name: Run E2E matrix tests
-        run: xvfb-run pnpm exec playwright test --project="${{ matrix.project }}" --workers=1 --reporter=junit,line
+      - name: Build
+        run: pnpm build
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install chromium --with-deps
+      - name: Run E2E (headed via xvfb)
+        run: xvfb-run pnpm exec playwright test --workers=1
         env:
-          HOME: /root
-          PAGE_URL: ${{ needs.deploy-web.outputs.page_url }}
-          PLAYWRIGHT_JUNIT_OUTPUT_NAME: junit-${{ steps.slug.outputs.project_slug }}.xml
-      - name: Upload JUnit test results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+          CI: "true"
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: e2e-junit-${{ steps.slug.outputs.project_slug }}
-          path: junit-${{ steps.slug.outputs.project_slug }}.xml
-          retention-days: 7
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        if: always()
-        with:
-          name: e2e-reports-${{ steps.slug.outputs.project_slug }}
+          name: e2e-reports
           path: |
             playwright-report/
             test-results/
           retention-days: 7
-      - name: Create test report check run
-        uses: dorny/test-reporter@b082adf0eced0765477756c2a610396589b8c637 # v2.5.0
-        if: always()
-        with:
-          name: 'E2E Results - ${{ matrix.project }}'
-          path: junit-${{ steps.slug.outputs.project_slug }}.xml
-          reporter: 'java-junit'
-          fail-on-error: false
-
-  e2e-matrix-collector:
-    name: E2E Matrix Results
-    runs-on: ubuntu-latest
-    permissions:
-      checks: write
-    if: always()
-    needs: [e2e-matrix]
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Combine JUnit Reports
-        uses: ./.github/actions/combine-junit
-        with:
-          artifact-pattern: 'e2e-junit-*'
-          output-name: 'e2e-junit-combined'
-      - name: Download combined JUnit results
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          name: e2e-junit-combined
-          path: combined-junit/
-      - name: Create combined test report
-        uses: dorny/test-reporter@b082adf0eced0765477756c2a610396589b8c637 # v2.5.0
-        if: always()
-        with:
-          name: 'E2E Combined Results'
-          path: combined-junit/junit-combined.xml
-          reporter: 'java-junit'
-          fail-on-error: false
-      - name: Check E2E matrix results
-        run: |
-          echo "E2E Matrix Test Results: ${{ needs.e2e-matrix.result }}"
-          if [[ "${{ needs.e2e-matrix.result }}" != "success" ]]; then
-            echo "E2E matrix did not succeed (result: ${{ needs.e2e-matrix.result }})"
-            exit 1
-          fi
-          echo "All E2E matrix tests passed"
-
-  # CD failure handler: targeted Jules fix
-  fix-cd-failure:
-    name: Fix CD E2E Failures
-    runs-on: ubuntu-latest
-    needs: [e2e-matrix-collector]
-    if: failure()
-    permissions:
-      contents: write
-      actions: read
-      checks: read
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-
-      - name: Fetch test report URLs
-        id: reports
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
-        with:
-          script: |
-            const { data: checkRuns } = await github.rest.checks.listForRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: context.sha,
-              per_page: 100,
-            });
-
-            const testReports = checkRuns.check_runs
-              .filter(cr => cr.name.startsWith('E2E Results -') || cr.name === 'E2E Combined Results')
-              .map(cr => ({
-                name: cr.name,
-                conclusion: cr.conclusion,
-                url: cr.html_url,
-                summary: cr.output?.summary || '',
-              }));
-
-            const failedReports = testReports.filter(r => r.conclusion === 'failure');
-            const reportSummary = testReports
-              .map(r => `- ${r.name}: ${r.conclusion} (${r.url})`)
-              .join('\n');
-
-            const failedSummary = failedReports
-              .map(r => `- ${r.name}: ${r.url}\n  ${r.summary.substring(0, 500)}`)
-              .join('\n');
-
-            core.setOutput('all_reports', reportSummary);
-            core.setOutput('failed_reports', failedSummary);
-            core.setOutput('failed_count', failedReports.length.toString());
-
-      - name: Invoke Jules for CD failure fix
-        if: steps.reports.outputs.failed_count != '0'
-        uses: google-labs-code/jules-action@bff7875eaa123cac6742b7cfc51005b95ba4d566
-        with:
-          # SYNC: Values below must stay in sync with these authoritative sources:
-          #   - Device count & projects: playwright.config.ts (projects array)
-          #   - E2E test files: e2e/*.spec.ts
-          #   - DOM element IDs: src/components/Game.tsx, src/styles/game.css
-          #   - Viewport range: playwright.config.ts device definitions
-          #   - E2E helpers: e2e/helpers/game-helpers.ts, e2e/helpers/game-governor.ts
-          prompt: |
-            ## CD E2E Matrix Failure — Auto-Fix Request
-
-            **Repository:** ${{ github.repository }}
-            **Branch:** main
-            **Commit:** ${{ github.sha }}
-
-            ### What Failed
-            The CD pipeline's E2E matrix tests failed after deploying to GitHub Pages. These tests run across multiple device configurations using Playwright.
-
-            ### Failed Test Reports
-            ${{ steps.reports.outputs.failed_reports }}
-
-            ### All Test Reports
-            ${{ steps.reports.outputs.all_reports }}
-
-            ### Test Configuration
-            - Device projects are defined in `playwright.config.ts` — check there for the full list and viewport sizes.
-            - Tests: check `e2e/*.spec.ts` for the full test suite.
-            - The `@matrix` tagged tests in `e2e/governor.spec.ts` only run in CD.
-            - Each device uses `--workers=1` with JUnit + line reporters.
-            - Traces on first retry, screenshots on failure, video retained on failure.
-
-            ### Common CD-Only Failure Patterns
-            1. **Device-specific viewport issues**: Game canvas not fitting within specific device dimensions (check playwright.config.ts for exact viewport sizes)
-            2. **Touch interaction failures**: Mobile devices expecting tap() instead of click()
-            3. **WebKit-specific issues**: Safari/iPad tests use WebKit which has different behavior
-            4. **Timing issues across devices**: Slower rendering on complex viewports
-            5. **Governor extended tests**: The @matrix tests run longer playthroughs that may expose game state bugs
-
-            ### Project Context
-            - React + Three.js game with HTML overlay UI
-            - Key DOM elements are defined in `src/components/Game.tsx` — inspect the JSX for current IDs and structure
-            - CSS responsive rules are in `src/styles/game.css`
-            - E2E helpers: `e2e/helpers/game-helpers.ts`, `e2e/helpers/game-governor.ts`
-
-            ### Instructions
-            1. Check the test report URLs above for specific failure details.
-            2. Fix the APPLICATION code (under `src/`), primarily CSS/layout issues for device-specific failures.
-            3. If a test is flaky due to timing, it is acceptable to increase timeouts in the test, but prefer fixing the underlying timing issue in the app.
-            4. For governor test failures, check `e2e/helpers/game-governor.ts` for the AI logic.
-            5. Run the full E2E suite locally: `pnpm build && pnpm exec playwright test` to verify.
-            6. Do NOT modify CI/CD workflow files or playwright.config.ts device configurations.
-            7. Your fix PR should trigger full CI and then CD to validate the fix end-to-end.
-          jules_api_key: ${{ secrets.GOOGLE_JULES_API_KEY }}
-          starting_branch: main
-          include_last_commit: true
-
-  build-and-release-android:
-    name: Build and Release Android APK
-    runs-on: ubuntu-latest
-    needs: [deploy-web]
-    if: github.event_name == 'workflow_dispatch'
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: ./.github/actions/setup
-      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
-      - run: pnpm build:mobile
-      - name: Build Debug APK
-        run: |
-          cd android
-          chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace
-      - name: Upload APK as artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
-        with:
-          name: android-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
