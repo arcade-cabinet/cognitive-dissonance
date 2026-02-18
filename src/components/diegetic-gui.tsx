@@ -67,7 +67,8 @@ export default function DiegeticGUI({ coherence }: DiegeticGUIProps) {
     }
 
     // Build a partial circular path for the tube
-    const arcFraction = Math.max(0.01, coherence / 100);
+    const clampedCoherence = Math.max(0, Math.min(100, coherence));
+    const arcFraction = Math.max(0.01, clampedCoherence / 100);
     const radius = 0.42; // half of diameter 0.84
     const segments = Math.max(4, Math.floor(64 * arcFraction));
     const path: BABYLON.Vector3[] = [];
@@ -92,7 +93,7 @@ export default function DiegeticGUI({ coherence }: DiegeticGUIProps) {
     }
 
     // Color shifts with coherence: low = red-orange, high = bright green-cyan
-    const intensity = coherence / 100;
+    const intensity = clampedCoherence / 100;
     fgMatRef.current.emissiveColor = new BABYLON.Color3(
       intensity < 0.5 ? 1.0 - intensity : 0,
       intensity,

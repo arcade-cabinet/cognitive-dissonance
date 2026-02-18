@@ -114,11 +114,13 @@ export default function GameBoard() {
       setRunStats(stats);
 
       // Per-field max to never regress either metric
+      // Update seed whenever either metric sets a new personal best
       const current = loadHighScore();
+      const isNewBest = stats.peakCoherence > current.peakCoherence || stats.levelsSurvived > current.levelsSurvived;
       const newHigh = {
         peakCoherence: Math.max(stats.peakCoherence, current.peakCoherence),
         levelsSurvived: Math.max(stats.levelsSurvived, current.levelsSurvived),
-        seed: stats.peakCoherence > current.peakCoherence ? seed : current.seed,
+        seed: isNewBest ? seed : current.seed,
       };
       saveHighScore(newHigh);
       setHighScore(newHigh);
