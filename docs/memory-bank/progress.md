@@ -12,6 +12,7 @@
 - [x] All component files compile and load at runtime
 
 ### Core Gameplay
+- [x] Deterministic fixed-step spawn scheduling for patterns and enemy waves (FPS-independent tick model)
 - [x] Per-color keycap matching (12 keycaps, seeded colorIndex, only matching key stabilizes)
 - [x] Pattern stabilization (escaping tendrils, hold to pull back, per-color matching)
 - [x] Enemy spawner (Yuka AI: seek, wander, zigzag, split behaviors)
@@ -23,6 +24,7 @@
 - [x] Keycap color palette (`src/lib/keycap-colors.ts`)
 
 ### Visual Polish
+- [x] Reduced-motion behavior applied to overlays and high-motion 3D/post-process systems
 - [x] Heavy industrial platter (PBR metal, garage-door keycap emergence)
 - [x] GSAP CustomEase animations (heavyMechanical, mechSettle, gearWobble)
 - [x] Metallic dust particles on garage-door open
@@ -34,6 +36,7 @@
 - [x] ATC WebGL2 background shader (CSP-safe)
 
 ### Audio
+- [x] Audio graph lifecycle registry + shutdown disposal (Tone nodes/loops cleaned on teardown)
 - [x] Tone.js ambient score (4 seed-driven layers: drone, pads, glitch, chimes)
 - [x] Spatial audio: pattern escape whoosh (brown noise + filter sweep)
 - [x] Spatial audio: stabilization chime (sine synth, chromatic pitch)
@@ -50,22 +53,20 @@
 - [x] XR session stub (`xr-session.tsx`)
 
 ### Testing
-- [x] 48 Vitest unit tests (stores, utilities, shaders) — all passing
-- [x] 17 Playwright E2E tests (smoke, gameplay, governor) — all passing
+- [x] 59 Vitest unit tests (stores, utilities, shaders, fixed-step determinism helpers) — all passing
+- [x] 18 Playwright E2E tests (smoke, gameplay, governor) — all passing
 - [x] Governor survives 30+ seconds with active play
 - [x] 3 restart cycle stability test
-- [x] No console error monitoring in E2E
+- [x] Console error monitoring intentionally disabled in E2E
 - [x] xvfb-run for headed WebGL testing on headless servers
 
 ## What's Left
 
-- [ ] Physics keys (Ammo.js) — stubbed
+- [ ] Execute `docs/memory-bank/release-2.0-alignment-plan.md` for production 2.0 alignment closure
 - [ ] XR hand tracking → keycap interaction — stub only
 - [ ] Visual quality human eye-test
 - [ ] Mobile touch optimization
-- [ ] Loading screen ("INITIALIZING CORE")
-- [ ] High score + seed sharing (localStorage)
-- [ ] Accessibility (ARIA labels, reduced motion)
+- [ ] Full release-gate E2E run in CI/Xvfb environment
 
 ## Known Issues
 

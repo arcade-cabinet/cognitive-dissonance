@@ -17,9 +17,10 @@ import XRSession from '@/components/xr-session';
 
 interface GameSceneProps {
   coherence: number;
+  reducedMotion: boolean;
 }
 
-function SceneContent({ coherence }: { coherence: number }) {
+function SceneContent({ coherence, reducedMotion }: { coherence: number; reducedMotion: boolean }) {
   return (
     <>
       {/* Lighting */}
@@ -52,7 +53,7 @@ function SceneContent({ coherence }: { coherence: number }) {
       />
 
       {/* Core 3D elements (created imperatively) */}
-      <AISphere />
+      <AISphere reducedMotion={reducedMotion} />
       <Platter />
 
       {/* Gameplay systems */}
@@ -60,7 +61,7 @@ function SceneContent({ coherence }: { coherence: number }) {
       <EnemySpawner />
 
       {/* Polish systems */}
-      <PostProcessCorruption />
+      <PostProcessCorruption reducedMotion={reducedMotion} />
       <SpatialAudio />
       <SPSEnemies />
       <DiegeticGUI coherence={coherence} />
@@ -71,7 +72,7 @@ function SceneContent({ coherence }: { coherence: number }) {
   );
 }
 
-export default function GameScene({ coherence }: GameSceneProps) {
+export default function GameScene({ coherence, reducedMotion }: GameSceneProps) {
   return (
     <Engine
       forceWebGL={true}
@@ -88,7 +89,7 @@ export default function GameScene({ coherence }: GameSceneProps) {
           scene.clearColor = new BABYLON.Color4(0.04, 0.04, 0.06, 1);
         }}
       >
-        <SceneContent coherence={coherence} />
+        <SceneContent coherence={coherence} reducedMotion={reducedMotion} />
       </Scene>
     </Engine>
   );

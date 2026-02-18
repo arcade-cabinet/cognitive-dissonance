@@ -3,7 +3,7 @@ import { useGameStore } from '../game-store';
 
 describe('game-store', () => {
   beforeEach(() => {
-    useGameStore.setState({ phase: 'title' });
+    useGameStore.setState({ phase: 'title', restartToken: 0 });
   });
 
   it('initial phase is title', () => {
@@ -42,5 +42,13 @@ describe('game-store', () => {
     useGameStore.getState().setPhase('playing');
     useGameStore.getState().restart();
     expect(useGameStore.getState().phase).toBe('title');
+  });
+
+  it('triggerRestart increments restartToken and sets playing', () => {
+    useGameStore.getState().setPhase('gameover');
+    useGameStore.getState().triggerRestart();
+    const state = useGameStore.getState();
+    expect(state.phase).toBe('playing');
+    expect(state.restartToken).toBe(1);
   });
 });

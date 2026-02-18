@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 import * as YUKA from 'yuka';
 import { type GameEntity, world } from '@/game/world';
+import { runFixedSteps, spawnIntervalSeconds } from '@/lib/fixed-step';
 import { generateFromSeed } from '@/lib/seed-factory';
 import { createCrystallineCubeMaterial } from '@/lib/shaders/crystalline-cube';
 import { createNeonRaymarcherMaterial } from '@/lib/shaders/neon-raymarcher';
@@ -19,7 +20,6 @@ interface Enemy {
   health: number;
   yukaVehicle: YUKA.Vehicle;
   behavior: string;
-  /** Miniplex entity for ECS tracking */
   entity: GameEntity;
 }
 
@@ -28,11 +28,20 @@ export default function EnemySpawner() {
   const enemies = useRef<Enemy[]>([]);
   const enemyIdCounter = useRef(0);
   const yukaManager = useRef(new YUKA.EntityManager());
-  // Target: the sphere position
   const sphereTarget = useRef(new YUKA.Vector3(0, 0.4, 0));
 
   useEffect(() => {
     if (!scene) return;
+
+    const fixedStep = 1 / 30;
+    const fixedState = { accumulator: 0 };
+    let spawnTimer = 0;
+
+    const scheduleWave = () => {
+      const rng = useSeedStore.getState().rng;
+      const tension = useLevelStore.getState().tension;
+      spawnTimer = spawnIntervalSeconds(tension, rng, 0.3, 1.8);
+    };
 
     const spawnWave = () => {
       const { enemyConfig } = generateFromSeed();
@@ -71,34 +80,27 @@ export default function EnemySpawner() {
 
         plane.material = mat;
 
-        // Create Yuka vehicle with AI behavior
         const vehicle = new YUKA.Vehicle();
         vehicle.position.set(startX, startY, startZ);
         vehicle.maxSpeed = enemyConfig.speed * levelMultiplier * 2;
 
-        // Assign behavior based on seed
         const behavior = enemyConfig.behavior;
         if (behavior === 'seek') {
-          const seekBehavior = new YUKA.SeekBehavior(sphereTarget.current);
-          vehicle.steering.add(seekBehavior);
+          vehicle.steering.add(new YUKA.SeekBehavior(sphereTarget.current));
         } else if (behavior === 'wander') {
           const wanderBehavior = new YUKA.WanderBehavior();
           wanderBehavior.radius = 1.5;
           wanderBehavior.distance = 3;
           vehicle.steering.add(wanderBehavior);
-          // Also add gentle seek so wander still moves toward sphere
           const gentleSeek = new YUKA.SeekBehavior(sphereTarget.current);
           gentleSeek.weight = 0.3;
           vehicle.steering.add(gentleSeek);
         } else {
-          // zigzag / split: use arrive with offset
-          const arriveBehavior = new YUKA.ArriveBehavior(sphereTarget.current, 2, 0.5);
-          vehicle.steering.add(arriveBehavior);
+          vehicle.steering.add(new YUKA.ArriveBehavior(sphereTarget.current, 2, 0.5));
         }
 
         yukaManager.current.add(vehicle);
 
-        // Track in Miniplex ECS
         const entity = world.add({
           enemy: true,
           position: { x: startX, y: startY, z: startZ },
@@ -120,19 +122,14 @@ export default function EnemySpawner() {
       }
     };
 
-    const observer = scene.onBeforeRenderObservable.add(() => {
-      const dt = scene.getEngine().getDeltaTime() / 1000;
-      const t = performance.now() / 1000;
+    const tick = (dt: number) => {
       const curTension = useLevelStore.getState().tension;
+      const t = performance.now() / 1000;
 
-      // Update Yuka AI
       yukaManager.current.update(dt);
 
-      // Sync Yuka positions to Babylon meshes and update shaders
       for (let i = enemies.current.length - 1; i >= 0; i--) {
         const e = enemies.current[i];
-
-        // Sync Yuka vehicle position to Babylon mesh + Miniplex entity
         e.mesh.position.set(e.yukaVehicle.position.x, e.yukaVehicle.position.y, e.yukaVehicle.position.z);
         if (e.entity.position) {
           e.entity.position.x = e.yukaVehicle.position.x;
@@ -140,11 +137,9 @@ export default function EnemySpawner() {
           e.entity.position.z = e.yukaVehicle.position.z;
         }
 
-        // Update shader time + uniforms
         e.material.setFloat('u_time', t);
         e.material.setFloat('u_tension', curTension);
 
-        // Set orbiting box positions for neon-raymarcher (relative to billboard center)
         if (!e.isBoss) {
           const posArray: number[] = [];
           for (let j = 0; j < 16; j++) {
@@ -154,10 +149,8 @@ export default function EnemySpawner() {
           e.material.setArray3('u_positions', posArray);
         }
 
-        // Check distance to sphere (radius-based instead of y-threshold)
         const distToSphere = e.yukaVehicle.position.distanceTo(sphereTarget.current);
         if (distToSphere < 0.6) {
-          // Split behavior: spawn 2 smaller seekers instead of tension spike
           if (e.behavior === 'split' && e.health > 1) {
             const splitPos = e.yukaVehicle.position;
             for (let s = 0; s < 2; s++) {
@@ -173,7 +166,7 @@ export default function EnemySpawner() {
 
               const childVehicle = new YUKA.Vehicle();
               childVehicle.position.set(splitPos.x + offset, splitPos.y, splitPos.z + offset);
-              childVehicle.maxSpeed = e.speed * 1.5; // Children are faster
+              childVehicle.maxSpeed = e.speed * 1.5;
               childVehicle.steering.add(new YUKA.SeekBehavior(sphereTarget.current));
               yukaManager.current.add(childVehicle);
 
@@ -197,7 +190,6 @@ export default function EnemySpawner() {
               });
             }
           } else {
-            // Normal tension spike
             useLevelStore.getState().setTension(Math.min(1, curTension + (e.isBoss ? 0.38 : 0.19)));
           }
 
@@ -209,23 +201,30 @@ export default function EnemySpawner() {
         }
       }
 
-      // Spawn waves based on tension
-      if (useSeedStore.getState().rng() < curTension * 1.1 * dt * (3 + useLevelStore.getState().currentLevel * 0.8)) {
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) {
         spawnWave();
+        scheduleWave();
       }
-    });
+    };
 
-    // Initial wave
+    scheduleWave();
     spawnWave();
 
-    // Listen for seed changes
+    const observer = scene.onBeforeRenderObservable.add(() => {
+      const dt = scene.getEngine().getDeltaTime() / 1000;
+      runFixedSteps(fixedState, dt, fixedStep, tick);
+    });
+
     const unsub = useSeedStore.subscribe(() => {
       enemies.current.forEach((e) => {
+        yukaManager.current.remove(e.yukaVehicle);
         e.mesh.dispose();
         e.material.dispose();
         world.remove(e.entity);
       });
       enemies.current = [];
+      scheduleWave();
       spawnWave();
     });
 

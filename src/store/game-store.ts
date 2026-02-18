@@ -4,13 +4,16 @@ type GamePhase = 'title' | 'playing' | 'paused' | 'gameover';
 
 interface GameState {
   phase: GamePhase;
+  restartToken: number;
   setPhase: (phase: GamePhase) => void;
   togglePause: () => void;
   restart: () => void;
+  triggerRestart: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
   phase: 'title',
+  restartToken: 0,
 
   setPhase: (phase: GamePhase) => set({ phase }),
 
@@ -22,6 +25,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   restart: () => {
     set({ phase: 'title' });
-    // Level store and seed store will be reset by the gameboard when transitioning from title -> playing
+  },
+
+  triggerRestart: () => {
+    set((state) => ({ phase: 'playing', restartToken: state.restartToken + 1 }));
   },
 }));
