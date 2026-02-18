@@ -18,11 +18,15 @@ export async function getGameState(page: Page) {
   return page.evaluate(() => (window as any).__gameState ?? null);
 }
 
-export async function waitForTitleFade(page: Page, timeout = 10_000) {
+export async function waitForTitleFade(page: Page, timeout = 15_000) {
+  // Wait for loading screen (2s) + title sizzle (2.4s) + fade (0.9s) to complete
   await page.waitForFunction(
     () => {
+      const loading = document.querySelector('[data-testid="loading-overlay"]');
       const title = document.querySelector('[data-testid="title-overlay"]');
-      return !title || getComputedStyle(title).opacity === '0';
+      const loadingGone = !loading || getComputedStyle(loading).opacity === '0';
+      const titleGone = !title || getComputedStyle(title).opacity === '0';
+      return loadingGone && titleGone;
     },
     { timeout },
   );

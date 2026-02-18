@@ -23,29 +23,31 @@ test.describe('Governor (automated player) tests', () => {
   });
 
   test('game-over -> restart cycle completes without errors', async ({ page }) => {
-    // Force game over
+    const gameOverOverlay = page.locator('[data-testid="gameover-overlay"]');
+
     await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent('gameOver'));
     });
-    await expect(page.getByText('SHATTERED')).toBeVisible({ timeout: 5_000 });
+    await expect(gameOverOverlay).toBeVisible({ timeout: 5_000 });
 
-    // Restart
     await page.getByText('Click anywhere to dream again').click();
-    await expect(page.getByText('SHATTERED')).not.toBeVisible({ timeout: 5_000 });
+    await expect(gameOverOverlay).not.toBeVisible({ timeout: 5_000 });
 
     const canvas = page.locator('#reactylon-canvas, canvas').first();
     await expect(canvas).toBeVisible();
   });
 
   test('three full game-over/restart cycles are stable', async ({ page }) => {
+    const gameOverOverlay = page.locator('[data-testid="gameover-overlay"]');
+
     for (let cycle = 0; cycle < 3; cycle++) {
       await page.evaluate(() => {
         window.dispatchEvent(new CustomEvent('gameOver'));
       });
-      await expect(page.getByText('SHATTERED')).toBeVisible({ timeout: 5_000 });
+      await expect(gameOverOverlay).toBeVisible({ timeout: 5_000 });
 
       await page.getByText('Click anywhere to dream again').click();
-      await expect(page.getByText('SHATTERED')).not.toBeVisible({ timeout: 5_000 });
+      await expect(gameOverOverlay).not.toBeVisible({ timeout: 5_000 });
 
       await page.waitForTimeout(1_000);
     }

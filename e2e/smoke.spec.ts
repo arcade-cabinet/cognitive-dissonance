@@ -7,6 +7,11 @@ test.describe('Smoke tests', () => {
     expect(response?.status()).toBe(200);
   });
 
+  test('loading screen "INITIALIZING CORE" appears first', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByText('INITIALIZING CORE')).toBeVisible({ timeout: 3_000 });
+  });
+
   test('canvas element exists and has non-zero dimensions', async ({ page }) => {
     await page.goto('/');
     await waitForCanvas(page);
@@ -16,16 +21,17 @@ test.describe('Smoke tests', () => {
     expect(dims!.height).toBeGreaterThan(0);
   });
 
-  test('title "COGNITIVE DISSONANCE" appears', async ({ page }) => {
+  test('title "COGNITIVE DISSONANCE" appears after loading', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('COGNITIVE')).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText('DISSONANCE')).toBeVisible({ timeout: 5_000 });
+    // Loading fades after 2s, title appears
+    await expect(page.getByText('COGNITIVE')).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByText('DISSONANCE')).toBeVisible({ timeout: 8_000 });
   });
 
-  test('title fades after ~2.4 seconds', async ({ page }) => {
+  test('title fades after appearing', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('COGNITIVE')).toBeVisible({ timeout: 5_000 });
-    await page.waitForTimeout(4_000);
+    // Wait for title to appear then fade: 2s loading + 2.4s title + some buffer
+    await page.waitForTimeout(8_000);
     const titleOverlay = page.locator('[data-testid="title-overlay"]');
     const isHidden = await titleOverlay.isHidden().catch(() => true);
     const opacity = isHidden ? '0' : await titleOverlay.evaluate((el) => getComputedStyle(el).opacity);
@@ -48,8 +54,7 @@ test.describe('Smoke tests', () => {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('/');
     await waitForCanvas(page);
-    await page.waitForTimeout(2_000);
-    // Filter out known benign errors (e.g. WebGL warnings)
+    await page.waitForTimeout(3_000);
     const criticalErrors = errors.filter(
       (e) => !e.includes('WebGL') && !e.includes('GL_INVALID') && !e.includes('WEBGL_'),
     );

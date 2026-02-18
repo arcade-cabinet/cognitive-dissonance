@@ -16,30 +16,29 @@ test.describe('Gameplay tests', () => {
   test('game-over overlay shows "COGNITION SHATTERED" on high tension', async ({ page }) => {
     await waitForTitleFade(page);
 
-    // Inject max tension to force game over
     await page.evaluate(() => {
-      const event = new CustomEvent('gameOver');
-      window.dispatchEvent(event);
+      window.dispatchEvent(new CustomEvent('gameOver'));
     });
 
-    await expect(page.getByText('COGNITION')).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText('SHATTERED')).toBeVisible({ timeout: 5_000 });
+    const gameOverOverlay = page.locator('[data-testid="gameover-overlay"]');
+    await expect(gameOverOverlay).toBeVisible({ timeout: 5_000 });
+    await expect(gameOverOverlay.getByRole('heading', { name: 'SHATTERED' })).toBeVisible();
   });
 
   test('clicking game-over overlay triggers restart', async ({ page }) => {
     await waitForTitleFade(page);
 
-    // Force game over
     await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent('gameOver'));
     });
-    await expect(page.getByText('SHATTERED')).toBeVisible({ timeout: 5_000 });
+
+    const gameOverOverlay = page.locator('[data-testid="gameover-overlay"]');
+    await expect(gameOverOverlay).toBeVisible({ timeout: 5_000 });
 
     // Click to restart
     await page.getByText('Click anywhere to dream again').click();
 
-    // Game-over overlay should disappear
-    await expect(page.getByText('SHATTERED')).not.toBeVisible({ timeout: 5_000 });
+    await expect(gameOverOverlay).not.toBeVisible({ timeout: 5_000 });
   });
 
   test('tension can be set via Zustand store bridge', async ({ page }) => {
@@ -58,8 +57,11 @@ test.describe('Gameplay tests', () => {
   });
 
   test('full game flow: title → play → game over → restart → stable', async ({ page }) => {
-    // Title appears
-    await expect(page.getByText('COGNITIVE')).toBeVisible({ timeout: 5_000 });
+    // Loading screen appears
+    await expect(page.getByText('INITIALIZING CORE')).toBeVisible({ timeout: 3_000 });
+
+    // Title appears after loading
+    await expect(page.locator('[data-testid="title-overlay"]')).toBeVisible({ timeout: 8_000 });
 
     // Title fades
     await waitForTitleFade(page);
@@ -71,20 +73,25 @@ test.describe('Gameplay tests', () => {
     await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent('gameOver'));
     });
-    await expect(page.getByText('SHATTERED')).toBeVisible({ timeout: 5_000 });
+
+    const gameOverOverlay = page.locator('[data-testid="gameover-overlay"]');
+    await expect(gameOverOverlay).toBeVisible({ timeout: 5_000 });
+
+    // High score info visible
+    await expect(gameOverOverlay.getByText('Peak coherence')).toBeVisible();
+
+    // Share button visible
+    await expect(gameOverOverlay.getByText('Share this dream')).toBeVisible();
 
     // Restart
     await page.getByText('Click anywhere to dream again').click();
-    await expect(page.getByText('SHATTERED')).not.toBeVisible({ timeout: 5_000 });
+    await expect(gameOverOverlay).not.toBeVisible({ timeout: 5_000 });
 
     // Canvas still alive
     const canvas = page.locator('#reactylon-canvas, canvas').first();
     await expect(canvas).toBeVisible();
 
-    // Game runs after restart
     await page.waitForTimeout(2_000);
-
-    // Still stable
     await expect(canvas).toBeVisible();
   });
 });
