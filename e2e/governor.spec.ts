@@ -1,142 +1,66 @@
-import { expect, test } from '@playwright/test';
-import { navigateToGame, screenshot, startGame, verifyGamePlaying } from './helpers/game-helpers';
-import { GameGovernor } from './helpers/governor';
+import { test, expect } from '@playwright/test';
+import { waitForCanvas, waitForTitleFade } from './helpers/game-helpers';
 
-/** Race a playthrough against a timeout, cleaning up the timer on resolution. */
-async function raceWithTimeout(
-  governor: GameGovernor,
-  playthroughPromise: Promise<{ result: string; score: number }>,
-  ms: number
-): Promise<{ result: string; score: number }> {
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeoutPromise = new Promise<{ result: 'loss'; score: number }>((resolve) => {
-    timeoutId = setTimeout(() => {
-      governor.stop();
-      resolve({ result: 'loss', score: 0 });
-    }, ms);
-  });
-  try {
-    return await Promise.race([playthroughPromise, timeoutPromise]);
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-/**
- * AI Governor-driven playthrough.
- *
- * Smoke suite (PRs): runs only the default playthrough.
- * Full matrix (CD): runs all variants (aggressive, defensive, verify-running).
- */
-test.describe('Automated Playthrough with Governor', () => {
-  test.setTimeout(180000);
-
-  test('should run automated playthrough with default settings', async ({ page }) => {
-    await navigateToGame(page);
-    await screenshot(page, 'governor', '01-start');
-
-    const governor = new GameGovernor(page);
-    const playthroughPromise = governor.playthrough();
-
-    await page.waitForTimeout(5000);
-    await screenshot(page, 'governor', '02-gameplay');
-
-    await page.waitForTimeout(5000);
-    await screenshot(page, 'governor', '03-mid-game');
-
-    const result = await raceWithTimeout(governor, playthroughPromise, 60000);
-
-    await screenshot(page, 'governor', '04-end');
-    expect(result.result).toMatch(/^(win|loss)$/);
-    expect(result.score).toBeGreaterThanOrEqual(0);
-    console.log(`Playthrough completed with result: ${result.result}, score: ${result.score}`);
+test.describe('Governor (automated player) tests', () => {
+  test.beforeEach(async ({ page }) => {
+    page.on('pageerror', (error) => {
+      throw new Error(`Unhandled page exception: ${error.message}`);
+    });
+    await page.goto('/');
+    await waitForCanvas(page);
+    await waitForTitleFade(page);
   });
 
-  // Extended governor tests — only run in full matrix (CD), tagged with @matrix
-  test('should play aggressively with high accuracy @matrix', async ({ page }) => {
-    await navigateToGame(page);
-
-    const governor = new GameGovernor(page, {
-      aggressiveness: 0.9,
-      accuracy: 1,
-      reactionTime: 200,
-      useSpecials: true,
+  test('game survives 10 seconds without crashing', async ({ page }) => {
+    // Expose game state for monitoring
+    await page.evaluate(() => {
+      (window as any).__governorStart = Date.now();
     });
 
-    const playthroughPromise = governor.playthrough();
+    // Wait 10 seconds — game should not crash or navigate away
+    await page.waitForTimeout(10_000);
 
-    await page.waitForTimeout(5000);
-    await screenshot(page, 'governor-aggressive', '01-gameplay');
+    const still200 = await page.evaluate(() => document.readyState === 'complete');
+    expect(still200).toBe(true);
 
-    const aggressiveResult = await raceWithTimeout(governor, playthroughPromise, 60000);
-
-    await screenshot(page, 'governor-aggressive', '02-end');
-    expect(aggressiveResult.result).toMatch(/^(win|loss)$/);
-    expect(aggressiveResult.score).toBeGreaterThanOrEqual(0);
-    console.log(
-      `Aggressive playthrough: ${aggressiveResult.result}, score: ${aggressiveResult.score}`
-    );
+    const canvas = page.locator('#reactylon-canvas, canvas').first();
+    await expect(canvas).toBeVisible();
   });
 
-  test('should play defensively with lower accuracy @matrix', async ({ page }) => {
-    await navigateToGame(page);
-
-    const governor = new GameGovernor(page, {
-      aggressiveness: 0.5,
-      accuracy: 1,
-      reactionTime: 500,
-      useSpecials: false,
+  test('game-over -> restart cycle completes without errors', async ({ page }) => {
+    // Force game over
+    await page.evaluate(() => {
+      window.dispatchEvent(new CustomEvent('gameOver'));
     });
+    await expect(page.getByText('SHATTERED')).toBeVisible({ timeout: 5_000 });
 
-    const playthroughPromise = governor.playthrough();
+    // Restart
+    await page.getByText('Click anywhere to dream again').click();
+    await expect(page.getByText('SHATTERED')).not.toBeVisible({ timeout: 5_000 });
 
-    await page.waitForTimeout(5000);
-    await screenshot(page, 'governor-defensive', '01-gameplay');
-
-    const defensiveResult = await raceWithTimeout(governor, playthroughPromise, 60000);
-
-    await screenshot(page, 'governor-defensive', '02-end');
-    expect(defensiveResult.result).toMatch(/^(win|loss)$/);
-    expect(defensiveResult.score).toBeGreaterThanOrEqual(0);
-    console.log(
-      `Defensive playthrough: ${defensiveResult.result}, score: ${defensiveResult.score}`
-    );
+    // Canvas should still be alive
+    const canvas = page.locator('#reactylon-canvas, canvas').first();
+    await expect(canvas).toBeVisible();
   });
 
-  test('should verify game continues running during automated play @matrix', async ({ page }) => {
-    await navigateToGame(page);
+  test('three full game-over/restart cycles are stable', async ({ page }) => {
+    for (let cycle = 0; cycle < 3; cycle++) {
+      // Force game over
+      await page.evaluate(() => {
+        window.dispatchEvent(new CustomEvent('gameOver'));
+      });
+      await expect(page.getByText('SHATTERED')).toBeVisible({ timeout: 5_000 });
 
-    const governor = new GameGovernor(page);
+      // Restart
+      await page.getByText('Click anywhere to dream again').click();
+      await expect(page.getByText('SHATTERED')).not.toBeVisible({ timeout: 5_000 });
 
-    await startGame(page);
-
-    const timeDisplay = page.locator('#time-display');
-    let workerActive = false;
-    try {
-      await expect(async () => {
-        const text = await timeDisplay.textContent();
-        expect(Number(text)).toBeGreaterThan(0);
-      }).toPass({ timeout: 10000 });
-      workerActive = true;
-    } catch {
-      console.log('Worker did not send state updates within timeout, skipping time assertions');
+      // Brief settle time
+      await page.waitForTimeout(1_000);
     }
 
-    await verifyGamePlaying(page);
-
-    governor.start().catch((err) => console.error('Governor start failed:', err));
-    await page.waitForTimeout(5000);
-
-    await verifyGamePlaying(page);
-
-    if (workerActive) {
-      const time1 = await timeDisplay.textContent();
-      await page.waitForTimeout(3000);
-      const time2 = await timeDisplay.textContent();
-      expect(time1).not.toBe(time2);
-    }
-
-    governor.stop();
-    await screenshot(page, 'governor', 'verify-running');
+    // Canvas still alive after 3 cycles
+    const canvas = page.locator('#reactylon-canvas, canvas').first();
+    await expect(canvas).toBeVisible();
   });
 });

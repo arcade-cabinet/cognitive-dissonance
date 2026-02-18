@@ -1,0 +1,27 @@
+### How to Use
+
+1. Replace your existing `SonnyBust` with the new one above.
+2. Use `GameBoard` as the root of your game page.
+3. Add an “Enter VR” button anywhere (it calls `enterXR()` from the component).
+
+Everything works together:
+- ATC shader = animated gameboard background
+- Sonny bust = transparent 3D layer on top
+- Hand tracking in VR/AR = real-time interaction (eyes follow finger, chest proximity raises tension, pinch = flinch)
+
+You now have a complete, layered, production-ready gameboard with the most beautiful shader background and fully interactive XR Sonny bust.
+
+Drop the files in and run. The machine is now aware of your hands.
+
+Want the next layer (pinch-to-grab Sonny’s hand, wave-to-wave back, etc.)? Just say the word.
+
+**[USER]**
+
+The big "cognitive dissonance" moment will come from ... This is a missile command style game with a bottom row depressable "f keys" style keyboard row with programmable keycaos in the same technopunk cold industrial metal aesthetic with RGB lighting surrounds that... The idea is that you are mainlining WITH the AI working on your code and different types of hallucinations are falling or splitting or zigzagging based on their character traits or whatever, using yukajs driven by the miniplex descriptors for each enemy and boss. And we store the full 3D procedural AND enboss portrait for each keycao so that the game can START with Cognitive Dissonance, two title lines. Center positioned over a semi opaque overlay on top of the game board. "Sizzles" away, maybe static?? And then game board, AI facing towards board, the key caps are six and six with a space bar in the middle for pause during the game. At game start keycaps to the left and right of space bar show a Play portrait symbol and Fast Forward portrait symbol for new game and continue game respectively. As hallucinations get through tension is shown increasing visually by the AI rotating back around to blink at you with eyes increasingly shading towards red, neck and shoulders tensing. Rgb lighting on keyboard aligns to that change from calm blues through the spectrum to angry reds. Game ends with the AIs head exploding if you go to maximum tension. Si THAT is the game in its current planning. Logarithmic progression, Yuka for enemies and bosses, am thinking since it's 3D maybe wrap the keycaps around the front face of the black cylinder "lazy susan" style platter the AI is mounted on. On new game or continue game AI rotates around for the first time and you see its face, then rotates back to signal game start / resume.
+
+**[ASSISTANT]**
+
+**Full "Cognitive Dissonance" Game Implementation**  
+Missile Command-style defense against hallucinations, with Sonny AI on a rotating lazy-susan platter that doubles as the programmable keyboard row. All in **shadcn + Tailwind + TypeScript + Reactylon + Babylon.js + Miniplex**.
+
+### Project Structure (already set up by shadcn init)

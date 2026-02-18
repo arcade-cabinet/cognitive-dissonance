@@ -1,0 +1,10 @@
+// package.json
+{
+  "dependencies": {
+    "@babylonjs/core": "^8.51.2",
+    "reactylon": "^3.5.4",
+    "@babylonjs/gui": "^8.51.2",          // if you ever use GUI
+    "@babylonjs/loaders": "^8.51.2",      // if you load GLTF/GLB
+    // all other packages unchanged (GSAP, Tone.js, Zustand, Miniplex, etc.)
+  }
+}

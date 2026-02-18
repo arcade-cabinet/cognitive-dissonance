@@ -1,0 +1,31 @@
+{
+  "name": "cognitive-dissonance",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@babylonjs/core": "^8.51.2",
+    "@babylonjs/loaders": "^8.51.2",
+    "gsap": "^3.12.5",
+    "next": "15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "seedrandom": "^3.0.5",
+    "tone": "^14.8.49",
+    "zustand": "^5.0.0",
+    "yuka": "^0.7.0",
+    "miniplex": "^2.0.0",
+    "miniplex-react": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5",
+    "babel-plugin-reactylon": "latest"
+  }
+}

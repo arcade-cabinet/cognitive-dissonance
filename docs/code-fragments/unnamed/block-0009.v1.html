@@ -1,0 +1,17 @@
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const lerp = THREE.MathUtils.lerp;
+const ss = (a,b,x) => { const t=Math.max(0,Math.min(1,(x-a)/(b-a))); return t*t*(3-2*t); };
+const gauss = (x,c,s) => Math.exp(-Math.pow(x-c,2)/(2*s*s));
+
+// SDF primitives (GLSL style, but also JS for marching cubes)
+const sdf = {
+  sphere: (p,r) => p.length() - r,
+  box: (p,b) => Math.max(Math.abs(p.x)-b.x, Math.abs(p.y)-b.y, Math.abs(p.z)-b.z),
+  union: (a,b) => Math.min(a,b),
+  subtract: (a,b) => Math.max(a,-b),
+  smoothUnion: (a,b,k) => { const h=Math.max(k-Math.abs(a-b),0); return Math.min(a,b)-h*h*0.25/k; },
+  smoothSubtract: (a,b,k) => { const h=Math.max(k-Math.abs(-a-b),0); return Math.max(a,-b)-h*h*0.25/k; }
+};

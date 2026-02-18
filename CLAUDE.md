@@ -4,56 +4,64 @@
 
 This file contains **Claude-specific** development instructions. For project documentation, see:
 
-- **[AGENTS.md](./AGENTS.md)** — Cross-agent memory bank (architecture, patterns, tech context, file structure)
-- **[docs/DESIGN_VISION.md](./docs/DESIGN_VISION.md)** — Photorealistic procedural generation vision (THE authoritative design target)
-- **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** — System architecture deep dive
-- **[docs/DESIGN_SYSTEM.md](./docs/DESIGN_SYSTEM.md)** — Design tokens and visual language
-- **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** — Build, deploy, CI/CD pipeline
-- **[docs/AUTOMATED_WORKFLOWS.md](./docs/AUTOMATED_WORKFLOWS.md)** — GitHub Actions workflow documentation
+- **[AGENTS.md](./AGENTS.md)** — Cross-agent memory bank (architecture, patterns, tech context)
+- **[README.md](./README.md)** — Installation, controls, architecture overview
+- **[docs/memory-bank/](./docs/memory-bank/)** — Cline-style memory bank (6 core files + design decisions)
 
-Always read AGENTS.md and the relevant docs/ files before starting work. Update AGENTS.md after significant changes.
+Always read AGENTS.md before starting work. Update AGENTS.md and docs/memory-bank/ after significant changes.
+
+> The full Grok conversation corpus lives in `docs/memory-bank/grok-doc/` and `docs/code-fragments/`. Start with `docs/memory-bank/grok-doc/main-conversation/INDEX.md` to navigate. Read `docs/memory-bank/handoff.md` for the complete implementation roadmap.
 
 ## Design Vision (Critical)
 
-The visual target is **photorealistic procedural generation** with a **rear bust composition** — camera behind the NS-5 android showing back of head, shoulders, and keyboard row. NOT low-poly, NOT retro, NOT cartoonish. Every 3D element must use complex curves, PBR materials, procedural textures, and sophisticated lighting. Enemies are **raymarched SDF shapes** (denial=sphere-lid, delusion=octahedron, fallacy=torus) with holographic iridescent materials. Game over is a **head explosion effect** (anime.js). Read `docs/DESIGN_VISION.md` for the full specification before touching any rendering code.
+The visual target is a **fragile glass sphere containing a celestial nebula shader** sitting on a **heavy industrial black metal platter**. The sphere degrades from calm blue to violent red as tension rises. Pattern stabilization is the core gameplay — hold matching keycaps to pull back escaping corruption. Everything is diegetic — no HUD, just the machine.
 
 ## Commands
 
 ```bash
-pnpm dev          # Dev server (Vite)
-pnpm build        # Production build (typecheck + icons + Vite)
-pnpm typecheck    # TypeScript strict check
-pnpm lint         # Biome lint
+pnpm dev          # Dev server (Turbopack, 440ms startup)
+pnpm build        # Production build (Turbopack, ~11s)
+pnpm start        # Production server
+pnpm lint         # Biome check
 pnpm lint:fix     # Biome auto-fix
-pnpm test         # Vitest unit tests
-pnpm test:e2e     # Playwright E2E tests
+pnpm format       # Biome format
+pnpm test:e2e     # Playwright E2E suite (11 tests)
 ```
-
-## Code Quality Gates
-
-All PRs must pass: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`
 
 ## Key Architecture Decisions
 
-- **Worker + ECS**: Game logic runs in a Web Worker (`game-logic.ts`). State syncs to Miniplex ECS. R3F systems render ECS entities.
-- **Ref-based rendering**: GameScene uses refs (not state) for 60fps updates without React re-renders.
-- **Seeded RNG**: All game-state randomness uses `src/lib/rng.ts` (mulberry32). Cosmetic randomness (particles, stars) may use Math.random().
-- **No monoliths**: Logic in `/lib/`, not `.tsx` files. Components are thin rendering layers.
-- **`miniplex-react`** (not `@miniplex/react`) is the correct React bindings package.
+- **Next.js 16 + Turbopack**: Default bundler, 440ms dev startup, ~11s builds
+- **Babylon.js 8 + Reactylon 3.5**: Declarative React bindings for Babylon.js
+- **babel-plugin-reactylon**: Auto-registers Babylon.js classes for lowercase JSX. Turbopack uses Babel for user code, SWC for Next.js internals — no performance penalty.
+- **Imperative mesh creation**: All 3D objects created in useEffect, not JSX (except lights/camera)
+- **Render loop**: `scene.registerBeforeRender(fn)` / `scene.unregisterBeforeRender(fn)`
+- **GSAP for animations**: gsap.to(mesh.position, {...}) works natively with Babylon.js Vector3
+- **CSP-safe shaders**: All GLSL stored in `BABYLON.Effect.ShadersStore` as static string literals
+- **SSR bypass**: All 3D in `'use client'` files, loaded via `dynamic({ ssr: false })`
+- **Zustand for state**: Tension, coherence, seed — bridges Babylon.js render loop to React
+- **Tone.js exclusive**: Babylon.js audioEngine disabled, Tone.js handles all sound
+- **Biome 2.4**: Linting + formatting (replaced ESLint — single binary, zero plugin deps)
+- **Playwright**: E2E testing with headless Chromium
 
 ## Conventions
 
-- Biome for lint + format (not ESLint/Prettier)
-- `pnpm` (not npm/yarn)
-- Design tokens in `src/design/tokens.ts` — all colors and spacing come from here
-- E2E tests use shared helpers from `e2e/helpers/`
-- Governor subpackage at `e2e/helpers/governor/` for automated playthroughs
+- Tailwind CSS for 2D overlays
+- System monospace fonts (Courier New) — no external font dependencies
+- Lowercase Reactylon JSX tags: `<hemisphericLight>`, `<arcRotateCamera>`, `<pointLight>`
+- `pnpm` package manager
+- All game code under `src/`
 
-## Known Open Issues
+## File Structure
 
-See the "Open" section in code review findings tracked in AGENTS.md and GitHub Issues. Key items:
-
-- Colorblind panic bar indicator needed
-- Music and worker modules lack unit tests
-- Floating-point drift in secondAccumulator (minor)
-- calculateAccuracy API returns 0-100 while calculateGrade expects 0-1 (caller divides)
+```
+src/
+  app/          Next.js App Router (layout, page, globals.css)
+  components/   All game components (3D + 2D)
+  store/        Zustand stores (seed, level, audio, game, input)
+  lib/          Utilities + shader definitions
+  game/         Miniplex ECS world
+  types/        TypeScript declarations
+e2e/            Playwright E2E tests (smoke, gameplay, governor)
+docs/
+  memory-bank/  Cline-style memory bank (6 core files)
+```
