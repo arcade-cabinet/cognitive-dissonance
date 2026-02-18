@@ -68,7 +68,8 @@ export default function ATCShader({ className = '' }: ATCShaderProps) {
     }
 
     const compile = (type: number, src: string) => {
-      const shader = gl.createShader(type)!;
+      const shader = gl.createShader(type);
+      if (!shader) return null;
       gl.shaderSource(shader, src);
       gl.compileShader(shader);
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
@@ -79,8 +80,16 @@ export default function ATCShader({ className = '' }: ATCShaderProps) {
 
     const vertShader = compile(gl.VERTEX_SHADER, vertSrc);
     const fragShader = compile(gl.FRAGMENT_SHADER, fragSrc);
+    if (!vertShader || !fragShader) {
+      errorEl.textContent = 'Failed to create shaders';
+      return;
+    }
 
-    const program = gl.createProgram()!;
+    const program = gl.createProgram();
+    if (!program) {
+      errorEl.textContent = 'Failed to create program';
+      return;
+    }
     gl.attachShader(program, vertShader);
     gl.attachShader(program, fragShader);
     gl.linkProgram(program);
@@ -90,18 +99,26 @@ export default function ATCShader({ className = '' }: ATCShaderProps) {
       return;
     }
 
-    // biome-ignore lint/correctness/useHookAtTopLevel: WebGL API, not a React hook
+    // biome-ignore lint/correctness/useHookAtTopLevel: WebGL API method, not a React hook
     gl.useProgram(program);
 
-    const buffer = gl.createBuffer()!;
+    const buffer = gl.createBuffer();
+    if (!buffer) {
+      errorEl.textContent = 'Failed to create buffer';
+      return;
+    }
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
 
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
-    const uRes = gl.getUniformLocation(program, 'u_res')!;
-    const uTime = gl.getUniformLocation(program, 'u_time')!;
+    const uRes = gl.getUniformLocation(program, 'u_res');
+    const uTime = gl.getUniformLocation(program, 'u_time');
+    if (!uRes || !uTime) {
+      errorEl.textContent = 'Failed to get uniform locations';
+      return;
+    }
 
     const resize = () => {
       const dpr = Math.min(2, window.devicePixelRatio || 1);

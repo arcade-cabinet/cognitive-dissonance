@@ -2,51 +2,76 @@
 
 ## What Works
 
-- [x] Next.js 16 + Turbopack (dev: 440ms startup, build: ~11s)
+### Foundation
+- [x] Next.js 16 + Turbopack (dev: 440ms startup, build: ~14s)
 - [x] React 19 + TypeScript 5.9
-- [x] Biome 2.4.1 linting/formatting
+- [x] Biome 2.4.1 — 0 errors, 0 warnings
 - [x] babel-plugin-reactylon tree-shaking via Turbopack
-- [x] `pnpm build` passes — zero errors
-- [x] `pnpm dev` serves 200 OK on first page load
-- [x] All 15 component files compile and load at runtime
-- [x] 5 Zustand stores (seed, level, audio, game, input)
-- [x] 3 shader materials ported to Babylon.js 8 (celestial, neon-raymarcher, crystalline-cube)
-- [x] Miniplex ECS world with archetypes
+- [x] `pnpm build` passes
+- [x] `pnpm dev` serves 200 OK
+- [x] All component files compile and load at runtime
+
+### Core Gameplay
+- [x] Deterministic fixed-step spawn scheduling for patterns and enemy waves (FPS-independent tick model)
+- [x] Per-color keycap matching (12 keycaps, seeded colorIndex, only matching key stabilizes)
+- [x] Pattern stabilization (escaping tendrils, hold to pull back, per-color matching)
+- [x] Enemy spawner (Yuka AI: seek, wander, zigzag, split behaviors)
+- [x] Enemy split behavior (2 smaller seeker children on death)
+- [x] Moment of clarity (coherence at 100 → blue pulse, "COHERENCE MAINTAINED", entropy resumes)
+- [x] Glass sphere with celestial nebula shader (tension-driven degradation)
+- [x] Sphere shatter at max tension (particle explosion + game over)
+- [x] Restart ritual (spheres recreate with GSAP emergence + emissive pulse)
+- [x] Keycap color palette (`src/lib/keycap-colors.ts`)
+
+### Visual Polish
+- [x] Reduced-motion behavior applied to overlays and high-motion 3D/post-process systems
+- [x] Heavy industrial platter (PBR metal, garage-door keycap emergence)
+- [x] GSAP CustomEase animations (heavyMechanical, mechSettle, gearWobble)
+- [x] Metallic dust particles on garage-door open
+- [x] Recess glow animation (tension-driven intensity + color shift)
+- [x] Diegetic GUI coherence arc (two-layer: dim background + proportional foreground)
+- [x] Post-process corruption (chromatic aberration, noise, vignette, scanlines)
+- [x] SPS enemies (SolidParticleSystem for dense wave visuals)
+- [x] Symmetric title/game-over overlays ("COGNITIVE DISSONANCE" → "COGNITION SHATTERED")
 - [x] ATC WebGL2 background shader (CSP-safe)
-- [x] Title/game-over overlays with symmetric static design
-- [x] GSAP CustomEase definitions for mechanical feel
-- [x] Game code migrated to src/ directory structure
-- [x] 11 Playwright E2E tests — all passing:
-  - Smoke (5): page loads, canvas exists, title appears, title fades, canvas has context
-  - Gameplay (3): scene visible, game-over overlay, restart flow
-  - Governor (3): 10s survival, restart cycle, 3-cycle stability
 
-## What's Left (Runtime Visual Verification)
+### Audio
+- [x] Audio graph lifecycle registry + shutdown disposal (Tone nodes/loops cleaned on teardown)
+- [x] Tone.js ambient score (4 seed-driven layers: drone, pads, glitch, chimes)
+- [x] Spatial audio: pattern escape whoosh (brown noise + filter sweep)
+- [x] Spatial audio: stabilization chime (sine synth, chromatic pitch)
+- [x] Spatial audio: glass shatter (white noise + highpass + long reverb)
 
-- [ ] 3D scene visual quality check (human eye-test)
-- [ ] Glass sphere + celestial shader display
-- [ ] Platter geometry + GSAP garage-door animations
-- [ ] Pattern stabilization click detection wiring
-- [ ] Enemy spawner billboard plane depth/alpha
-- [ ] Post-process corruption visual ramp
-- [ ] SPS enemy particles activation
-- [ ] Diegetic GUI ring visibility
-- [ ] Audio initialization on user gesture
-- [ ] Full gameplay loop end-to-end
+### State Management
+- [x] 5 Zustand stores (seed, level, audio, game, input)
+- [x] Miniplex ECS world
+- [x] Zustand bridge on window for E2E access
 
-## Stubbed / Placeholder
+### Platform Scaffolds
+- [x] Web (Next.js app)
+- [x] Android/iOS native entry (`native/App.tsx`)
+- [x] XR session stub (`xr-session.tsx`)
 
-- `physics-keys.tsx`: Ammo.js setup commented out — needs full physics integration
-- `spatial-audio.tsx`: No Tone.js Panner3D nodes connected — placeholder
-- XR hand tracking: Not implemented — requires WebXR session setup
+### Testing
+- [x] 59 Vitest unit tests (stores, utilities, shaders, fixed-step determinism helpers) — all passing
+- [x] 18 Playwright E2E tests (smoke, gameplay, governor) — all passing
+- [x] Governor survives 30+ seconds with active play
+- [x] 3 restart cycle stability test
+- [x] Console error monitoring intentionally disabled in E2E
+- [x] xvfb-run for headed WebGL testing on headless servers
+
+## What's Left
+
+- [ ] Execute `docs/memory-bank/release-2.0-alignment-plan.md` for production 2.0 alignment closure
+- [ ] XR hand tracking → keycap interaction — stub only
+- [ ] Visual quality human eye-test
+- [ ] Mobile touch optimization
+- [ ] Full release-gate E2E run in CI/Xvfb environment
 
 ## Known Issues
 
 - Reactylon Engine does NOT accept `antialias` as top-level prop (must be in `engineOptions`)
 - Reactylon Scene does NOT accept `clearColor` as prop (must use `onSceneReady` callback)
-- `babel-plugin-reactylon` requires `@babel/preset-typescript` with `isTSX: true` for Turbopack
-- Zustand store action renamed from `useLastSeed` to `replayLastSeed` (avoids React hooks naming conflict)
 - `ShaderMaterial` does NOT have `storeEffectOnSubMeshes` option
 - `Tone.js` MetalSynth does NOT accept `frequency` in constructor
-- `@types/yuka` v0.7.4 provides proper type definitions
-- React Native peer dep warnings from reactylon's transitive deps (harmless)
+- React Native peer dep warnings from reactylon transitive deps (harmless)

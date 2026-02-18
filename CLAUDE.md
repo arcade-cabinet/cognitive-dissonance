@@ -20,12 +20,13 @@ The visual target is a **fragile glass sphere containing a celestial nebula shad
 
 ```bash
 pnpm dev          # Dev server (Turbopack, 440ms startup)
-pnpm build        # Production build (Turbopack, ~11s)
+pnpm build        # Production build (Turbopack, ~14s)
 pnpm start        # Production server
-pnpm lint         # Biome check
+pnpm lint         # Biome check (0 errors, 0 warnings)
 pnpm lint:fix     # Biome auto-fix
 pnpm format       # Biome format
-pnpm test:e2e     # Playwright E2E suite (11 tests)
+pnpm test         # Vitest unit tests (48 tests)
+pnpm test:e2e     # Playwright E2E via xvfb-run (17 tests, headed WebGL)
 ```
 
 ## Key Architecture Decisions

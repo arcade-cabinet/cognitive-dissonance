@@ -8,17 +8,19 @@ import AudioEngineSystem from '@/components/audio-engine';
 import DiegeticGUI from '@/components/diegetic-gui';
 import EnemySpawner from '@/components/enemy-spawner';
 import PatternStabilizer from '@/components/pattern-stabilizer';
+import PhysicsKeys from '@/components/physics-keys';
 import Platter from '@/components/platter';
 import PostProcessCorruption from '@/components/post-process-corruption';
 import SpatialAudio from '@/components/spatial-audio';
 import SPSEnemies from '@/components/sps-enemies';
+import XRSession from '@/components/xr-session';
 
 interface GameSceneProps {
-  tension: number;
   coherence: number;
+  reducedMotion: boolean;
 }
 
-function SceneContent({ tension, coherence }: GameSceneProps) {
+function SceneContent({ coherence, reducedMotion }: { coherence: number; reducedMotion: boolean }) {
   return (
     <>
       {/* Lighting */}
@@ -51,24 +53,26 @@ function SceneContent({ tension, coherence }: GameSceneProps) {
       />
 
       {/* Core 3D elements (created imperatively) */}
-      <AISphere />
-      <Platter tension={tension} />
+      <AISphere reducedMotion={reducedMotion} />
+      <Platter />
 
       {/* Gameplay systems */}
       <PatternStabilizer />
-      <EnemySpawner tension={tension} />
+      <EnemySpawner />
 
       {/* Polish systems */}
-      <PostProcessCorruption tension={tension} />
+      <PostProcessCorruption reducedMotion={reducedMotion} />
       <SpatialAudio />
       <SPSEnemies />
       <DiegeticGUI coherence={coherence} />
       <AudioEngineSystem />
+      <PhysicsKeys />
+      <XRSession />
     </>
   );
 }
 
-export default function GameScene({ tension, coherence }: GameSceneProps) {
+export default function GameScene({ coherence, reducedMotion }: GameSceneProps) {
   return (
     <Engine
       forceWebGL={true}
@@ -85,7 +89,7 @@ export default function GameScene({ tension, coherence }: GameSceneProps) {
           scene.clearColor = new BABYLON.Color4(0.04, 0.04, 0.06, 1);
         }}
       >
-        <SceneContent tension={tension} coherence={coherence} />
+        <SceneContent coherence={coherence} reducedMotion={reducedMotion} />
       </Scene>
     </Engine>
   );

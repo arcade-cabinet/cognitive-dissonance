@@ -27,7 +27,7 @@ export const useLevelStore = create<LevelState>((set, get) => ({
   },
 
   addCoherence: (amount: number) => {
-    const newCoherence = Math.min(100, get().coherence + amount);
+    const newCoherence = Math.max(0, Math.min(100, get().coherence + amount));
     set({
       coherence: newCoherence,
       peakCoherence: Math.max(get().peakCoherence, newCoherence),

@@ -11,22 +11,32 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
+  # ── Build + Test ──
   build-and-test:
-    name: Build + E2E
+    name: Build + Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - name: Build
+
+      - name: Unit Tests
+        run: pnpm test
+
+      - name: Build (standard)
         run: pnpm build
+
       - name: Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
+
       - name: Run E2E (headed via xvfb)
-        run: xvfb-run pnpm exec playwright test --workers=1
+        run: xvfb-run --auto-servernum pnpm exec playwright test --workers=1
         env:
           CI: "true"
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -35,3 +45,102 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  # ── Deploy to GitHub Pages ──
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Build static export for GitHub Pages
+        run: pnpm build
+        env:
+          GITHUB_PAGES: "true"
+
+      - name: Add .nojekyll
+        run: touch out/.nojekyll
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ── Build Android Debug APKs ──
+  android-apk:
+    name: Android Debug APKs
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            android/.gradle
+          key: gradle-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-
+
+      - name: Build debug APKs (all architectures)
+        id: apk-build
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+        continue-on-error: true
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-debug-apks
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' && steps.apk-build.outcome == 'success'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v2.0.0-${{ github.run_number }}
+          name: "v2.0.0 Build ${{ github.run_number }}"
+          body: |
+            ## Cognitive Dissonance v2.0.0
+
+            Debug build from commit ${{ github.sha }}.
+
+            ### Downloads
+            - **Web**: https://arcade-cabinet.github.io/cognitive-dissonance/
+            - **Android APKs**: Attached below (debug builds, all architectures)
+
+            ### What's New
+            Complete v2.0 implementation — see PR #172 for full details.
+          files: android/app/build/outputs/apk/debug/*.apk
+          draft: false
+          prerelease: true
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -17,19 +17,22 @@
 | seedrandom | 3.0 | Deterministic buried seed |
 | Tailwind CSS | 4 | 2D overlay styling |
 | Biome | 2.4.1 | Linting + formatting (replaced ESLint) |
-| Playwright | 1.58 | E2E testing |
+| Playwright | 1.58 | E2E testing (headed + xvfb) |
+| Vitest | 4.0 | Unit testing |
 | babel-plugin-reactylon | 1.3 | Babylon.js tree-shaking via JSX analysis |
 
 ## Commands
 
 ```bash
 pnpm dev          # Dev server (Turbopack, 440ms startup)
-pnpm build        # Production build (Turbopack, ~11s)
+pnpm build        # Production build (Turbopack, ~14s)
 pnpm start        # Production server
-pnpm lint         # Biome check
+pnpm lint         # Biome check (0 errors, 0 warnings)
 pnpm lint:fix     # Biome auto-fix
 pnpm format       # Biome format
-pnpm test:e2e     # Playwright E2E suite (11 tests)
+pnpm test         # Vitest unit tests (48 tests)
+pnpm test:watch   # Vitest watch mode
+pnpm test:e2e     # Playwright E2E via xvfb-run (17 tests, headed WebGL)
 ```
 
 ## Constraints
@@ -42,14 +45,23 @@ pnpm test:e2e     # Playwright E2E suite (11 tests)
 - **Node.js >= 22.11** required (Reactylon + Next.js 16).
 - System fonts: Courier New monospace — no external font deps.
 - **Turbopack is the bundler** (both dev and build). No custom webpack config.
+- **E2E tests require headed mode**: Use `xvfb-run` on headless servers for WebGL context.
+
+## Key Patterns
+
+- **Keycap color mapping**: `src/lib/keycap-colors.ts` — 12 evenly-spaced HSL hues, shared between platter and pattern-stabilizer
+- **Spatial audio events**: Custom DOM events (`patternEscaped`, `patternStabilized`, `sphereShattered`) bridge gameplay → audio
+- **Moment of clarity**: Coherence at 100 → GSAP pulse + overlay → entropy resumes (no win state)
+- **Zustand E2E bridge**: Stores exposed on `window.__zustand_*` for Playwright test access
 
 ## Key Dependency Notes
 
 - Reactylon exports `Engine` from `reactylon/web`, everything else from `reactylon`
 - `useScene()` hook from `reactylon` returns `BABYLON.Scene`
-- `scene.registerBeforeRender(fn)` / `scene.unregisterBeforeRender(fn)` for render loops
+- `scene.onBeforeRenderObservable.add(fn)` for render loops (not `registerBeforeRender`)
 - `babel-plugin-reactylon` auto-registers Babylon.js classes for lowercase JSX tags
-- Turbopack in Next.js 16 uses Babel for user code (via `babel.config.js`) while SWC handles Next.js internals — no performance penalty
+- Turbopack in Next.js 16 uses Babel for user code, SWC for internals
 - `Effect.ShadersStore` keys: `{name}VertexShader`, `{name}FragmentShader`
 - GSAP plugins must be registered once: `gsap.registerPlugin(CustomEase)`
 - Zustand store action `replayLastSeed` (not `useLastSeed` — avoids React hooks naming conflict)
+- Babylon.js `CreateTorus` has no `arc` parameter — use `CreateTube` with circular path for partial arcs

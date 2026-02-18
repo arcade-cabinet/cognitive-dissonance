@@ -4,18 +4,21 @@ import * as BABYLON from '@babylonjs/core';
 import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 import { world } from '@/game/world';
-import { generateFromSeed } from '@/lib/seed-factory';
+import { runFixedSteps, spawnIntervalSeconds } from '@/lib/fixed-step';
+import { KEYCAP_COLORS, KEYCAP_COUNT } from '@/lib/keycap-colors';
 import { useInputStore } from '@/store/input-store';
 import { useLevelStore } from '@/store/level-store';
 import { useSeedStore } from '@/store/seed-store';
 
 interface Pattern {
   id: number;
+  colorIndex: number;
   color: BABYLON.Color3;
   progress: number;
   speed: number;
   angle: number;
   particleSystem: BABYLON.ParticleSystem;
+  entity: import('@/game/world').GameEntity;
 }
 
 export default function PatternStabilizer() {
@@ -26,15 +29,27 @@ export default function PatternStabilizer() {
   useEffect(() => {
     if (!scene) return;
 
+    const fixedStep = 1 / 30;
+    const fixedState = { accumulator: 0 };
+    let spawnTimer = 0;
+
+    const scheduleNextSpawn = () => {
+      const rng = useSeedStore.getState().rng;
+      const tension = useLevelStore.getState().tension;
+      spawnTimer = spawnIntervalSeconds(tension, rng, 0.16, 1.1);
+    };
+
     const spawnPattern = () => {
       const rng = useSeedStore.getState().rng;
-      const { enemyConfig } = generateFromSeed();
-      const hue = parseFloat(enemyConfig.colorTint.match(/\d+/)?.[0] || '180');
-      const color = BABYLON.Color3.FromHSV(hue, 0.85, 0.65);
       const curTension = useLevelStore.getState().tension;
-      const speed = 0.3 + rng() * curTension * 1.2;
 
+      const colorIndex = Math.floor(rng() * KEYCAP_COUNT);
+      const kc = KEYCAP_COLORS[colorIndex];
+      const color = kc.color3;
+
+      const speed = 0.3 + rng() * curTension * 1.2;
       const patternId = idCounter.current++;
+
       const ps = new BABYLON.ParticleSystem(`pattern${patternId}`, 60, scene);
       ps.emitter = new BABYLON.Vector3(0, 0.4, 0);
       ps.minSize = 0.015;
@@ -47,66 +62,83 @@ export default function PatternStabilizer() {
       ps.createPointEmitter(new BABYLON.Vector3(-0.05, -0.05, -0.05), new BABYLON.Vector3(0.05, 0.05, 0.05));
       ps.start();
 
-      const pattern: Pattern = {
-        id: patternId,
-        color,
-        progress: 0,
-        speed,
-        angle: rng() * 360 * (Math.PI / 180),
-        particleSystem: ps,
-      };
-
-      activePatterns.current.push(pattern);
-
-      // Also add to Miniplex
-      world.add({
+      const entity = world.add({
         pattern: true,
         progress: 0,
         speed,
-        color: `hsl(${hue}, 85%, 65%)`,
+        color: `hsl(${kc.hue}, 85%, 65%)`,
+        colorIndex,
+      });
+
+      activePatterns.current.push({
+        id: patternId,
+        colorIndex,
+        color,
+        progress: 0,
+        speed,
+        angle: rng() * Math.PI * 2,
+        particleSystem: ps,
+        entity,
       });
     };
 
-    const observer = scene.onBeforeRenderObservable.add(() => {
-      const dt = scene.getEngine().getDeltaTime() / 1000;
-      const curTension = useLevelStore.getState().tension;
+    scheduleNextSpawn();
 
-      // Spawn new patterns based on tension
-      if (useSeedStore.getState().rng() < curTension * 1.6 * dt * 7) {
+    const tick = (dt: number) => {
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) {
         spawnPattern();
+        scheduleNextSpawn();
       }
 
-      // Update active patterns
+      const heldKeycaps = useInputStore.getState().heldKeycaps;
+
       for (let i = activePatterns.current.length - 1; i >= 0; i--) {
         const p = activePatterns.current[i];
         p.progress += p.speed * dt;
 
-        // Move particle emitter along radius
         const radius = p.progress * 0.52;
         p.particleSystem.emitter = new BABYLON.Vector3(Math.cos(p.angle) * radius, 0.4, Math.sin(p.angle) * radius);
 
-        // Check if being stabilized (any keycap held = pull back ALL patterns)
-        const isAnyHeld = useInputStore.getState().isAnyHeld;
-        if (isAnyHeld) {
+        if (heldKeycaps.has(p.colorIndex)) {
           p.progress = Math.max(0, p.progress - 2.4 * dt);
         }
 
-        // Reached rim = tension spike
+        if (p.entity.progress !== undefined) p.entity.progress = p.progress;
+
         if (p.progress >= 1.0) {
+          const curTension = useLevelStore.getState().tension;
           useLevelStore.getState().setTension(Math.min(1, curTension + 0.22));
+          window.dispatchEvent(
+            new CustomEvent('patternEscaped', {
+              detail: { colorIndex: p.colorIndex, angle: p.angle },
+            }),
+          );
           p.particleSystem.stop();
           p.particleSystem.dispose();
+          world.remove(p.entity);
           activePatterns.current.splice(i, 1);
+          continue;
         }
 
-        // Fully stabilized = coherence boost
         if (p.progress <= 0) {
           useLevelStore.getState().addCoherence(3);
+          window.dispatchEvent(
+            new CustomEvent('patternStabilized', {
+              detail: { colorIndex: p.colorIndex },
+            }),
+          );
           p.particleSystem.stop();
           p.particleSystem.dispose();
+          world.remove(p.entity);
           activePatterns.current.splice(i, 1);
         }
       }
+    };
+
+    const observer = scene.onBeforeRenderObservable.add(() => {
+      const dt = scene.getEngine().getDeltaTime() / 1000;
+      runFixedSteps(fixedState, dt, fixedStep, tick);
     });
 
     return () => {
@@ -114,6 +146,7 @@ export default function PatternStabilizer() {
       activePatterns.current.forEach((p) => {
         p.particleSystem.stop();
         p.particleSystem.dispose();
+        world.remove(p.entity);
       });
       activePatterns.current = [];
     };
