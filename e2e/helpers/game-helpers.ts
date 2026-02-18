@@ -1,169 +1,29 @@
-/**
- * Shared E2E Test Helpers
- *
- * DRY utilities for common game testing patterns.
- * Used across all Playwright test suites.
- */
+import { Page, expect } from '@playwright/test';
 
-import type { Page, TestInfo } from '@playwright/test';
-import { expect } from '@playwright/test';
-
-// ─── Timeouts ────────────────────────────────────────────────
-
-export const GAME_START_TIMEOUT = 15000;
-export const WAVE_ANNOUNCE_TIMEOUT = 15000;
-export const GAMEPLAY_TIMEOUT = 60000;
-export const E2E_PLAYTHROUGH_TIMEOUT = 180000;
-
-// ─── Navigation ──────────────────────────────────────────────
-
-/** Navigate to the game page and wait for the container to load */
-export async function navigateToGame(page: Page): Promise<void> {
-  await page.goto('/');
-  await expect(page.locator('#game-container')).toBeVisible();
+export async function waitForCanvas(page: Page, timeout = 30_000) {
+  const canvas = page.locator('#reactylon-canvas, canvas');
+  await expect(canvas.first()).toBeVisible({ timeout });
+  return canvas.first();
 }
 
-// ─── Game Start ──────────────────────────────────────────────
-
-/** Start the game via spacebar and wait for the overlay to hide.
- *  Uses keyboard instead of click because an unhandled font-fetch
- *  rejection from troika-three-text (offline CI) breaks React 18's
- *  synthetic event dispatch for mouse/pointer events while native
- *  keyboard listeners remain unaffected. */
-export async function startGame(page: Page): Promise<void> {
-  const startBtn = page.locator('#start-btn');
-  const overlay = page.locator('#overlay');
-
-  await expect(startBtn).toBeVisible();
-
-  // Use a retry loop to robustly handle delayed event listener attachment
-  await expect(async () => {
-    if (await overlay.isVisible()) {
-      await page.keyboard.press(' ');
-    }
-    await expect(overlay).toHaveClass(/hidden/);
-  }).toPass({ timeout: GAME_START_TIMEOUT });
+export async function getCanvasDimensions(page: Page) {
+  return page.evaluate(() => {
+    const canvas = document.querySelector('#reactylon-canvas') ?? document.querySelector('canvas');
+    if (!canvas) return null;
+    return { width: canvas.clientWidth, height: canvas.clientHeight };
+  });
 }
 
-/** Start the game by pressing spacebar */
-export async function startGameWithSpacebar(page: Page): Promise<void> {
-  return startGame(page);
+export async function getGameState(page: Page) {
+  return page.evaluate(() => (window as any).__gameState ?? null);
 }
 
-// ─── Verification ────────────────────────────────────────────
-
-/** Verify all HUD elements are visible during gameplay */
-export async function verifyHUDVisible(page: Page): Promise<void> {
-  await expect(page.locator('#wave-display')).toBeVisible();
-  await expect(page.locator('#time-display')).toBeVisible();
-  await expect(page.locator('#score-display')).toBeVisible();
-  // panic-bar is sr-only (tension conveyed via 3D: keyboard RGB, body language)
-  await expect(page.locator('#panic-bar')).toBeAttached();
-  await expect(page.locator('#combo-display')).toBeVisible();
-}
-
-/** Verify control buttons exist in the DOM (hidden for a11y/e2e, 3D keyboard is primary) */
-export async function verifyControlsAttached(page: Page): Promise<void> {
-  await expect(page.locator('#btn-reality')).toBeAttached();
-  await expect(page.locator('#btn-history')).toBeAttached();
-  await expect(page.locator('#btn-logic')).toBeAttached();
-  await expect(page.locator('#btn-special')).toBeAttached();
-}
-
-/** Verify powerup indicators are visible */
-export async function verifyPowerupsVisible(page: Page): Promise<void> {
-  await expect(page.locator('#pu-slow')).toBeVisible();
-  await expect(page.locator('#pu-shield')).toBeVisible();
-  await expect(page.locator('#pu-double')).toBeVisible();
-}
-
-/** Verify the game is currently playing (overlay hidden, HUD visible) */
-export async function verifyGamePlaying(page: Page): Promise<void> {
-  await expect(page.locator('#overlay')).toHaveClass(/hidden/);
-  await expect(page.locator('#ui-layer')).not.toHaveClass(/hidden/);
-
-  const timeDisplay = page.locator('#time-display');
-  const initialTime = await timeDisplay.textContent();
-  await expect
-    .poll(async () => await timeDisplay.textContent(), { timeout: 2500 })
-    .not.toBe(initialTime);
-}
-
-// ─── Canvas ──────────────────────────────────────────────────
-
-/** Get canvas bounding box with polling for WebGL init */
-export async function getCanvasBoundingBox(
-  page: Page
-): Promise<{ x: number; y: number; width: number; height: number }> {
-  const canvas = page.locator('#gameCanvas');
-  await expect(canvas).toBeVisible({ timeout: 10000 });
-
-  let resultBox: { x: number; y: number; width: number; height: number } | null = null;
-  await expect(async () => {
-    const box = await canvas.boundingBox();
-    if (!box) throw new Error('Canvas bounding box is null');
-    expect(box.width).toBeGreaterThan(0);
-    expect(box.height).toBeGreaterThan(0);
-    resultBox = box;
-  }).toPass({ timeout: 10000 });
-
-  if (!resultBox) throw new Error('Failed to get canvas bounding box');
-  return resultBox;
-}
-
-// ─── Screenshots ─────────────────────────────────────────────
-
-/** Get standardized device name from test info */
-export function getDeviceName(testInfo: TestInfo): string {
-  return testInfo.project.name.replace(/\s+/g, '-').toLowerCase();
-}
-
-/** Take a screenshot with a standardized name: {prefix}-{stage}.png */
-export async function screenshot(page: Page, prefix: string, stage: string): Promise<void> {
-  // Add a small delay to let the frame settle and reduce likelihood of protocol errors during rendering
-  await page.waitForTimeout(250);
-
-  try {
-    await page.screenshot({
-      path: `test-results/screenshots/${prefix}-${stage}.png`,
-      fullPage: false,
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.log(`Screenshot failed (${message}), retrying... (${prefix}-${stage})`);
-    await page.waitForTimeout(500);
-    await page.screenshot({
-      path: `test-results/screenshots/${prefix}-${stage}.png`,
-      fullPage: false,
-    });
-  }
-}
-
-/** Take a device-specific screenshot */
-export async function deviceScreenshot(
-  page: Page,
-  testInfo: TestInfo,
-  stage: string
-): Promise<void> {
-  const device = getDeviceName(testInfo);
-  await screenshot(page, device, stage);
-}
-
-// ─── Keyboard Abilities ──────────────────────────────────────
-// The 3D keyboard uses F1-F4 keys (not 1/2/3/Q)
-
-/** Press all ability keys in sequence with a delay between each */
-export async function pressAllAbilities(page: Page, delayMs = 300): Promise<void> {
-  const keys = ['F1', 'F2', 'F3'] as const;
-
-  for (const key of keys) {
-    await page.keyboard.press(key);
-    // Cooldown is rendered in the Three.js scene, no DOM indicator to wait on
-    await page.waitForTimeout(delayMs);
-  }
-}
-
-/** Press the nuke key */
-export async function pressNuke(page: Page): Promise<void> {
-  await page.keyboard.press('F4');
+export async function waitForTitleFade(page: Page, timeout = 10_000) {
+  await page.waitForFunction(
+    () => {
+      const title = document.querySelector('[class*="z-30"]');
+      return !title || getComputedStyle(title).opacity === '0';
+    },
+    { timeout },
+  );
 }
