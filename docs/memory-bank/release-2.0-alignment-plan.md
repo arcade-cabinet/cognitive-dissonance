@@ -15,7 +15,7 @@ It consolidates:
 The release is only considered production-ready when **all** gates below are green:
 
 1. **Gameplay Determinism Gate**
-   - Buried-seed simulation behavior is deterministic across runs for equivalent inputs/tick counts.
+   - buried seed simulation behavior is deterministic across runs for equivalent inputs/tick counts.
    - Determinism is validated by automated tests (simulation snapshots / seeded replay assertions).
 2. **Core Loop Integrity Gate**
    - Pattern stabilization, enemy escalation, shatter flow, and restart loop remain stable for long sessions.
