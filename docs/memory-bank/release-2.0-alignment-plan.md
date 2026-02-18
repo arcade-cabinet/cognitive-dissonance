@@ -29,7 +29,7 @@ The release is only considered production-ready when **all** gates below are gre
    - Prefers-reduced-motion behavior works in overlays + 3D motion systems.
    - Screen reader announcements, keyboard/pointer/touch interactions remain functional.
 6. **Docs Alignment Gate**
-   - `activeContext`, `progress`, `systemPatterns`, `techContext`, and AGENTS context are internally consistent.
+   - `activeContext`, `progress`, `systemPatterns`, `techContext`, and `AGENTS.md` are internally consistent.
    - Test counts, branch status, and known issues are synchronized.
 7. **Quality Gate**
    - `pnpm lint`, `pnpm test`, `pnpm build`, and `pnpm test:e2e` pass in CI-like environment.
