@@ -50,24 +50,27 @@ export const useAudioStore = create<AudioState>((set, get) => ({
       volume: -14,
     }).connect(masterGain);
 
-    // Evolution loop
+    // Import seed store for deterministic audio evolution
+    const { useSeedStore } = await import('@/store/seed-store');
+
+    // Evolution loop — uses seeded RNG for deterministic audio
     const _loop = new Tone.Loop((time: number) => {
       const cur = get().tension;
+      const rng = useSeedStore.getState().rng;
 
       drone.frequency.value = 38 + cur * 62;
       padFilter.frequency.value = 600 + cur * 4200;
 
-      if (Math.random() < 0.4 + cur * 0.9) {
+      if (rng() < 0.4 + cur * 0.9) {
         glitchEnv.triggerAttackRelease(0.06 + cur * 0.6, time);
       }
 
-      if (Math.random() < 0.25 + cur * 0.75) {
-        chimes.triggerAttackRelease(0.03 + Math.random() * 0.12, time);
+      if (rng() < 0.25 + cur * 0.75) {
+        chimes.triggerAttackRelease(0.03 + rng() * 0.12, time);
       }
     }, '4n').start(0);
 
     // Seed-driven base BPM
-    const { useSeedStore } = await import('@/store/seed-store');
     const seedRng = useSeedStore.getState().rng;
     const baseBpm = 60 + seedRng() * 40; // 60-100 BPM from seed
     Tone.getTransport().bpm.value = baseBpm;

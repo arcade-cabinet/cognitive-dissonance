@@ -97,6 +97,11 @@ export default function AISphere() {
     buildSpheres(scene);
 
     return () => {
+      // Kill active GSAP tweens before disposing to prevent callbacks on dead objects
+      if (outerSphereRef.current) gsap.killTweensOf(outerSphereRef.current.scaling);
+      if (outerSphereRef.current) gsap.killTweensOf(outerSphereRef.current.position);
+      if (outerSphereRef.current) gsap.killTweensOf(outerSphereRef.current.rotation);
+      if (glassMatRef.current) gsap.killTweensOf(glassMatRef.current);
       outerSphereRef.current?.dispose();
       innerSphereRef.current?.dispose();
       glassMatRef.current?.dispose();

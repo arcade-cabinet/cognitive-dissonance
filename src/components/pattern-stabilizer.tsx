@@ -141,6 +141,7 @@ export default function PatternStabilizer() {
       activePatterns.current.forEach((p) => {
         p.particleSystem.stop();
         p.particleSystem.dispose();
+        world.remove(p.entity);
       });
       activePatterns.current = [];
     };

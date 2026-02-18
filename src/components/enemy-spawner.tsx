@@ -132,8 +132,13 @@ export default function EnemySpawner() {
       for (let i = enemies.current.length - 1; i >= 0; i--) {
         const e = enemies.current[i];
 
-        // Sync Yuka vehicle position to Babylon mesh
+        // Sync Yuka vehicle position to Babylon mesh + Miniplex entity
         e.mesh.position.set(e.yukaVehicle.position.x, e.yukaVehicle.position.y, e.yukaVehicle.position.z);
+        if (e.entity.position) {
+          e.entity.position.x = e.yukaVehicle.position.x;
+          e.entity.position.y = e.yukaVehicle.position.y;
+          e.entity.position.z = e.yukaVehicle.position.z;
+        }
 
         // Update shader time + uniforms
         e.material.setFloat('u_time', t);
