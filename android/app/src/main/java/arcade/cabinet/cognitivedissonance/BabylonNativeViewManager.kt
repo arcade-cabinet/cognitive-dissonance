@@ -29,8 +29,20 @@ class BabylonNativeViewManager(
     private val reactContext: ReactApplicationContext
 ) : SimpleViewManager<View>() {
 
-    override fun getName() = "BabylonNativeView"
+    /**
+ * Provides the React Native name under which this view manager is registered.
+ *
+ * @return The name used by React Native to reference this native view: "BabylonNativeView".
+ */
+override fun getName() = "BabylonNativeView"
 
+    /**
+     * Creates the native view for the React component — currently returns a placeholder TextView
+     * displaying a fallback message because Babylon Native integration is not implemented.
+     *
+     * @param reactContext The themed React context used to construct the view.
+     * @return A View (TextView) that displays a black background with centered white fallback text.
+     */
     override fun createViewInstance(reactContext: ThemedReactContext): View {
         // TODO: Replace with SurfaceView + Babylon Native Vulkan/GLES engine
         // For now, return a placeholder view with error message
@@ -43,11 +55,23 @@ class BabylonNativeViewManager(
         return textView
     }
 
+    /**
+     * Configure whether multisample anti-aliasing (MSAA) is enabled for the view's rendering surface.
+     *
+     * @param view The target view whose rendering configuration will be updated.
+     * @param antialias `true` to enable MSAA, `false` to disable it.
+     */
     @ReactProp(name = "antialias")
     fun setAntialias(view: View, antialias: Boolean) {
         // TODO: Configure MSAA on SurfaceView
     }
 
+    /**
+     * Configures whether the native rendering surface uses a stencil buffer.
+     *
+     * @param view The native view whose EGL/context configuration will be updated.
+     * @param stencil `true` to enable a stencil buffer for the rendering surface, `false` to disable it.
+     */
     @ReactProp(name = "stencil")
     fun setStencil(view: View, stencil: Boolean) {
         // TODO: Configure stencil buffer on EGL context

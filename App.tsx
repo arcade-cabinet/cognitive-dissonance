@@ -7,6 +7,13 @@ import { SceneManager } from './src/engine/SceneManager';
 import { DeviceQuality } from './src/utils/DeviceQuality';
 import { isWeb } from './src/utils/PlatformConfig';
 
+/**
+ * Root application component that bootstraps a Babylon.js rendering engine, manages adaptive device quality, and renders the scene manager or status UI.
+ *
+ * On web, this component creates and attaches a full-page canvas, initializes the engine, starts a render loop that renders the first scene (when present) and forwards FPS and scene information to the DeviceQuality monitor, and cleans up the canvas and engine on unmount. On non-web platforms, it displays a placeholder error indicating native initialization is not implemented.
+ *
+ * @returns The root React element for the application UI.
+ */
 export default function App() {
   const [engine, setEngine] = useState<Engine | WebGPUEngine | null>(null);
   const [error, setError] = useState<string | null>(null);

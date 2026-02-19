@@ -20,6 +20,12 @@ if (!fs.existsSync(distDir)) {
 
 // Find all JS files in dist
 const jsFiles = [];
+/**
+ * Recursively collects JavaScript file paths from a directory and appends them to the module-level `jsFiles` array.
+ *
+ * The search descends into subdirectories and adds any file whose name ends with `.js` to `jsFiles`.
+ * @param {string} dir - Filesystem path of the directory to search.
+ */
 function findJsFiles(dir) {
   const files = fs.readdirSync(dir);
   for (const file of files) {

@@ -29,6 +29,11 @@ class MainApplication : Application(), ReactApplication {
     )
   }
 
+  /**
+   * Performs application startup: configures React Native release level, initializes React Native, and notifies Expo lifecycle.
+   *
+   * Sets DefaultNewArchitectureEntryPoint.releaseLevel from BuildConfig.REACT_NATIVE_RELEASE_LEVEL (falls back to ReleaseLevel.STABLE on invalid value), calls loadReactNative(this), and forwards the creation event to ApplicationLifecycleDispatcher.
+   */
   override fun onCreate() {
     super.onCreate()
     DefaultNewArchitectureEntryPoint.releaseLevel = try {
@@ -40,6 +45,11 @@ class MainApplication : Application(), ReactApplication {
     ApplicationLifecycleDispatcher.onApplicationCreate(this)
   }
 
+  /**
+   * Handles runtime configuration changes and propagates the new configuration to registered lifecycle listeners.
+   *
+   * @param newConfig The updated device configuration (locale, screen size, orientation, etc.).
+   */
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
     ApplicationLifecycleDispatcher.onConfigurationChanged(this, newConfig)

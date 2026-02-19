@@ -11,6 +11,11 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 import expo.modules.ReactActivityDelegateWrapper
 
 class MainActivity : ReactActivity() {
+  /**
+   * Applies the AppTheme to ensure correct splash/background/status/navigation bar coloring before the activity initializes, enabling expo-splash-screen styling.
+   *
+   * @param savedInstanceState The saved instance state bundle, or null.
+   */
   override fun onCreate(savedInstanceState: Bundle?) {
     // Set the theme to AppTheme BEFORE onCreate to support
     // coloring the background, status bar, and navigation bar.
@@ -20,15 +25,19 @@ class MainActivity : ReactActivity() {
   }
 
   /**
-   * Returns the name of the main component registered from JavaScript. This is used to schedule
-   * rendering of the component.
-   */
+ * Provide the registered JavaScript component name used by React Native to mount the root component.
+ *
+ * @return The registered component name "main".
+ */
   override fun getMainComponentName(): String = "main"
 
   /**
-   * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]
-   * which allows you to enable New Architecture with a single boolean flags [fabricEnabled]
-   */
+   * Create the ReactActivityDelegate used by this activity.
+   *
+   * The returned delegate is a ReactActivityDelegateWrapper that wraps a DefaultReactActivityDelegate
+   * and respects the app's "new architecture" configuration.
+   *
+   * @return The configured ReactActivityDelegate instance.
   override fun createReactActivityDelegate(): ReactActivityDelegate {
     return ReactActivityDelegateWrapper(
           this,
@@ -41,10 +50,14 @@ class MainActivity : ReactActivity() {
   }
 
   /**
-    * Align the back button behavior with Android S
-    * where moving root activities to background instead of finishing activities.
-    * @see <a href="https://developer.android.com/reference/android/app/Activity#onBackPressed()">onBackPressed</a>
-    */
+   * Aligns the back-button behavior with Android S semantics.
+   *
+   * On API level <= R attempts to move the task to the background; if that fails for non-root
+   * activities it falls back to the default back-press handling. On API level > R delegates to
+   * the default implementation.
+   *
+   * @see <a href="https://developer.android.com/reference/android/app/Activity#onBackPressed()">Activity.onBackPressed</a>
+   */
   override fun invokeDefaultOnBackPressed() {
       if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
           if (!moveTaskToBack(false)) {

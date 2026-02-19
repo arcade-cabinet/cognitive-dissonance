@@ -21,6 +21,8 @@ import React
 @objc(BabylonNativeViewManager)
 class BabylonNativeViewManager: RCTViewManager {
   
+  /// Provides the UIView used by this view manager.
+  /// - Returns: A placeholder UIView with a black background containing a centered white label that indicates Babylon Native is not implemented; used as a fallback until a Metal (MTKView) / Babylon Native integration is provided.
   override func view() -> UIView! {
     // TODO: Replace with MTKView + Babylon Native Metal engine
     // For now, return a placeholder view with error message
@@ -46,6 +48,8 @@ class BabylonNativeViewManager: RCTViewManager {
     return placeholderView
   }
   
+  /// Indicates that this view manager must be initialized on the main thread.
+  /// - Returns: `true` if the module requires initialization on the main thread, `false` otherwise.
   override static func requiresMainQueueSetup() -> Bool {
     return true
   }

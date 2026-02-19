@@ -14,6 +14,15 @@ let hasErrors = false;
 // Regex to match barrel imports: import { ... } from '@babylonjs/core' or 'babylonjs'
 const barrelImportRegex = /import\s+{[^}]+}\s+from\s+['"](@babylonjs\/core|babylonjs)['"]/g;
 
+/**
+ * Inspect a TypeScript file for barrel imports from `@babylonjs/core` or `babylonjs` and report each occurrence.
+ *
+ * For every detected barrel import, an error is logged with the file path, line number, and the matched import,
+ * and a suggestion to use a tree-shakable subpath import is printed. Detected issues set the module-level
+ * `hasErrors` flag to `true`.
+ *
+ * @param {string} filePath - Path to the file to inspect.
+ */
 function checkFile(filePath) {
   const content = fs.readFileSync(filePath, 'utf-8');
   const matches = content.matchAll(barrelImportRegex);
@@ -26,6 +35,11 @@ function checkFile(filePath) {
   }
 }
 
+/**
+ * Recursively traverses a directory and invokes checkFile for each .ts or .tsx file found.
+ *
+ * @param {string} dir - Path to the directory to scan.
+ */
 function scanDirectory(dir) {
   const files = fs.readdirSync(dir);
   for (const file of files) {
