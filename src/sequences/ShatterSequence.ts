@@ -183,11 +183,19 @@ export class ShatterSequence {
     this.shardSPS.setParticles();
 
     // Register update loop
-    this.scene.registerBeforeRender(() => {
-      if (this.shardSPS) {
-        this.shardSPS.setParticles();
-      }
-    });
+// Register update loop
+const updateLoop = () => {
+  if (this.shardSPS) {
+    this.shardSPS.setParticles();
+  }
+};
+
+this.scene.registerBeforeRender(updateLoop);
+
+// Unregister after 4s when shards are fully disposed
+setTimeout(() => {
+  this.scene?.unregisterBeforeRender(updateLoop);
+}, 4000);
   }
 
   /**
