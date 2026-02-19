@@ -1,0 +1,12 @@
+appId: arcade.cabinet.cognitivedissonance
+---
+# App Launch Flow
+# Validates: App starts, engine initializes, scene renders
+
+- launchApp
+- assertVisible: "Loading"
+- waitForAnimationToEnd:
+    timeout: ${LAUNCH_TIMEOUT}
+- assertVisible:
+    id: "game-scene"
+- screenshot: app-launch-success

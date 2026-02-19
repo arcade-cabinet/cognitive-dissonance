@@ -1,68 +1,118 @@
-# Claude Code Instructions — Cognitive Dissonance
+# Claude Instructions — Cognitive Dissonance v3.0
 
-## How to Use This File
+## Project Overview
 
-This file contains **Claude-specific** development instructions. For project documentation, see:
+Cognitive Dissonance v3.0 is a cross-platform (web + Android + iOS) interactive 3D experience built with:
+- **Reactylon Native** + **Babylon.js 8** + **Miniplex ECS**
+- **Expo SDK 55** + **Metro** (universal bundler)
+- **React 19** + **React Native 0.83**
 
-- **[AGENTS.md](./AGENTS.md)** — Cross-agent memory bank (architecture, patterns, tech context)
-- **[README.md](./README.md)** — Installation, controls, architecture overview
-- **[docs/memory-bank/](./docs/memory-bank/)** — Cline-style memory bank (6 core files + design decisions)
+## Key Conventions
 
-Always read AGENTS.md before starting work. Update AGENTS.md and docs/memory-bank/ after significant changes.
+### Imports
 
-> The full Grok conversation corpus lives in `docs/memory-bank/grok-doc/` and `docs/code-fragments/`. Start with `docs/memory-bank/grok-doc/main-conversation/INDEX.md` to navigate. Read `docs/memory-bank/handoff.md` for the complete implementation roadmap.
+**ALWAYS use tree-shakable @babylonjs/core subpath imports:**
+```typescript
+// ✅ Correct
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 
-## Design Vision (Critical)
+// ❌ Wrong (barrel import)
+import { Mesh, Vector3 } from "@babylonjs/core";
+```
 
-The visual target is a **fragile glass sphere containing a celestial nebula shader** sitting on a **heavy industrial black metal platter**. The sphere degrades from calm blue to violent red as tension rises. Pattern stabilization is the core gameplay — hold matching keycaps to pull back escaping corruption. Everything is diegetic — no HUD, just the machine.
+### Miniplex ECS API
+
+**Use Miniplex 2.0 API:**
+```typescript
+// ✅ Correct
+const query = world.with('level', 'platterCore');
+const entity = world.add({ level: true, platterCore: true });
+
+// ❌ Wrong (Miniplex 1.x API)
+const query = world.archetype('level', 'platterCore');
+const entity = world.createEntity({ level: true, platterCore: true });
+```
+
+### Babylon.js Patterns
+
+**Imperative mesh creation in useEffect:**
+```typescript
+// ✅ Correct
+useEffect(() => {
+  const mesh = MeshBuilder.CreateBox('box', { size: 1 }, scene);
+  return () => mesh.dispose();
+}, [scene]);
+
+// ❌ Wrong (JSX for meshes)
+<box name="box" size={1} />
+```
+
+**Reactylon JSX only for lights/camera:**
+```typescript
+// ✅ Correct
+<hemisphericLight name="light" intensity={0.7} direction={new Vector3(0, 1, 0)} />
+<arcRotateCamera name="camera" alpha={0} beta={0} radius={10} target={Vector3.Zero()} />
+```
+
+### Render Loop
+
+**Use scene.registerBeforeRender:**
+```typescript
+// ✅ Correct
+useEffect(() => {
+  const update = () => {
+    // Per-frame logic
+  };
+  scene.registerBeforeRender(update);
+  return () => scene.unregisterBeforeRender(update);
+}, [scene]);
+```
+
+### Shaders
+
+**All GLSL in Effect.ShadersStore:**
+```typescript
+// ✅ Correct (src/shaders/registry.ts)
+Effect.ShadersStore["myVertexShader"] = `
+  precision highp float;
+  attribute vec3 position;
+  void main() {
+    gl_Position = vec4(position, 1.0);
+  }
+`;
+```
+
+### GSAP Animations
+
+**GSAP works natively with Babylon.js Vector3:**
+```typescript
+// ✅ Correct
+gsap.to(mesh.position, { x: 5, duration: 1, ease: "power2.out" });
+```
 
 ## Commands
 
 ```bash
-pnpm dev          # Dev server (Turbopack, 440ms startup)
-pnpm build        # Production build (Turbopack, ~14s)
-pnpm start        # Production server
-pnpm lint         # Biome check (0 errors, 0 warnings)
-pnpm lint:fix     # Biome auto-fix
-pnpm format       # Biome format
-pnpm test         # Vitest unit tests (48 tests)
-pnpm test:e2e     # Playwright E2E via xvfb-run (17 tests, headed WebGL)
+pnpm start         # Metro dev server (all platforms)
+pnpm web           # Expo web dev server
+pnpm android       # Metro + Expo dev-client (Android)
+pnpm ios           # Metro + Expo dev-client (iOS)
+pnpm lint          # Biome check
+pnpm lint:fix      # Biome auto-fix
+pnpm test          # Jest unit + PBT tests
 ```
 
-## Key Architecture Decisions
+## Common Pitfalls
 
-- **Next.js 16 + Turbopack**: Default bundler, 440ms dev startup, ~11s builds
-- **Babylon.js 8 + Reactylon 3.5**: Declarative React bindings for Babylon.js
-- **babel-plugin-reactylon**: Auto-registers Babylon.js classes for lowercase JSX. Turbopack uses Babel for user code, SWC for Next.js internals — no performance penalty.
-- **Imperative mesh creation**: All 3D objects created in useEffect, not JSX (except lights/camera)
-- **Render loop**: `scene.registerBeforeRender(fn)` / `scene.unregisterBeforeRender(fn)`
-- **GSAP for animations**: gsap.to(mesh.position, {...}) works natively with Babylon.js Vector3
-- **CSP-safe shaders**: All GLSL stored in `BABYLON.Effect.ShadersStore` as static string literals
-- **SSR bypass**: All 3D in `'use client'` files, loaded via `dynamic({ ssr: false })`
-- **Zustand for state**: Tension, coherence, seed — bridges Babylon.js render loop to React
-- **Tone.js exclusive**: Babylon.js audioEngine disabled, Tone.js handles all sound
-- **Biome 2.4**: Linting + formatting (replaced ESLint — single binary, zero plugin deps)
-- **Playwright**: E2E testing with headless Chromium
+1. **Barrel imports from @babylonjs/core** — Always use subpath imports
+2. **Miniplex 1.x API** — Use `world.with()` and `world.add()` (not `archetype()` and `createEntity()`)
+3. **Biome auto-fix removes field declarations** — Re-add private fields after `biome check --write --unsafe`
+4. **JSX for meshes** — Only use JSX for lights/camera, create meshes imperatively
+5. **React re-renders for animation** — Use `scene.registerBeforeRender()` for per-frame logic
 
-## Conventions
+## References
 
-- Tailwind CSS for 2D overlays
-- System monospace fonts (Courier New) — no external font dependencies
-- Lowercase Reactylon JSX tags: `<hemisphericLight>`, `<arcRotateCamera>`, `<pointLight>`
-- `pnpm` package manager
-- All game code under `src/`
-
-## File Structure
-
-```
-src/
-  app/          Next.js App Router (layout, page, globals.css)
-  components/   All game components (3D + 2D)
-  store/        Zustand stores (seed, level, audio, game, input)
-  lib/          Utilities + shader definitions
-  game/         Miniplex ECS world
-  types/        TypeScript declarations
-e2e/            Playwright E2E tests (smoke, gameplay, governor)
-docs/
-  memory-bank/  Cline-style memory bank (6 core files)
-```
+- [Architecture](./docs/ARCHITECTURE.md) — System architecture
+- [Development](./docs/DEVELOPMENT.md) — Local development workflow
+- [Testing](./docs/TESTING.md) — Test infrastructure

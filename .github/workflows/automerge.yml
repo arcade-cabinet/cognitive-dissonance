@@ -13,8 +13,8 @@ permissions:
 
 jobs:
   # ── Dependabot auto-merge ──────────────────────────
-  # CI is skipped for Dependabot PRs — CD's comprehensive
-  # E2E matrix catches dependency issues on merge to main.
+  # CI runs full test suite (Jest + Playwright + Maestro)
+  # for all PRs including Dependabot.
   dependabot-automerge:
     name: Auto-merge Dependabot PR
     runs-on: ubuntu-latest

@@ -17,33 +17,42 @@ updates:
       include: "scope"
     # Group related packages together
     groups:
-      # Group all Capacitor packages
-      capacitor:
+      # Group Babylon.js packages
+      babylonjs:
         patterns:
-          - "@capacitor/*"
+          - "@babylonjs/*"
+      # Group Reactylon packages
+      reactylon:
+        patterns:
+          - "reactylon"
+          - "reactylon-native"
+      # Group Expo packages
+      expo:
+        patterns:
+          - "expo"
+          - "expo-*"
+      # Group React Native packages
+      react-native:
+        patterns:
+          - "react-native"
+          - "react-native-*"
       # Group React and related packages
       react:
         patterns:
           - "react"
           - "react-dom"
-          - "react-router-dom"
           - "@types/react"
           - "@types/react-dom"
       # Group testing packages
       testing:
         patterns:
+          - "jest"
+          - "ts-jest"
+          - "@types/jest"
+          - "fast-check"
           - "@playwright/test"
           - "playwright"
-          - "@testing-library/*"
-          - "@vitest/*"
-          - "vitest"
-          - "jsdom"
-      # Group build tools
-      build-tools:
-        patterns:
-          - "vite"
-          - "@vitejs/*"
-          - "typescript"
+          - "maestro"
       # Group development tools
       dev-tools:
         patterns:

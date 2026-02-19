@@ -1,26 +1,23 @@
-# AGENTS.md — Cognitive Dissonance Cross-Agent Memory Bank
+# AGENTS.md — Cognitive Dissonance v3.0 Cross-Agent Memory Bank
 
-> Persistent context for AI agents working on Cognitive Dissonance.
+> Persistent context for AI agents working on Cognitive Dissonance v3.0.
 > Read this file at the start of every task. Update it after significant changes.
-> Deep context lives in `docs/memory-bank/` — read those files for full detail.
->
-> The full Grok conversation corpus is in `docs/memory-bank/grok-doc/` (165 indexed turns, 52 prose docs, 7 shader-port turns, 26 definitive code extractions) and `docs/code-fragments/` (170 versioned iterations). Read `docs/memory-bank/grok-doc/main-conversation/INDEX.md` first — it maps every design decision. The live code in `src/` is the implementation; the corpus is the design intent.
 
 ---
 
 ## Project Brief
 
-Cognitive Dissonance is a haunting interactive 3D browser experience where you hold a fragile glass AI mind together as its own thoughts try to escape. Built with Babylon.js 8, Reactylon 3.5, Next.js 16, GSAP, Tone.js, and Zustand.
+Cognitive Dissonance v3.0 is a cross-platform (web + Android + iOS) interactive 3D experience where you hold a fragile glass AI mind together as its own thoughts try to escape. Built with Reactylon Native + Babylon.js 8 + Miniplex ECS + Expo SDK 55.
 
 ### Core Loop
 
 1. Glass sphere with celestial nebula shader sits on heavy industrial platter
 2. Corruption patterns (colored tendrils) escape from sphere center to rim
 3. Hold matching colored keycaps on the platter to pull them back
-4. Missed patterns spawn holographic SDF enemies (neon-raymarcher + crystalline-cube)
+4. Missed patterns spawn procedural morph-based enemies (7 Yuka AI traits)
 5. Enemies reaching sphere = tension spike + glass degradation
 6. At 100% tension → sphere shatters → "COGNITION SHATTERED" → game over
-7. Endless with logarithmic advancement, high replay value from buried seed
+7. Endless with logarithmic difficulty scaling, high replay value from buried seed
 
 ---
 
@@ -29,41 +26,47 @@ Cognitive Dissonance is a haunting interactive 3D browser experience where you h
 ### Architecture
 
 ```
-Next.js 16 App Router (Turbopack)
-├── src/app/page.tsx → dynamic import GameBoard (ssr: false)
-├── GameBoard (2D React + Tailwind)
-│   ├── ATCShader background
-│   ├── Title overlay
-│   └── Game-over overlay
-├── GameScene (Reactylon Engine/Scene)
-│   ├── Declarative: hemisphericLight, pointLight, arcRotateCamera
-│   ├── AISphere (glass + celestial shader)
-│   ├── Platter (industrial base + GSAP garage-door keycaps)
-│   ├── PatternStabilizer (core gameplay)
-│   ├── EnemySpawner (Yuka AI + SDF shader enemies)
-│   ├── PostProcessCorruption (chromatic aberration + noise)
-│   ├── SPSEnemies (SolidParticleSystem visuals)
-│   ├── DiegeticGUI (coherence ring on platter)
-│   ├── SpatialAudio (Tone.js event-driven procedural SFX, module: [`src/components/spatial-audio.tsx`](src/components/spatial-audio.tsx))
-│   └── AudioEngine (Tone.js adaptive score)
-└── State Layer (Zustand)
-    ├── seed-store (seedrandom)
-    ├── level-store (tension, coherence, level)
-    ├── audio-store (Tone.js bridge)
-    ├── game-store (phase)
-    └── input-store (keycap state)
+Entry Points (Metro)
+├── index.web.tsx       → Web (Metro + Expo web + WebGPU)
+└── index.native.tsx    → Native (Metro + Expo SDK 55 + Babylon Native)
+    │
+    ▼
+App.tsx → EngineInitializer → SceneManager → CognitiveDissonanceRoot
+    │
+    ▼
+Miniplex ECS (World.ts)
+├── Level Archetypes    → PlatterRotation | LeverTension | KeySequence | CrystallineCubeBoss
+├── Hand Archetypes     → LeftHand | RightHand (26 joints each)
+├── AR Archetypes       → WorldAnchored | Projected | ARSphere
+└── Enemy Archetypes    → YukaEnemy (7 traits) | CrystallineCubeBoss
+    │
+    ▼
+Core Systems (21 singletons)
+├── TensionSystem, DifficultyScalingSystem, PatternStabilizationSystem
+├── CorruptionTendrilSystem, MechanicalAnimationSystem, EchoSystem
+├── ProceduralMorphSystem, CrystallineCubeBossSystem
+├── ARSessionManager, XRManager, HandInteractionSystem
+├── ImmersionAudioBridge, SpatialAudioManager
+└── ... (see docs/ARCHITECTURE.md for full list)
+    │
+    ▼
+State Layer (Zustand)
+├── seed-store (seedString, rng, generateNewSeed, replayLastSeed)
+├── game-store (phase: loading/title/playing/shattered/error)
+└── input-store (keycap pressed states)
 ```
 
 ### Key Patterns
 
+- **Miniplex ECS is core**: All game entities (levels, hands, AR anchors, enemies, bosses) are Miniplex entities with archetype queries
 - **Imperative 3D**: All Babylon.js meshes/materials created in useEffect, not JSX
-- **Reactylon JSX**: Lowercase tags for lights/camera (`<hemisphericLight>`, `<arcRotateCamera>`)
+- **Reactylon JSX**: Lowercase tags for lights/camera only (`<hemisphericLight>`, `<arcRotateCamera>`)
 - **Render loop**: `scene.registerBeforeRender(fn)` / `scene.unregisterBeforeRender(fn)`
 - **GSAP + Babylon**: gsap.to(mesh.position, {...}) works natively with Vector3
 - **CSP-safe shaders**: All GLSL in Effect.ShadersStore as static string literals
-- **SSR bypass**: All 3D code in 'use client' files, loaded via dynamic({ ssr: false })
-- **Zustand bridge**: Cross-component state sync (tension, coherence, seed)
-- **Turbopack + Babel**: babel.config.js has @babel/preset-typescript + babel-plugin-reactylon. Turbopack uses Babel for user code, SWC for internals.
+- **Metro everywhere**: Single bundler for web, Android, and iOS
+- **Tree-shakable imports**: `import { Mesh } from "@babylonjs/core/Meshes/mesh"` — NEVER barrel imports
+- **Miniplex 2.0 API**: `world.with()` (not `archetype()`), `world.add()` (not `createEntity()`)
 
 ---
 
@@ -71,83 +74,99 @@ Next.js 16 App Router (Turbopack)
 
 | Technology | Version | Purpose |
 |---|---|---|
-| Next.js | 16.1 | App Router, Turbopack bundler |
 | React | 19 | UI components |
-| TypeScript | 5.9 | Type safety |
-| Babylon.js | 8.51 | 3D rendering engine |
-| Reactylon | 3.5.4 | Declarative Babylon.js + React |
-| GSAP | 3.12 | Advanced animations |
-| Tone.js | 14.8 | Adaptive spatial audio |
-| Zustand | 5 | Global state management |
-| Miniplex | 2 | Entity Component System |
-| Yuka.js | 0.7 | Enemy AI behaviors |
-| seedrandom | 3.0 | Deterministic procedural generation |
-| Tailwind CSS | 4 | 2D overlay styling |
+| React Native | 0.83 | Cross-platform runtime |
+| TypeScript | 5.9 | Type safety (strict mode, ES2022 target) |
+| Babylon.js | 8.51 | 3D rendering engine (tree-shakable subpath imports only) |
+| Reactylon | 3.5.4 | Declarative Babylon.js + React reconciliation |
+| Reactylon Native | latest | Cross-platform: Babylon Native on mobile, WebGPU on web |
+| Expo SDK | 55 | Dev-client, native modules, build tooling |
+| Metro | latest | Universal bundler (web + Android + iOS) |
+| Miniplex | 2 | Entity Component System (core architecture) |
+| GSAP | 3.13+ | Mechanical animations (CustomEase, MotionPath) |
+| Tone.js | 14.9 | Adaptive spatial audio, procedural SFX |
+| Zustand | 5 | Global state (seed-store, game-store, input-store) |
+| Yuka.js | 0.7 | Enemy AI behaviors (7 morph traits) |
+| Havok | 1.3 | Physics engine (6DoF keycap constraints, platter hinge) |
 | Biome | 2.4 | Linting + formatting |
-| Playwright | 1.58 | E2E testing (headed + xvfb) |
-| Vitest | 4.0 | Unit testing |
+| Jest + fast-check | latest | Unit + property-based testing |
+| Playwright | latest | Web E2E testing |
+| Maestro | latest | Mobile E2E testing |
 
 ### Commands
 
 ```bash
-pnpm dev          # Development server (Turbopack)
-pnpm build        # Production build
-pnpm start        # Production server
-pnpm lint         # Biome check (0 errors, 0 warnings)
-pnpm test         # Vitest unit tests (run `pnpm test` for current totals)
-pnpm test:e2e     # Playwright E2E via xvfb-run (run `pnpm test:e2e` for current totals)
+pnpm start         # Metro dev server (all platforms)
+pnpm web           # Expo web dev server
+pnpm android       # Metro + Expo dev-client (Android)
+pnpm ios           # Metro + Expo dev-client (iOS)
+pnpm build:web     # Expo web export (production)
+pnpm build:android # Gradle release APK
+pnpm lint          # Biome check
+pnpm lint:fix      # Biome auto-fix
+pnpm format        # Biome format
+pnpm test          # Jest unit + PBT tests
+pnpm test:watch    # Jest watch mode
+pnpm test:coverage # Jest with lcov coverage
+pnpm test:e2e:web  # Playwright web E2E
+pnpm test:e2e:mobile        # Maestro mobile E2E (all platforms)
+pnpm test:e2e:mobile:android # Maestro Android only
+pnpm test:e2e:mobile:ios     # Maestro iOS only
 ```
 
 ---
 
 ## Development History
 
-### v2.0.0 — Full Engine Migration (Feb 2026)
+### v3.0.0 — Cross-Platform Migration (Feb 2026)
 
-Complete ground-up rebuild from Vite + R3F + Three.js to Next.js + Babylon.js + Reactylon.
+Complete rebuild from Next.js web-only to Reactylon Native cross-platform (web + Android + iOS).
 
-**Foundation fix (current branch `feat/reactylon-migration`):**
-- Upgraded Next.js 15 → 16 (Turbopack default)
-- Upgraded React 18 → 19
-- Replaced ESLint with Biome 2.4.1
-- Configured babel-plugin-reactylon to work with Turbopack
-- Migrated all game code into src/ directory
-- Added 11 Playwright E2E tests (all passing)
-- Build: ~11s. Dev startup: 440ms.
+**Key changes:**
+- Replaced Next.js 16 + Turbopack with Metro + Expo SDK 55
+- Elevated Miniplex ECS as core architecture (levels ARE archetypes)
+- Added dual AR/MR modes (glasses room-scale + phone camera projection)
+- Added 7 procedural morph-based enemies with Yuka AI traits
+- Added crystalline-cube boss with 5-phase GSAP world-crush timeline
+- Added logarithmic difficulty scaling system (endless progression)
+- Replaced Vitest with Jest + fast-check for property-based testing
+- Added Maestro for mobile E2E testing
+- WebGPU primary on web, Babylon Native (Metal/Vulkan) on mobile
 
-**Key design decisions (distilled from original Grok conversations):**
+**Key design decisions:**
+1. **Miniplex ECS elevated** — Levels ARE archetypes, all procedural params in ECS component data
+2. **Buried seed drives everything** — Deterministic PRNG for patterns, enemies, audio, difficulty
+3. **Logarithmic difficulty scaling** — `baseValue * (1 + k * Math.log1p(tension * timeScale))`
+4. **Dual AR/MR modes** — Glasses room-scale (hand tracking) + phone projection (touch)
+5. **GLSL-first shaders** — Auto-converted to WGSL on WebGPU, used directly on WebGL2/Native
+6. **No HUD ever** — Everything diegetic (in-world 3D)
+7. **Metro everywhere** — Single bundler for all platforms
 
-1. **De-humanized the AI** — Replaced NS-5 android bust with fragile glass sphere
-2. **Pattern stabilization** — Core mechanic: hold keycaps to pull back corruption
-3. **Buried seed** — Hidden deterministic seed drives all procedural generation
-4. **Garage-door keycaps** — Mechanical emergence from platter rim with GSAP
-5. **Symmetric titles** — "COGNITIVE DISSONANCE" → "COGNITION SHATTERED"
-6. **Babylon.js migration** — Full port from Three.js/R3F for XR + WebGPU readiness
-7. **CSP safety** — All shaders as static strings, no eval/dynamic code
+### v2.0.0 — Babylon.js Migration (Feb 2026)
+
+Ground-up rebuild from Vite + R3F + Three.js to Next.js + Babylon.js + Reactylon (web-only).
 
 ### v1.0.0 — Original R3F Version
 
 Vite + React Three Fiber + Three.js + Miniplex + Web Worker game loop.
-Raymarched SDF enemies, 3D mechanical keyboard, NS-5 android bust.
 
 ---
 
 ## Known Issues
 
-- Physics-keys are constrained via Havok 6DoF; tune `src/components/physics-keys.tsx` constraint keys `LINEAR_Y.minLimit/maxLimit` (travel) and `LINEAR_Y.stiffness/damping` + `setAxisMotorMaxForce` (spring), then validate via `pnpm test:e2e:headed` visual QA pass.
-- XR hand tracking is stub only — pinch→keycap mapping not wired
-- Runtime visual quality not yet verified (compiles and loads, but no human eye-test)
-- React Native peer dep warnings from reactylon transitive deps (harmless)
-- Mobile touch: keycap hit areas may need enlargement
+- Havok physics keycap constraints need tuning (LINEAR_Y stiffness/damping)
+- XR hand tracking is functional but needs real-device testing
+- AR occlusion requires iOS 26+ / Quest 3+ for environment-depth (stencil fallback works)
+- Biome auto-fix removes private field declarations that are only assigned in methods (re-add manually)
 
 ---
 
 ## Active Decisions
 
-- **Next.js 16 + Turbopack** — Default bundler, dramatically faster than webpack
-- **Biome 2.4** — Replaced ESLint (single binary, zero plugin deps)
-- **forceWebGL={true}** — Safest for complex GLSL raymarchers
-- **Zustand over Miniplex for cross-component state** — Simpler bridge pattern
-- **GSAP for all mechanical animations** — CustomEase, timeline, stagger
+- **Metro + Expo SDK 55** — Universal bundler for all platforms
+- **Biome 2.4** — Single binary linter/formatter (replaced ESLint)
+- **Miniplex 2.0 API** — `world.with()` and `world.add()` (not `archetype()` and `createEntity()`)
+- **Tree-shakable imports only** — `@babylonjs/core/MODULE` (never barrel imports)
+- **GSAP 3.13+** — All plugins free (Webflow-sponsored)
 - **Tone.js exclusive audio** — Babylon audio engine disabled
 - **pnpm** — Package manager

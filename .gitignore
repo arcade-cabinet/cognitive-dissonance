@@ -1,9 +1,11 @@
 # Dependencies
 node_modules/
 
-# Next.js
-.next/
-out/
+# Expo / Metro
+.expo/
+.expo-shared/
+metro-cache/
+*.xcworkspace
 
 # Build
 build/
@@ -30,6 +32,7 @@ Thumbs.db
 *.swo
 
 # Android
+android/build/
 android/app/build/
 android/.gradle/
 local.properties
@@ -52,6 +55,7 @@ DerivedData/
 
 # Metro
 .metro-health-check*
+metro-cache/
 
 # Bundle artifacts
 *.jsbundle

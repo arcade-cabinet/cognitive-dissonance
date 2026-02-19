@@ -1,70 +1,76 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import { useSeedStore } from '../seed-store';
 
 describe('seed-store', () => {
   beforeEach(() => {
     // Reset store to initial state
-    useSeedStore.setState({
-      seedString: '',
-      rng: () => Math.random(),
-      lastSeedUsed: '',
-    });
+    useSeedStore.getState().setSeed('');
   });
 
-  it('has empty seedString initially', () => {
-    expect(useSeedStore.getState().seedString).toBe('');
+  it('initializes with empty seed string', () => {
+    const { seedString } = useSeedStore.getState();
+    expect(seedString).toBe('');
   });
 
-  it('rng returns a number', () => {
-    const val = useSeedStore.getState().rng();
-    expect(typeof val).toBe('number');
-    expect(val).toBeGreaterThanOrEqual(0);
-    expect(val).toBeLessThan(1);
+  it('generates a new seed', () => {
+    const { generateNewSeed } = useSeedStore.getState();
+    generateNewSeed();
+    const { seedString } = useSeedStore.getState();
+    expect(seedString).not.toBe('');
+    expect(seedString.length).toBeGreaterThan(0);
   });
 
-  it('generateNewSeed sets seedString', () => {
-    useSeedStore.getState().generateNewSeed();
-    expect(useSeedStore.getState().seedString).not.toBe('');
+  it('sets a custom seed', () => {
+    const { setSeed } = useSeedStore.getState();
+    setSeed('test-seed-123');
+    const { seedString } = useSeedStore.getState();
+    expect(seedString).toBe('test-seed-123');
   });
 
-  it('generateNewSeed creates a working deterministic rng', () => {
-    useSeedStore.getState().generateNewSeed();
-    const seed = useSeedStore.getState().seedString;
-    expect(seed.length).toBeGreaterThan(0);
-
-    const val = useSeedStore.getState().rng();
-    expect(typeof val).toBe('number');
+  it('stores last seed when generating new seed', () => {
+    const { setSeed, generateNewSeed } = useSeedStore.getState();
+    setSeed('first-seed');
+    generateNewSeed();
+    const { lastSeedString } = useSeedStore.getState();
+    expect(lastSeedString).toBe('first-seed');
   });
 
-  it('replayLastSeed replays the same seed', () => {
-    useSeedStore.getState().generateNewSeed();
-    const original = useSeedStore.getState().seedString;
-
-    // Generate values from the original rng
-    const firstRun = [useSeedStore.getState().rng(), useSeedStore.getState().rng(), useSeedStore.getState().rng()];
-
-    // Replay the last seed
-    useSeedStore.getState().replayLastSeed();
-    expect(useSeedStore.getState().seedString).toBe(original);
-
-    // Should produce the same sequence
-    const secondRun = [useSeedStore.getState().rng(), useSeedStore.getState().rng(), useSeedStore.getState().rng()];
-
-    expect(secondRun).toEqual(firstRun);
+  it('replays last seed', () => {
+    const { setSeed, generateNewSeed, replayLastSeed } = useSeedStore.getState();
+    setSeed('original-seed');
+    generateNewSeed();
+    replayLastSeed();
+    const { seedString } = useSeedStore.getState();
+    expect(seedString).toBe('original-seed');
   });
 
-  it('replayLastSeed with no prior seed generates new one', () => {
-    useSeedStore.getState().replayLastSeed();
-    expect(useSeedStore.getState().seedString).not.toBe('');
+  it('provides deterministic RNG from seed', () => {
+    const { setSeed, rng } = useSeedStore.getState();
+
+    // Set seed and get first value
+    setSeed('deterministic-test');
+    const rng1 = useSeedStore.getState().rng;
+    const value1 = rng1?.();
+
+    // Reset with same seed to get a fresh RNG
+    setSeed('deterministic-test');
+    const rng2 = useSeedStore.getState().rng;
+    const value2 = rng2?.();
+
+    // First value from new RNG should match first value from old RNG
+    expect(value1).toBe(value2);
   });
 
-  it('two calls to generateNewSeed produce different seeds', () => {
-    useSeedStore.getState().generateNewSeed();
-    const first = useSeedStore.getState().seedString;
+  it('generates different values for different seeds', () => {
+    const { setSeed } = useSeedStore.getState();
 
-    useSeedStore.getState().generateNewSeed();
-    const second = useSeedStore.getState().seedString;
+    setSeed('seed-a');
+    const rngA = useSeedStore.getState().rng;
+    const valueA = rngA?.();
 
-    expect(first).not.toBe(second);
+    setSeed('seed-b');
+    const rngB = useSeedStore.getState().rng;
+    const valueB = rngB?.();
+
+    expect(valueA).not.toBe(valueB);
   });
 });

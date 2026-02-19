@@ -1,49 +1,115 @@
-# Copilot Instructions — Cognitive Dissonance
+# GitHub Copilot Instructions
 
-## How to Use This File
+You are GitHub Copilot, an AI assistant helping developers write code for Cognitive Dissonance v3.0, a cross-platform (web + Android + iOS) interactive 3D experience built with Reactylon Native + Babylon.js 8 + Miniplex ECS + Expo SDK 55.
 
-This file contains **Copilot-specific** development instructions. For project documentation, see:
+## Project Context
 
-- **[AGENTS.md](../AGENTS.md)** — Cross-agent memory bank (architecture, patterns, tech context, file structure)
-- **[docs/DESIGN_VISION.md](../docs/DESIGN_VISION.md)** — Photorealistic procedural generation vision (THE authoritative design target)
-- **[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)** — System architecture deep dive
-- **[docs/DESIGN_SYSTEM.md](../docs/DESIGN_SYSTEM.md)** — Design tokens and visual language
-- **[docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md)** — Build, deploy, CI/CD pipeline
+- **Stack**: Reactylon Native + Babylon.js 8 + Miniplex ECS + Expo SDK 55 + Metro + React 19 + React Native 0.83
+- **Architecture**: Miniplex ECS core, imperative 3D (meshes in useEffect), declarative lights/camera (Reactylon JSX)
+- **Bundler**: Metro (universal for web + Android + iOS)
+- **Linter**: Biome 2.4
+- **Testing**: Jest + fast-check (unit + PBT) + Playwright (web E2E) + Maestro (mobile E2E)
 
-Always read AGENTS.md and the relevant docs/ files before starting work.
+## Key Conventions
 
-## Design Vision (Critical)
+### Babylon.js Imports
 
-The visual target is **photorealistic procedural generation** — NOT low-poly, NOT retro placeholders. Every 3D element must use complex curves, PBR materials (MeshPhysicalMaterial), procedural textures (shader noise), and sophisticated lighting. Read `docs/DESIGN_VISION.md` for the full specification before touching any rendering code.
+Always use tree-shakable subpath imports:
 
-## Stack
+```typescript
+// ✅ Correct
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 
-- React 19 + TypeScript 5 + Vite 7
-- React Three Fiber 9 + Three.js 0.182 + @react-three/drei 10
-- Miniplex 2 ECS + miniplex-react 2 (NOT @miniplex/react)
-- Tone.js 15 (adaptive music) + Yuka.js 0.7.8 (game AI)
-- Biome 2.3 (lint/format) + Vitest 4 (tests) + Playwright 1.58 (E2E)
-- pnpm (not npm/yarn)
+// ❌ Wrong (barrel import)
+import { Mesh, Vector3 } from "@babylonjs/core";
+```
 
-## Architecture
+### Miniplex ECS API
 
-- Game logic runs in a Web Worker (`src/worker/game.worker.ts` → `src/lib/game-logic.ts`)
-- State syncs from worker → Miniplex ECS → R3F rendering systems
-- GameScene uses refs (not React state) for 60fps updates
-- Design tokens in `src/design/tokens.ts` — all colors/spacing come from here
-- Logic in `/lib/`, not `.tsx` files — components are thin rendering layers
+Use Miniplex 2.0 API:
+
+```typescript
+// ✅ Correct
+const query = world.with('level', 'platterCore');
+const entity = world.add({ level: true, platterCore: true });
+
+// ❌ Wrong (Miniplex 1.x API)
+const query = world.archetype('level', 'platterCore');
+const entity = world.createEntity({ level: true, platterCore: true });
+```
+
+### Reactylon Patterns
+
+- **Imperative meshes**: Create in useEffect, not JSX
+- **Declarative lights/camera**: Use lowercase JSX tags
+- **Render loop**: `scene.registerBeforeRender(fn)` / `scene.unregisterBeforeRender(fn)`
+
+```typescript
+// ✅ Correct
+useEffect(() => {
+  const mesh = MeshBuilder.CreateBox('box', { size: 1 }, scene);
+  return () => mesh.dispose();
+}, [scene]);
+
+<hemisphericLight name="light" intensity={0.7} direction={new Vector3(0, 1, 0)} />
+```
+
+### GSAP + Babylon.js
+
+GSAP works natively with Babylon.js Vector3:
+
+```typescript
+gsap.to(mesh.position, { x: 5, duration: 1, ease: "power2.out" });
+```
+
+### Shaders
+
+All GLSL shaders must be static strings in `Effect.ShadersStore` (CSP-safe):
+
+```typescript
+Effect.ShadersStore["myVertexShader"] = `
+  precision highp float;
+  attribute vec3 position;
+  void main() {
+    gl_Position = vec4(position, 1.0);
+  }
+`;
+```
+
+## Common Pitfalls
+
+1. **Barrel imports from @babylonjs/core** — Always use subpath imports
+2. **Miniplex 1.x API** — Use `world.with()` and `world.add()` (not `archetype()` and `createEntity()`)
+3. **JSX for meshes** — Only use JSX for lights/camera, create meshes imperatively
+4. **React re-renders for animation** — Use `scene.registerBeforeRender()` for per-frame logic
+5. **Biome auto-fix removes field declarations** — Re-add private fields after `biome check --write --unsafe`
+
+## File Structure
+
+```
+src/
+├── engine/                   # Engine initialization
+├── ecs/                      # Miniplex ECS world + archetypes
+├── systems/                  # Core gameplay systems (singletons)
+├── enemies/                  # Enemy systems
+├── objects/                  # 3D object factories
+├── shaders/                  # GLSL shaders
+├── xr/                       # AR/MR systems
+├── audio/                    # Tone.js audio
+├── store/                    # Zustand stores
+└── types/                    # TypeScript types
+```
 
 ## Commands
 
 ```bash
-pnpm dev          # Dev server
-pnpm build        # Production build
-pnpm typecheck    # TypeScript check
-pnpm lint         # Biome lint
-pnpm test         # Unit tests
-pnpm test:e2e     # E2E tests
+pnpm start         # Metro dev server (all platforms)
+pnpm web           # Expo web dev server
+pnpm android       # Metro + Expo dev-client (Android)
+pnpm ios           # Metro + Expo dev-client (iOS)
+pnpm lint          # Biome check
+pnpm test          # Jest unit + PBT tests
+pnpm test:e2e:web  # Playwright web E2E
+pnpm test:e2e:mobile # Maestro mobile E2E
 ```
-
-## Quality Gates
-
-All PRs must pass: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`

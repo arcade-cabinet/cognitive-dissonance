@@ -1,37 +1,51 @@
-import seedrandom from 'seedrandom';
 import { create } from 'zustand';
+import { hashSeed, mulberry32 } from '../utils/seed-helpers';
 
 interface SeedState {
   seedString: string;
-  rng: () => number;
-  lastSeedUsed: string;
+  lastSeedString: string | null;
+  rng: (() => number) | null;
 
+  // Actions
   generateNewSeed: () => void;
   replayLastSeed: () => void;
+  setSeed: (seed: string) => void;
 }
 
 export const useSeedStore = create<SeedState>((set, get) => ({
   seedString: '',
-  rng: () => Math.random(),
-  lastSeedUsed: '',
+  lastSeedString: null,
+  rng: null,
 
   generateNewSeed: () => {
-    const rawSeed = Math.random().toString(36).slice(2) + Date.now().toString(36);
-    const rng = seedrandom(rawSeed);
+    const timestamp = Date.now();
+    const random = Math.random();
+    const newSeed = `${timestamp}-${random.toString(36).substring(2, 9)}`;
+    const { seedString: currentSeed } = get();
+
     set({
-      seedString: rawSeed,
-      rng,
-      lastSeedUsed: rawSeed,
+      seedString: newSeed,
+      lastSeedString: currentSeed || null,
+      rng: mulberry32(hashSeed(newSeed)),
     });
   },
 
   replayLastSeed: () => {
-    const { lastSeedUsed } = get();
-    if (!lastSeedUsed) {
-      get().generateNewSeed();
-      return;
+    const { lastSeedString } = get();
+    if (lastSeedString) {
+      set({
+        seedString: lastSeedString,
+        rng: mulberry32(hashSeed(lastSeedString)),
+      });
     }
-    const rng = seedrandom(lastSeedUsed);
-    set({ rng, seedString: lastSeedUsed });
+  },
+
+  setSeed: (seed: string) => {
+    const { seedString: currentSeed } = get();
+    set({
+      seedString: seed,
+      lastSeedString: currentSeed || null,
+      rng: mulberry32(hashSeed(seed)),
+    });
   },
 }));

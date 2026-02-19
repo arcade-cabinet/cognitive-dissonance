@@ -1,177 +1,372 @@
-# GitHub Actions Workflow Documentation
-
-This document describes the optimized GitHub Actions workflows and how to use them.
+# GitHub Actions CI/CD — Cognitive Dissonance v3.0
 
 ## Overview
 
-All GitHub Actions have been updated to the latest stable versions and pinned to exact SHA commits for security and reproducibility.
+The project uses GitHub Actions for continuous integration and deployment across all platforms (web, Android, iOS). The CI/CD pipeline is split into two workflows:
 
-## Workflows
+- **CI** (`.github/workflows/ci.yml`): Runs on all pull requests and pushes to `main`
+- **CD** (`.github/workflows/cd.yml`): Runs on pushes to `main` only
 
-### CI Workflow (`.github/workflows/ci.yml`)
+## CI Workflow
 
-**Purpose**: Fast quality checks on pull requests
-
-**Jobs**:
-1. **quality-checks**: Parallel matrix of lint, typecheck, and unit tests
-2. **e2e-smoke**: Quick smoke tests on 3 core devices (Desktop Chrome, iPhone 12, iPad Pro 11)
-3. **build**: Production build verification
-
-**E2E Skip Feature**:
-
-You can skip E2E smoke tests in several ways:
-
-1. **Via Workflow Dispatch**:
-   - Go to Actions → CI workflow → Run workflow
-   - Check "Skip E2E smoke tests"
-
-2. **Via Repository Variable**:
-   - Go to Settings → Secrets and variables → Actions → Variables
-   - Create a variable named `DISABLE_E2E_SMOKE` with value `true`
-   - This will skip E2E tests in all CI runs
-
-3. **Via Workflow Call** (when called from CD):
-
-   ```yaml
-   ci:
-     uses: ./.github/workflows/ci.yml
-     with:
-       skip-e2e: true
-   ```
-
-**When to Skip E2E Tests**:
-
-- During documentation-only changes
-- When iterating quickly on code that doesn't affect UI
-- To get faster feedback on lint/typecheck/unit test issues
-
-**Note**: E2E tests are always skipped when called from CD workflow since the full E2E matrix runs separately.
-
-### CD Workflow (`.github/workflows/cd.yml`)
-
-**Purpose**: Continuous deployment to production on main branch
+**Trigger**: Pull requests, pushes to `main`
 
 **Jobs**:
-1. **ci**: Calls CI workflow with e2e skipped (runs lint, typecheck, test, build)
-2. **e2e-full-matrix**: Comprehensive E2E tests on 17 device profiles
-3. **auto-heal-failures**: Jules AI agent auto-heals failures (if configured)
-4. **release-please**: Creates release PRs based on conventional commits
-5. **build-pages**: Builds for GitHub Pages deployment
-6. **deploy-pages**: Deploys to GitHub Pages
 
-**Device Coverage** (17 total):
-- Desktop: Chrome, Firefox, Safari
-- Phones (Portrait): iPhone 12, iPhone 13, iPhone 14, Pixel 5, Galaxy S21
-- Phones (Landscape): Galaxy S21
-- Tablets (Portrait): iPad Pro 11, iPad Pro 12.9
-- Tablets (Landscape): iPad Pro 11, iPad Pro 12.9
-- Foldables: Galaxy Fold (Portrait/Landscape), Surface Duo (Portrait/Landscape)
+### 1. code-quality
 
-### Release Workflow (`.github/workflows/release.yml`)
+Runs linting, type-checking, and unit tests.
 
-**Purpose**: Build Android APKs when a release is published
+```yaml
+steps:
+  - Checkout code
+  - Setup Node.js 22 + pnpm
+  - Install dependencies
+  - Run Biome lint: pnpm lint
+  - Run TypeScript type-check: pnpm exec tsc --noEmit
+  - Run Jest unit tests: pnpm test
+```
+
+**Exit criteria**: All checks must pass (0 lint errors, 0 type errors, all tests passing)
+
+### 2. web-build
+
+Builds Expo web export and verifies bundle size.
+
+```yaml
+needs: [code-quality]
+steps:
+  - Checkout code
+  - Setup Node.js 22 + pnpm
+  - Install dependencies
+  - Build Expo web: pnpm build:web
+  - Check bundle size: gzip -c dist/assets/*.js | wc -c
+  - Fail if > 5242880 bytes (5 MB gzipped)
+```
+
+**Exit criteria**: Bundle size < 5 MB gzipped
+
+### 3. android-build
+
+Builds Android debug APK via Gradle.
+
+```yaml
+needs: [code-quality]
+steps:
+  - Checkout code
+  - Setup Node.js 22 + pnpm
+  - Install dependencies
+  - Setup Java 17
+  - Run Gradle: ./gradlew assembleDebug (android/)
+```
+
+**Exit criteria**: Debug APK builds successfully
+
+### 4. web-e2e
+
+Runs Playwright E2E tests against Expo web dev server.
+
+```yaml
+needs: [web-build]
+steps:
+  - Checkout code
+  - Setup Node.js 22 + pnpm
+  - Install dependencies
+  - Install Playwright browsers: pnpm exec playwright install chromium --with-deps
+  - Run Playwright tests: pnpm test:e2e:web
+```
+
+**Exit criteria**: All Playwright tests passing
+
+**Test files**: `e2e/web/smoke.spec.ts`, `e2e/web/gameplay.spec.ts`
+
+### 5. mobile-e2e
+
+Runs Maestro E2E flows on Android emulator.
+
+```yaml
+needs: [android-build]
+runs-on: macos-latest
+steps:
+  - Checkout code
+  - Setup Node.js 22 + pnpm
+  - Install dependencies
+  - Start Android emulator (API 34, x86_64)
+  - Install debug APK
+  - Install Maestro CLI
+  - Run Maestro flows: maestro test .maestro/
+```
+
+**Exit criteria**: All Maestro flows passing
+
+**Flow files**: `.maestro/app-launch.yaml`, `.maestro/gameplay-loop.yaml`, `.maestro/ar-session.yaml`, `.maestro/game-over.yaml`
+
+### 6. ci-success
+
+Meta-job that depends on all other jobs. Used for branch protection rules.
+
+```yaml
+needs: [code-quality, web-build, android-build, web-e2e, mobile-e2e]
+```
+
+## CD Workflow
+
+**Trigger**: Pushes to `main` only
 
 **Jobs**:
-1. **prepare-android**: Prepares build environment, caches artifacts
-2. **build-android-apks**: Builds architecture-specific APKs (arm64-v8a, armeabi-v7a, x86, x86_64)
-3. **build-universal-apk**: Builds universal APK
 
-**Trigger**:
-- Automatically on release publish
-- Manually via workflow_dispatch with release tag
+### 1. deploy-web
 
-### Automerge Workflow (`.github/workflows/automerge.yml`)
+Deploys Expo web export to GitHub Pages.
 
-**Purpose**: Unified workflow for auto-merging Dependabot and Release PRs
+```yaml
+steps:
+  - Checkout code
+  - Setup Node.js 22 + pnpm
+  - Install dependencies
+  - Build Expo web: pnpm build:web
+  - Deploy to GitHub Pages: actions/deploy-pages
+```
 
-**Security Model**:
-- Uses `pull_request_target` for secure access to secrets
-- Validates PR author using GitHub API (not forgeable context values)
-- Prevents pwn request attacks by validating bot identity before checkout
-- See: [Preventing pwn requests](https://securitylab.github.com/research/github-actions-preventing-pwn-requests/)
+**Output**: https://[username].github.io/cognitive-dissonance/
 
-**Features**:
-- Auto-approves and merges Dependabot patch/minor updates
-- Auto-approves and merges Release PRs after CI passes
-- Comments on Dependabot major updates (requires manual review)
-- Waits for all CI checks to pass before merging
+### 2. deploy-android
 
-**Replaced Workflows**:
-- `automerge-dependabot.yml` (removed)
-- `automerge-release.yml` (removed)
+Builds Android release APK and uploads to GitHub Release.
 
-## Action Version Updates
+```yaml
+steps:
+  - Checkout code
+  - Setup Node.js 22 + pnpm
+  - Install dependencies
+  - Setup Java 17
+  - Decode keystore from secret
+  - Run Gradle: ./gradlew assembleRelease (android/)
+  - Upload APK to GitHub Release (tag: v3.0.0)
+```
 
-All actions updated to latest stable versions:
+**Output**: `app-release.apk` attached to GitHub Release
 
-| Action | Old Version | New Version |
-|--------|------------|-------------|
-| pnpm/action-setup | v4.0.0 | v4.2.0 |
-| actions/cache | v4.1.2 | v5.0.3 |
-| actions/setup-java | v4.5.0 | v5.2.0 |
-| android-actions/setup-android | v3.2.1 | v3.2.2 |
-| actions/upload-pages-artifact | v3.0.1 | v4.0.0 |
-| googleapis/release-please-action | v4.1.3 | v4.4.0 |
-| softprops/action-gh-release | v2.2.0 | v2.5.0 |
-| dependabot/fetch-metadata | v2.2.0 | v2.5.0 |
-| lewagon/wait-on-check-action | v1.3.4 | v1.5.0 |
-| google-labs-code/jules-action | main | v1.0.0 (SHA pinned) |
+**Secrets required**: `ANDROID_KEYSTORE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`
 
-## Optimizations Applied
+### 3. deploy-ios
 
-### CI Workflow
-- ✅ Added E2E skip flag with multiple control methods
-- ✅ Build job runs in parallel with E2E (faster feedback)
-- ✅ All steps clearly commented
-- ✅ Leverages pnpm caching for faster installs
+Triggers EAS Build for iOS preview profile.
 
-### CD Workflow
-- ✅ Skips redundant E2E smoke tests (runs full matrix instead)
-- ✅ Clear job separation and documentation
-- ✅ Optimized browser installation (only required browser per device)
-- ✅ Pages deployment happens in parallel with E2E
+```yaml
+if: vars.EAS_PROJECT_ID != ''
+steps:
+  - Checkout code
+  - Setup Node.js 22 + pnpm
+  - Install dependencies
+  - Setup Expo CLI
+  - Run EAS Build: eas build --platform ios --profile preview --non-interactive
+```
 
-### Release Workflow
-- ✅ Comprehensive comments explaining build process
-- ✅ Efficient caching of build artifacts
-- ✅ Parallel APK builds by architecture
+**Output**: iOS build uploaded to TestFlight
 
-### Automerge Workflow
-- ✅ Consolidated two workflows into one
-- ✅ Single source of truth for automerge logic
-- ✅ Reduced maintenance overhead
-- ✅ Clear PR type detection and handling
+**Secrets required**: `EXPO_TOKEN`
 
-## Best Practices
+**Variables required**: `EAS_PROJECT_ID`
 
-1. **Security**: All actions pinned to exact SHA for supply chain security
-2. **Caching**: pnpm cache used throughout for faster dependency installation
-3. **Parallelization**: Jobs run in parallel where possible
-4. **Comments**: All jobs and steps clearly documented
-5. **DRY**: No duplication between workflows
-6. **Fail-fast disabled**: E2E tests continue even if one device fails
-7. **Artifact retention**: Test results retained for 3-7 days depending on importance
+## Automerge Workflow
 
-## Troubleshooting
+**Trigger**: Pull requests with `automerge` label
 
-### E2E Tests Taking Too Long?
-- Use `skip-e2e: true` for quick iterations
-- E2E tests only need to pass before merge, not on every push
+**Behavior**: Automatically merges PR after CI passes
 
-### Dependabot PR Not Auto-merging?
-- Check if update is major version (requires manual review)
-- Verify all CI checks have passed
-- Check PR has been approved
+```yaml
+needs: [ci-success]
+if: contains(github.event.pull_request.labels.*.name, 'automerge')
+steps:
+  - Merge PR via GitHub API
+```
 
-### Release PR Not Auto-merging?
-- Verify all E2E tests have passed
-- Check CI quality checks completed successfully
-- Ensure PR title starts with "chore: release"
+**Note**: Dependabot PRs are no longer excluded from CI — all PRs run full test suite.
 
-## Future Improvements
+## Removed from v2.0
 
-Consider these enhancements:
-- Add workflow to generate mobile app screenshots
-- Implement visual regression testing
-- Add performance benchmarking
-- Cache Playwright browsers across runs
+The following jobs were removed in the v3.0 migration:
+
+- **Playwright E2E matrix** (17 profiles): Replaced by single Playwright web E2E job + Maestro mobile E2E
+- **SonarCloud scan**: Replaced by Biome (single binary, zero plugin deps)
+- **CodeQL JavaScript analysis**: Retained optionally, but Biome covers lint/format
+- **Next.js build step**: Replaced by Expo web build
+- **Next.js static export deploy**: Replaced by Expo web export deploy
+
+## Secrets and Variables
+
+### Repository Secrets
+
+| Secret | Purpose | How to Generate |
+|--------|---------|-----------------|
+| `EXPO_TOKEN` | Expo account access token | `eas login` → `eas whoami --json` → copy `authenticationToken` |
+| `ANDROID_KEYSTORE` | Base64-encoded Android keystore | `base64 -i my-release-key.keystore` |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore password | Set during keystore generation |
+| `ANDROID_KEY_ALIAS` | Key alias | Set during keystore generation |
+| `ANDROID_KEY_PASSWORD` | Key password | Set during keystore generation |
+
+### Repository Variables
+
+| Variable | Purpose | How to Set |
+|----------|---------|------------|
+| `EAS_PROJECT_ID` | Expo project ID | Copy from `app.json` `extra.eas.projectId` |
+
+## Debugging CI Failures
+
+### code-quality job fails
+
+**Biome lint errors**:
+```bash
+# Run locally
+pnpm lint
+
+# Auto-fix
+pnpm lint:fix
+```
+
+**TypeScript type errors**:
+```bash
+# Run locally
+pnpm exec tsc --noEmit
+
+# Common issues:
+# - Missing @babylonjs/core subpath imports
+# - Incorrect Miniplex API usage (world.with() not archetype())
+# - Missing field declarations (Biome auto-fix removes them)
+```
+
+**Jest test failures**:
+```bash
+# Run locally
+pnpm test
+
+# Run specific test
+pnpm test -- src/systems/__tests__/TensionSystem.test.ts
+
+# Run with coverage
+pnpm test:coverage
+```
+
+### web-build job fails
+
+**Bundle size exceeds 5 MB**:
+- Check for barrel imports from `@babylonjs/core` (use subpath imports only)
+- Run bundle analyzer: `pnpm build:web` → check `dist/` size
+- Remove unused dependencies
+
+**Expo web build errors**:
+```bash
+# Run locally
+pnpm build:web
+
+# Clear Metro cache
+rm -rf node_modules/.cache
+
+# Reinstall dependencies
+rm -rf node_modules pnpm-lock.yaml
+pnpm install
+```
+
+### android-build job fails
+
+**Gradle build errors**:
+```bash
+# Run locally
+cd android
+./gradlew assembleDebug --stacktrace
+
+# Clean build
+./gradlew clean
+
+# Kill Gradle daemon
+./gradlew --stop
+```
+
+**SDK not found**:
+- Set `ANDROID_HOME` environment variable
+- Install Android SDK 34 via Android Studio
+
+### web-e2e job fails
+
+**Playwright test failures**:
+```bash
+# Run locally
+pnpm test:e2e:web
+
+# Run in headed mode (see browser)
+pnpm exec playwright test --headed
+
+# Debug specific test
+pnpm exec playwright test e2e/web/smoke.spec.ts --debug
+```
+
+**Expo web dev server not starting**:
+- Check port 8081 is not in use
+- Verify `pnpm web` works locally
+
+### mobile-e2e job fails
+
+**Maestro flow failures**:
+```bash
+# Run locally (requires Android emulator)
+maestro test .maestro/app-launch.yaml
+
+# Debug with Maestro Studio
+maestro studio
+```
+
+**Android emulator issues**:
+- Verify emulator starts: `emulator -avd Pixel_5_API_34`
+- Check APK installs: `adb install android/app/build/outputs/apk/debug/app-debug.apk`
+
+### deploy-web job fails
+
+**GitHub Pages deployment errors**:
+- Verify `dist/` directory exists after build
+- Check GitHub Pages is enabled in repository settings
+- Verify branch is `main` (not `master`)
+
+### deploy-android job fails
+
+**Keystore decoding errors**:
+- Verify `ANDROID_KEYSTORE` secret is base64-encoded
+- Test locally: `echo $ANDROID_KEYSTORE | base64 -d > test.keystore`
+
+**Signing errors**:
+- Verify all 4 Android secrets are set correctly
+- Check keystore password matches `ANDROID_KEYSTORE_PASSWORD`
+
+### deploy-ios job fails
+
+**EAS Build errors**:
+- Verify `EXPO_TOKEN` is valid: `eas whoami`
+- Check `EAS_PROJECT_ID` matches `app.json`
+- Verify Apple Developer account is configured: `eas credentials`
+
+## Performance Metrics
+
+### CI Job Durations (Typical)
+
+| Job | Duration |
+|-----|----------|
+| code-quality | ~2 min |
+| web-build | ~3 min |
+| android-build | ~5 min |
+| web-e2e | ~2 min |
+| mobile-e2e | ~8 min (includes emulator boot) |
+| **Total CI** | ~12 min (parallel execution) |
+
+### CD Job Durations (Typical)
+
+| Job | Duration |
+|-----|----------|
+| deploy-web | ~3 min |
+| deploy-android | ~6 min |
+| deploy-ios | ~15 min (EAS Build cloud) |
+
+## References
+
+- [Architecture](./ARCHITECTURE.md) — System architecture
+- [Deployment](./DEPLOYMENT.md) — Deployment procedures
+- [Testing](./TESTING.md) — Test infrastructure

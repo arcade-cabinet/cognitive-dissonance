@@ -1,160 +1,218 @@
-# Architecture — Cognitive Dissonance v2
+# Architecture — Cognitive Dissonance v3.0
 
-> **For design rationale**: See `DESIGN.md`  
-> **For agent task list**: See `docs/memory-bank/handoff.md`  
-> **For conversation history**: See `docs/memory-bank/grok-doc/main-conversation/INDEX.md`
+## Overview
 
-## Stack
+Cognitive Dissonance v3.0 is a cross-platform (web + Android + iOS) interactive 3D experience built on **Reactylon Native + Babylon.js 8 + Miniplex ECS**. The architecture supports dual AR/MR play modes (glasses room-scale and phone camera projection), WebGPU rendering on web with Babylon Native on mobile, procedural morph-based enemies with 7 Yuka AI traits, and a crystalline-cube boss world-crush sequence.
 
-- **Next.js 16** (App Router, Turbopack) + **React 19** + **TypeScript 5.9**
-- **Babylon.js 8.51** + **Reactylon 3.5.4** (declarative 3D)
-- **GSAP 3.12** (CustomEase, MotionPath, Flip) + **Tone.js 14.8** (adaptive spatial audio)
-- **Zustand 5** (state) + **Miniplex 2** (ECS) + **Yuka.js 0.7** (enemy AI)
-- **seedrandom 3.0** (buried seed) + **Tailwind CSS 4** (2D overlays)
-- **Biome 2.4** (lint/format) + **Vitest 4** (tests) + **Playwright 1.58** (E2E)
-- **pnpm 10.26** (package manager)
+The project uses **Metro** as the universal bundler for all platforms, **Expo SDK 55** as the dev-client layer, and **Miniplex** as the core entity management system.
 
-## Commands
+## High-Level Architecture
 
-```bash
-pnpm dev          # Dev server (Turbopack, 440ms startup)
-pnpm build        # Production build (~21s)
-pnpm start        # Production server
-pnpm lint         # Biome check (0 errors, 0 warnings)
-pnpm test         # Vitest unit tests (60 tests)
-pnpm test:e2e     # Playwright E2E tests (includes build + xvfb-run)
+```
+Entry Points (Metro)
+├── index.web.tsx       → Web (Metro + Expo web + WebGPU)
+└── index.native.tsx    → Native (Metro + Expo SDK 55 + Babylon Native)
+    │
+    ▼
+App.tsx (Root Component)
+├── StrictMode
+├── EngineInitializer   → WebGPU / WebGL2 / Babylon Native
+├── SceneManager        → Scene creation, coordinate system
+└── CognitiveDissonanceRoot (game loop)
+    │
+    ▼
+ECS Layer (Miniplex)
+├── World.ts            → Consolidated archetypes
+├── Level Archetypes    → PlatterRotation | LeverTension | KeySequence | CrystallineCubeBoss
+├── Hand Archetypes     → LeftHand | RightHand (26 joints each)
+├── AR Archetypes       → WorldAnchored | Projected | ARSphere
+└── Enemy Archetypes    → YukaEnemy (7 traits) | CrystallineCubeBoss
+    │
+    ▼
+Core Systems (Singletons)
+├── TensionSystem               → 0.0–0.999 tension, over-stabilization rebound
+├── DifficultyScalingSystem     → Logarithmic scaling from tension + time + seed
+├── PatternStabilizationSystem  → Keycap holds, tendril retraction, coherence bonus
+├── CorruptionTendrilSystem     → SPS 24 tendrils, tension-proportional spawn
+├── MechanicalAnimationSystem   → GSAP timelines, CustomEase, MotionPath
+├── EchoSystem                  → Ghost keycaps, 1800ms dispose, one-per-key
+├── ProceduralMorphSystem       → MorphTargetManager, 7 traits, GPU vertex morphing
+├── CrystallineCubeBossSystem   → 5-phase GSAP timeline, counter, shatter
+├── PostProcessCorruption       → Bloom, vignette, chromatic aberration
+├── ImmersionAudioBridge        → Tone.js + expo-audio native bridge
+├── SpatialAudioManager         → Event-driven procedural SFX
+├── ARSessionManager            → Dual AR/MR: glasses room-scale / phone projection
+├── XRManager                   → WebXR session, hand tracking → Hand_Archetype entities
+├── HandInteractionSystem       → 26-joint → keycap/lever/sphere mapping
+├── PhoneProjectionTouchSystem  → Pointer observers, raycast pick routing
+├── MechanicalHaptics           → expo-haptics (native) + navigator.vibrate (web)
+├── DiegeticAccessibility       → Voice commands (expo-speech), adaptive haptics
+└── SharedDreamsSystem          → WebRTC DataChannel, anchor/tension sync
+    │
+    ▼
+Visual Systems
+├── SphereNebulaMaterial        → PBR + GLSL nebula, tension-driven color/pulse/jitter
+├── MechanicalPlatter           → Factory: cylinder + track + slit + lever + 14 keycaps + sphere
+├── DiegeticCoherenceRing       → Torus mesh, emissive PBR, blue→red
+├── TitleAndGameOverSystem      → "COGNITIVE DISSONANCE" / "COGNITION SHATTERED" planes
+├── MechanicalDegradationSystem → WebGL2: cracks, jitter, lever resistance
+└── AROcclusionMaterial         → Environment-depth + stencil fallback
+    │
+    ▼
+State Layer (Zustand)
+├── seed-store      → seedString, rng, generateNewSeed, replayLastSeed
+├── game-store      → phase: loading/title/playing/shattered/error
+└── input-store     → keycap pressed states
 ```
 
-## System Architecture
+## Platform Strategy
 
-```text
-Next.js 16 App Router (Turbopack)
-├── app/page.tsx: dynamic import of GameBoard with ssr: false
-├── GameBoard (2D React + Tailwind):
-│   ├── ATCShader background (WebGL2, CSP-safe)
-│   ├── Title overlay ("COGNITIVE DISSONANCE")
-│   ├── Clarity overlay ("COHERENCE MAINTAINED")
-│   ├── Game-over overlay ("COGNITION SHATTERED")
-│   └── Zustand store bridge (window.__zustand_*)
-├── GameScene (Reactylon Engine/Scene):
-│   ├── Declarative: hemisphericLight, pointLight, arcRotateCamera
-│   ├── AISphere: glass PBR sphere + celestial ShaderMaterial + moment of clarity + restart ritual
-│   ├── Platter: cylinders + boxes + GSAP garage-door + dust particles + recess glow + colored keycaps
-│   ├── PatternStabilizer: particle systems for escaping tendrils + per-color matching
-│   ├── EnemySpawner: Yuka AI + SDF shader enemies + split behavior
-│   ├── PostProcessCorruption: chromatic aberration + noise + vignette
-│   ├── SPSEnemies: SolidParticleSystem visuals
-│   ├── DiegeticGUI: two-layer coherence arc (background ring + foreground tube)
-│   ├── SpatialAudio: 3 Tone.js procedural synths (whoosh, chime, shatter)
-│   ├── AudioEngine: Tone.js adaptive score bridge
-│   ├── PhysicsKeys: Havok 6DoF constrained keycaps
-│   └── XRSession: WebXR stub with hand tracking
-└── State Layer (Zustand):
-    ├── seed-store: buried seed (seedrandom)
-    ├── level-store: tension, coherence, level
-    ├── audio-store: Tone.js bridge
-    ├── game-store: phase (title/playing/paused/gameover)
-    └── input-store: keycap hold state (Set<number>)
+| Platform | Engine | Renderer | Shaders | Audio | Haptics | AR |
+|----------|--------|----------|---------|-------|---------|-----|
+| Web (Chrome 113+) | WebGPUEngine | WebGPU | WGSL primary | Tone.js | navigator.vibrate | WebXR immersive-ar |
+| Web (fallback) | Engine (WebGL2) | WebGL2 | GLSL fallback | Tone.js | navigator.vibrate | WebXR immersive-ar |
+| iOS (iPhone 12+) | Babylon Native | Metal | WGSL→MSL | expo-audio + Tone.js | expo-haptics | ARKit |
+| Android (SD888+) | Babylon Native | Vulkan | WGSL→SPIR-V | expo-audio + Tone.js | expo-haptics | ARCore |
+
+## Build Pipeline
+
+```
+Web:    Metro → Expo web → babel-plugin-reactylon → esnext bundle
+Native: Metro → Expo SDK 55 dev-client → Reactylon Native → Babylon Native
+Shared: TypeScript 5.9 strict, @babylonjs/core subpath imports, tree-shaking
 ```
 
-## Key Patterns
+## Key Architectural Decisions
 
-### 1. Imperative Mesh Creation
+### Miniplex ECS as Core
 
-All Babylon.js meshes/materials created in `useEffect`, NOT as JSX. Only lights and camera use Reactylon JSX (`<hemisphericLight>`, `<arcRotateCamera>`, `<pointLight>`).
+All game entities (levels, hands, AR anchors, enemies, bosses) are Miniplex entities with archetype queries. Levels ARE archetypes — each Dream is a Miniplex entity with archetype-specific components. All procedural parameters (spawn rates, hold times, tension curves, difficulty scaling coefficients) are derived directly from the seed PRNG and built into ECS component data on the Level_Archetype entity at spawn time. No external JSON config files.
 
-### 2. Render Loop
+### Metro Everywhere
 
-`scene.onBeforeRenderObservable.add(fn)` / `scene.onBeforeRenderObservable.remove(observer)`
+Metro is the sole bundler for web, Android, and iOS. No Vite, no Webpack, no Turbopack. Expo SDK 55 provides the dev-client layer and build tooling.
 
-### 3. CSP-Safe Shader Store
+### GLSL-First Shader Strategy
 
-All GLSL in `BABYLON.Effect.ShadersStore` as static string constants. No eval, no dynamic Function constructors.
+All custom shaders are authored in GLSL for maximum platform compatibility:
+- Web (WebGPU): GLSL → auto-converted to WGSL by Babylon.js WASM transpiler
+- Web (WebGL2): GLSL used directly
+- Native (Babylon Native / bgfx): GLSL used directly (bgfx compiles to Metal MSL / Vulkan SPIR-V)
 
-### 4. GSAP + Babylon.js
+All shaders stored as static string literals in `Effect.ShadersStore` (CSP-safe, no eval).
 
-`gsap.to(mesh.position, {...})` works natively with Vector3 number properties. CustomEase for mechanical feel.
+### Dual AR/MR Modes
 
-### 5. SSR Bypass
+- **Glasses room-scale**: Platter anchored to real-world horizontal plane via WebXRAnchor, 26-joint hand interaction
+- **Phone camera projection**: Tap-to-place via WebXR hit-test, touch controls on projected geometry
+- **MODE_LEVER**: Diegetic lever on platter rim switches between modes with GSAP resistance and gear-grind audio
 
-All 3D code in `'use client'` files loaded via `dynamic({ ssr: false })`.
+### Buried Seed Procedural Generation
 
-### 6. Zustand Bridge
+A deterministic seed (mulberry32 PRNG) drives ALL procedural generation:
+- Level archetype selection (seedHash % 4)
+- Pattern sequences
+- Enemy trait distribution
+- Audio parameters (BPM, swing, root note)
+- Difficulty curves (±20% variance per Dream)
+- Tension curves (±15% variance per Dream)
 
-Render loop reads `useLevelStore.getState().tension`. React subscribes normally. Stores exposed on window for E2E.
+### Logarithmic Difficulty Scaling
 
-### 7. Turbopack + Babel
+`scaledValue = baseValue * (1 + k * Math.log1p(tension * timeScale))`
 
-`babel.config.js` has only `@babel/preset-typescript` + `babel-plugin-reactylon`. Turbopack uses Babel for user code, SWC for Next.js internals.
+Endless progression with asymptotic ceilings. Difficulty drives tension increase rate, tension drives difficulty — with seed-derived damping coefficient (0.7–0.9) preventing runaway escalation.
 
-### 8. Engine Config
+### No HUD Ever
 
-`forceWebGL={true}`, `engineOptions` for antialias/adaptToDeviceRatio/audioEngine:false.
+Everything is diegetic (in-world 3D). Zero HTML overlays during gameplay. Coherence displayed as a glowing arc ring on the platter. Titles engraved on platter/sphere.
 
-### 9. Per-Color Keycap Matching
+### GSAP for All Mechanical Animations
 
-`src/lib/keycap-colors.ts` provides 12 evenly-spaced HSL colors. Both platter (material emissive) and pattern-stabilizer (particle color + colorIndex) import from the same source of truth. Pattern stabilization checks `heldKeycaps.has(p.colorIndex)`.
+CustomEase, MotionPath, and all formerly-paid plugins are now free (GSAP 3.13+, Webflow-sponsored). Used for garage-door keycaps, lever resistance, platter rotation, boss timelines.
 
-### 10. Spatial Audio Events
+### Tone.js Exclusive Audio
 
-Pattern-stabilizer dispatches `patternEscaped` / `patternStabilized` CustomEvents. AISphere dispatches `sphereShattered`. SpatialAudio component listens and triggers Tone.js synths.
+Babylon audio engine disabled. All audio through Tone.js + expo-audio bridge on native.
 
-### 11. Moment of Clarity
+## System Orchestration
 
-At coherence 100, GSAP smoothly eases jitter to zero, pulses blue emissive on glass, shifts celestial shader to calm blue. After 3s, coherence drops -75, tension +0.05. No win state — just a fleeting respite.
+### Initialization Order (21 systems)
 
-### 12. Enemy Split Behavior
+1. EngineInitializer
+2. SceneManager
+3. DeviceQuality
+4. ECS World
+5. MechanicalPlatter
+6. SphereNebulaMaterial
+7. DiegeticCoherenceRing
+8. TensionSystem
+9. DifficultyScalingSystem
+10. PatternStabilizationSystem
+11. CorruptionTendrilSystem
+12. MechanicalAnimationSystem
+13. EchoSystem
+14. ProceduralMorphSystem
+15. CrystallineCubeBossSystem
+16. PostProcessCorruption
+17. ImmersionAudioBridge
+18. SpatialAudioManager
+19. DreamTypeHandler
+20. ARSessionManager
+21. KeyboardInputSystem
 
-Split-behavior enemies spawn 2 half-size seeker children on contact with sphere instead of adding tension directly. Children add tension when they reach the sphere.
+### Per-Frame Update Order (12 systems)
 
-### 13. Diegetic Coherence Arc
+1. KeyboardInputSystem (input)
+2. PatternStabilizationSystem (gameplay)
+3. DifficultyScalingSystem (difficulty recomputation)
+4. TensionSystem (state)
+5. CorruptionTendrilSystem (visuals)
+6. ProceduralMorphSystem (enemies)
+7. CrystallineCubeBossSystem (boss)
+8. EchoSystem (feedback)
+9. MechanicalDegradationSystem (fallback)
+10. PostProcessCorruption (post-process)
+11. ImmersionAudioBridge (audio)
+12. DreamTypeHandler (archetype logic)
 
-`CreateTube` with a partial circular path (not `CreateTorus` — it lacks `arc` param). Throttled recreation at 2% coherence buckets.
+## Game Phase State Machine
 
-### 14. Restart Ritual
-
-AISphere subscribes to game-store. On phase transition to `playing` after shatter, recreates both spheres with GSAP scale-in + emissive pulse.
-
-### 15. Physics-Based Keycaps
-
-Havok V2 6DoF constraints. Keycaps constrained in X/Z and rotation, limited Y travel (-0.055 to +0.006), Y-axis position motor acts as spring-return.
-
-## File Structure
-
-```text
-src/
-  app/          Next.js App Router (layout, page, globals.css)
-  components/   All game components (3D + 2D)
-  store/        Zustand stores (seed, level, audio, game, input)
-  lib/          Utilities + shader definitions
-  game/         Miniplex ECS world
-  types/        TypeScript declarations
-e2e/            Playwright E2E tests
-docs/           Documentation
-  DESIGN.md               Design vision + decisions
-  ARCHITECTURE.md         This file (tech architecture)
-  DESIGN_SYSTEM.md        Design tokens + visual language
-  DEPLOYMENT.md           Build + deploy + CI/CD
-  memory-bank/            Agent memory + conversation history
+```
+Loading → Title → Playing → Shattered → Title (with new seed)
+   ↓
+ Error (no WebGL2/WebGPU)
 ```
 
-## Current Status (v2.0)
+- **Loading**: Diegetic platter rim glow pulse, engine + ECS initialization
+- **Title**: Calm sphere, "COGNITIVE DISSONANCE" engraving, slit closed, keycaps retracted
+- **Playing**: Slit open, keycaps emerge, Dream spawned, all systems active
+- **Shattered**: 64-shard fracture, enemy fade, platter stop, "COGNITION SHATTERED" text
+- **Error**: Static HTML fallback
 
-**Completed**:
-- ✅ Glass AI sphere with celestial nebula shader
-- ✅ Pattern stabilization with per-color keycap matching
-- ✅ Garage-door keycaps with GSAP mechanical animations
-- ✅ Industrial platter with rotating base
-- ✅ Spatial audio with Tone.js procedural SFX
-- ✅ Post-process corruption effects
-- ✅ Enemy spawning with Yuka AI
-- ✅ Physics-based Havok keycaps
-- ✅ Moment of clarity at coherence 100
-- ✅ Diegetic coherence ring GUI
-- ✅ Buried seed system
-- ✅ All tests passing (lint, build, unit, E2E, security)
+## Performance Budget
 
-**Known Limitations**:
-- XR hand tracking is stub only (pinch→keycap mapping not wired)
-- Mobile touch: keycap hit areas may need enlargement
-- Runtime visual quality verified locally, not in CI
+- **Production bundle**: < 5 MB gzipped (enforced in CI)
+- **Runtime FPS**: 45+ on supported devices (iPhone 12+ / A14+, Snapdragon 888+ with 6 GB RAM)
+- **Device quality tiers**: low (800 particles, 4 morph targets) / mid (2500 particles, 8 morph targets) / high (5000 particles, 12 morph targets)
+- **Tree-shaking**: @babylonjs/core subpath imports only — barrel imports flagged by lint
+
+## Testing Strategy
+
+- **Unit + PBT**: Jest + fast-check (23 property-based tests for core systems)
+- **Web E2E**: Playwright against Expo web dev server
+- **Mobile E2E**: Maestro flows on Android emulator / iOS simulator
+- **CI**: Biome lint, tsc --noEmit, Jest, Expo web build + size check, Gradle debug APK, Playwright web E2E, Maestro mobile E2E
+
+## Deployment
+
+- **Web**: Expo web export → GitHub Pages
+- **Android**: Gradle release APK → GitHub Release
+- **iOS**: EAS Build (preview profile) → TestFlight
+
+## References
+
+- [Design Document](./DESIGN.md) — Visual elements, materials, shaders
+- [Deployment Guide](./DEPLOYMENT.md) — Build and deployment procedures
+- [Testing Guide](./TESTING.md) — Test infrastructure and strategy
+- [Development Guide](./DEVELOPMENT.md) — Local development workflow

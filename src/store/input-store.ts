@@ -1,30 +1,39 @@
 import { create } from 'zustand';
 
 interface InputState {
-  /** Which keycap indices (0-11) are currently held (pointer down). */
-  heldKeycaps: Set<number>;
+  pressedKeys: Set<string>;
 
-  pressKeycap: (index: number) => void;
-  releaseKeycap: (index: number) => void;
-  releaseAll: () => void;
+  // Actions
+  pressKey: (key: string) => void;
+  releaseKey: (key: string) => void;
+  isKeyPressed: (key: string) => boolean;
+  reset: () => void;
 }
 
 export const useInputStore = create<InputState>((set, get) => ({
-  heldKeycaps: new Set(),
+  pressedKeys: new Set<string>(),
 
-  pressKeycap: (index: number) => {
-    const next = new Set(get().heldKeycaps);
-    next.add(index);
-    set({ heldKeycaps: next });
+  pressKey: (key: string) => {
+    set((state) => {
+      const newPressed = new Set(state.pressedKeys);
+      newPressed.add(key.toUpperCase());
+      return { pressedKeys: newPressed };
+    });
   },
 
-  releaseKeycap: (index: number) => {
-    const next = new Set(get().heldKeycaps);
-    next.delete(index);
-    set({ heldKeycaps: next });
+  releaseKey: (key: string) => {
+    set((state) => {
+      const newPressed = new Set(state.pressedKeys);
+      newPressed.delete(key.toUpperCase());
+      return { pressedKeys: newPressed };
+    });
   },
 
-  releaseAll: () => {
-    set({ heldKeycaps: new Set() });
+  isKeyPressed: (key: string) => {
+    return get().pressedKeys.has(key.toUpperCase());
+  },
+
+  reset: () => {
+    set({ pressedKeys: new Set<string>() });
   },
 }));

@@ -1,0 +1,10 @@
+appId: arcade.cabinet.cognitivedissonance
+---
+# Maestro configuration for Cognitive Dissonance v3.0
+# Shared config for all flows
+
+# Default timeouts
+env:
+  LAUNCH_TIMEOUT: 30000
+  ANIMATION_TIMEOUT: 5000
+  SCENE_LOAD_TIMEOUT: 10000

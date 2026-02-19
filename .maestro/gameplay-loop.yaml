@@ -1,0 +1,33 @@
+appId: arcade.cabinet.cognitivedissonance
+---
+# Gameplay Loop Flow
+# Validates: Touch keycaps, stabilize patterns, tension decreases
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: ${LAUNCH_TIMEOUT}
+
+# Wait for title screen
+- assertVisible: "COGNITIVE DISSONANCE"
+
+# Start game (tap Play or press Enter)
+- tapOn:
+    id: "play-button"
+- waitForAnimationToEnd:
+    timeout: ${ANIMATION_TIMEOUT}
+
+# Wait for gameplay to start
+- assertVisible:
+    id: "coherence-ring"
+
+# Touch a keycap
+- tapOn:
+    id: "keycap-A"
+- waitForAnimationToEnd:
+    timeout: 1000
+
+# Verify coherence ring is visible (diegetic GUI)
+- assertVisible:
+    id: "coherence-ring"
+
+- screenshot: gameplay-active

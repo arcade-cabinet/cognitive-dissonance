@@ -1,33 +1,30 @@
 import { create } from 'zustand';
 
-type GamePhase = 'title' | 'playing' | 'paused' | 'gameover';
+export type GamePhase = 'loading' | 'title' | 'playing' | 'shattered' | 'error';
 
 interface GameState {
   phase: GamePhase;
-  restartToken: number;
+  errorMessage: string | null;
+
+  // Actions
   setPhase: (phase: GamePhase) => void;
-  togglePause: () => void;
-  restart: () => void;
-  triggerRestart: () => void;
+  setError: (message: string) => void;
+  reset: () => void;
 }
 
-export const useGameStore = create<GameState>((set, get) => ({
-  phase: 'title',
-  restartToken: 0,
+export const useGameStore = create<GameState>((set) => ({
+  phase: 'loading',
+  errorMessage: null,
 
-  setPhase: (phase: GamePhase) => set({ phase }),
-
-  togglePause: () => {
-    const current = get().phase;
-    if (current === 'playing') set({ phase: 'paused' });
-    else if (current === 'paused') set({ phase: 'playing' });
+  setPhase: (phase: GamePhase) => {
+    set({ phase, errorMessage: phase === 'error' ? null : undefined });
   },
 
-  restart: () => {
-    set({ phase: 'title' });
+  setError: (message: string) => {
+    set({ phase: 'error', errorMessage: message });
   },
 
-  triggerRestart: () => {
-    set((state) => ({ phase: 'playing', restartToken: state.restartToken + 1 }));
+  reset: () => {
+    set({ phase: 'loading', errorMessage: null });
   },
 }));

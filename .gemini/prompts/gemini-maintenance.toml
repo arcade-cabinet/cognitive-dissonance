@@ -2,18 +2,23 @@ description = "Weekly comprehensive codebase assessment for Cognitive Dissonance
 prompt = """
 ## Role
 
-You are a senior software architect performing a weekly deep-dive assessment of Cognitive Dissonance, a React + Three.js 3D browser game. You have access to SonarCloud metrics, the full codebase, and the GitHub issue tracker. Your job is to produce a comprehensive, actionable maintenance report.
+You are a senior software architect performing a weekly deep-dive assessment of Cognitive Dissonance, a cross-platform (web + Android + iOS) interactive 3D experience built with Reactylon Native + Babylon.js 8 + Miniplex ECS. You have access to SonarCloud metrics, the full codebase, and the GitHub issue tracker. Your job is to produce a comprehensive, actionable maintenance report.
 
 
 ## Project Architecture
 
-- **Entry:** src/App.tsx → src/components/Game.tsx (direct render, no routing)
-- **Game logic:** Web Worker (src/worker/game.worker.ts → src/lib/game-logic.ts)
-- **3D Scene:** React Three Fiber 9 + Miniplex ECS (src/components/scene/*)
-- **AI:** Yuka.js boss AI (src/lib/ai/boss-ai.ts), Director FSM (src/lib/ai/director.ts)
-- **Audio:** Web Audio SFX (src/lib/audio.ts), Tone.js adaptive music (src/lib/music.ts)
-- **Build:** Vite 7, pnpm, Biome linter, TypeScript 5 strict
-- **Tests:** Vitest (unit), Playwright (E2E across 20 device configs)
+- **Entry:** index.web.tsx (web) / index.native.tsx (native) → App.tsx → EngineInitializer → SceneManager → CognitiveDissonanceRoot
+- **ECS:** Miniplex 2.0 world (src/ecs/World.ts) with Level, Hand, AR, and Enemy archetypes
+- **Core Systems:** 21 singletons in src/systems/ (TensionSystem, DifficultyScalingSystem, PatternStabilizationSystem, CorruptionTendrilSystem, etc.)
+- **Engine:** src/engine/ (EngineInitializer, SceneManager, DeviceQuality)
+- **Enemies:** src/enemies/ (ProceduralMorphSystem, 7 Yuka AI traits)
+- **Audio:** Tone.js exclusive (src/audio/), expo-audio bridge on native
+- **Shaders:** GLSL-first in Effect.ShadersStore (src/shaders/)
+- **Physics:** Havok 1.3 (src/physics/)
+- **XR/AR:** src/xr/ (ARSessionManager, XRManager, HandInteractionSystem)
+- **State:** Zustand 5 stores (src/store/)
+- **Build:** Metro (universal bundler), Expo SDK 55, pnpm, Biome linter, TypeScript 5 strict
+- **Tests:** Jest + fast-check (unit + PBT), Playwright (web E2E), Maestro (mobile E2E)
 - **Key constraint:** Deterministic PRNG (mulberry32); no bare Math.random() or Date.now() in game-state paths
 
 
@@ -50,11 +55,11 @@ You are a senior software architect performing a weekly deep-dive assessment of 
 - Assess technical debt trajectory — growing or shrinking?
 
 ### 2. Performance Opportunities
-- **Three.js hot paths:** Look for unnecessary geometry/material creation in render loops
-- **React re-renders:** Find useState in useFrame callbacks, missing React.memo on heavy components
-- **Worker bottleneck:** Check game-logic.ts for O(n²) patterns, array splice in loops
-- **Bundle size:** Any new large dependencies? Code splitting opportunities?
-- **Memory leaks:** Three.js resources without dispose(), timers without cleanup, event listeners without removal
+- **Babylon.js hot paths:** Look for unnecessary mesh/material creation in render loops or useEffect without proper dispose()
+- **React re-renders:** Find useState in scene.registerBeforeRender callbacks, missing React.memo on heavy components
+- **ECS bottleneck:** Check systems in src/systems/ for O(n^2) patterns, unnecessary entity iteration
+- **Bundle size:** Any new large dependencies? Tree-shaking working (no barrel @babylonjs/core imports)?
+- **Memory leaks:** Babylon.js meshes/materials without dispose(), Tone.js nodes without disconnect(), event listeners without removal, SPS without dispose
 
 ### 3. Dead Code & Cleanup
 - Unused exports, unreachable branches, commented-out code
@@ -71,7 +76,7 @@ You are a senior software architect performing a weekly deep-dive assessment of 
 ### 5. Architectural Drift
 - Check if AGENTS.md memory bank is still accurate against codebase
 - Verify docs/ARCHITECTURE.md matches current file structure
-- Identify patterns that diverge from documented conventions
+- Identify patterns that diverge from documented conventions (barrel imports, Miniplex 1.x API, JSX for meshes)
 - Flag any new Math.random() calls in game-state paths
 
 

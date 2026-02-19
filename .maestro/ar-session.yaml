@@ -1,0 +1,23 @@
+appId: arcade.cabinet.cognitivedissonance
+---
+# AR Session Flow
+# Validates: AR session starts (mocked camera), platter anchors
+
+- launchApp
+- waitForAnimationToEnd:
+    timeout: ${LAUNCH_TIMEOUT}
+
+# Grant camera permissions (if prompted)
+- tapOn:
+    text: "Allow"
+    optional: true
+
+# Wait for AR session initialization
+- waitForAnimationToEnd:
+    timeout: ${SCENE_LOAD_TIMEOUT}
+
+# Verify AR mode is active (platter should be visible)
+- assertVisible:
+    id: "ar-platter"
+
+- screenshot: ar-session-active

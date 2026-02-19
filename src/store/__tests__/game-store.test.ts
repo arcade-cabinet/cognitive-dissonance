@@ -1,54 +1,79 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { useGameStore } from '../game-store';
+import { type GamePhase, useGameStore } from '../game-store';
 
 describe('game-store', () => {
   beforeEach(() => {
-    useGameStore.setState({ phase: 'title', restartToken: 0 });
+    // Reset store to initial state
+    useGameStore.getState().reset();
   });
 
-  it('initial phase is title', () => {
-    expect(useGameStore.getState().phase).toBe('title');
+  it('initializes with loading phase', () => {
+    const { phase } = useGameStore.getState();
+    expect(phase).toBe('loading');
   });
 
-  it('setPhase changes phase', () => {
-    useGameStore.getState().setPhase('playing');
-    expect(useGameStore.getState().phase).toBe('playing');
+  it('transitions to title phase', () => {
+    const { setPhase } = useGameStore.getState();
+    setPhase('title');
+    const { phase } = useGameStore.getState();
+    expect(phase).toBe('title');
   });
 
-  it('togglePause from playing goes to paused', () => {
-    useGameStore.getState().setPhase('playing');
-    useGameStore.getState().togglePause();
-    expect(useGameStore.getState().phase).toBe('paused');
+  it('transitions to playing phase', () => {
+    const { setPhase } = useGameStore.getState();
+    setPhase('playing');
+    const { phase } = useGameStore.getState();
+    expect(phase).toBe('playing');
   });
 
-  it('togglePause from paused goes to playing', () => {
-    useGameStore.getState().setPhase('paused');
-    useGameStore.getState().togglePause();
-    expect(useGameStore.getState().phase).toBe('playing');
+  it('transitions to shattered phase', () => {
+    const { setPhase } = useGameStore.getState();
+    setPhase('shattered');
+    const { phase } = useGameStore.getState();
+    expect(phase).toBe('shattered');
   });
 
-  it('togglePause from title does nothing', () => {
-    useGameStore.getState().togglePause();
-    expect(useGameStore.getState().phase).toBe('title');
+  it('transitions to error phase with message', () => {
+    const { setError } = useGameStore.getState();
+    setError('Test error message');
+    const { phase, errorMessage } = useGameStore.getState();
+    expect(phase).toBe('error');
+    expect(errorMessage).toBe('Test error message');
   });
 
-  it('togglePause from gameover does nothing', () => {
-    useGameStore.getState().setPhase('gameover');
-    useGameStore.getState().togglePause();
-    expect(useGameStore.getState().phase).toBe('gameover');
+  it('resets to loading phase', () => {
+    const { setPhase, reset } = useGameStore.getState();
+    setPhase('playing');
+    reset();
+    const { phase } = useGameStore.getState();
+    expect(phase).toBe('loading');
   });
 
-  it('restart sets phase to title', () => {
-    useGameStore.getState().setPhase('playing');
-    useGameStore.getState().restart();
-    expect(useGameStore.getState().phase).toBe('title');
+  it('clears error message on reset', () => {
+    const { setError, reset } = useGameStore.getState();
+    setError('Test error');
+    reset();
+    const { errorMessage } = useGameStore.getState();
+    expect(errorMessage).toBeNull();
   });
 
-  it('triggerRestart increments restartToken and sets playing', () => {
-    useGameStore.getState().setPhase('gameover');
-    useGameStore.getState().triggerRestart();
-    const state = useGameStore.getState();
-    expect(state.phase).toBe('playing');
-    expect(state.restartToken).toBe(1);
+  // P12: Game Phase Transition Validity
+  describe('valid phase transitions', () => {
+    const validTransitions: Array<[GamePhase, GamePhase]> = [
+      ['loading', 'title'],
+      ['loading', 'error'],
+      ['title', 'playing'],
+      ['playing', 'shattered'],
+      ['shattered', 'title'],
+    ];
+
+    validTransitions.forEach(([from, to]) => {
+      it(`allows transition from ${from} to ${to}`, () => {
+        const { setPhase } = useGameStore.getState();
+        setPhase(from);
+        setPhase(to);
+        const { phase } = useGameStore.getState();
+        expect(phase).toBe(to);
+      });
+    });
   });
 });

@@ -1,33 +1,27 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './e2e',
-  fullyParallel: false,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
-  workers: 1,
-  reporter: process.env.CI ? 'github' : 'html',
-  timeout: 60_000,
+  testDir: './e2e/web',
+  timeout: 30_000,
+  retries: 1,
   use: {
-    baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry',
-    headless: true,
+    baseURL: 'http://localhost:8081',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
+  webServer: {
+    command: 'pnpm web',
+    url: 'http://localhost:8081',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000, // Expo web can take longer to start
   },
   projects: [
     {
       name: 'chromium',
       use: {
-        ...devices['Desktop Chrome'],
-        launchOptions: {
-          args: ['--use-gl=angle'],
-        },
+        browserName: 'chromium',
+        viewport: { width: 1280, height: 720 },
       },
     },
   ],
-  webServer: {
-    command: 'pnpm start --port 3000',
-    port: 3000,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
 });
