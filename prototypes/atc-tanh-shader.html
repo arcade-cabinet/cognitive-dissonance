@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ATC Shader — Tanh Tone Mapping + Iterative Loop</title>
+<style>
+  * { margin: 0; padding: 0; }
+  body { background: #000; overflow: hidden; font-family: monospace; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl2');
+
+const vertSrc = '#version 300 es\nprecision highp float;\nlayout(location=0) in vec2 a_pos;\nout vec2 v_uv;\nvoid main(){v_uv=a_pos*0.5+0.5;gl_Position=vec4(a_pos,0.0,1.0);}';
+
+const fragSrc = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform vec3 iResolution;
+uniform float iTime;
+
+vec4 customTanh(vec4 x){vec4 e2x=exp(2.0*x);return(e2x-1.0)/(e2x+1.0);}
+
+void main(){
+  vec2 r=iResolution.xy;
+  float t=iTime;
+  vec3 FC=vec3(gl_FragCoord.xy,t);
+  vec4 o=vec4(0.0);
+  float z=0.0,d=0.0,s=0.0;
+  for(float i=0.0;i<50.0;i++){
+    vec3 v=vec3(0.3,0.7,2.0);
+    vec3 p=z*normalize(FC.rgb*2.0-r.xyy);
+    vec3 a=normalize(cos(v-t+s));
+    p.z+=9.0;
+    a=a*dot(a,p)-cross(a,p);
+    s=length(a);
+    z+=d=0.03+abs(length(sin(a*v+v)/v)-2.0)/7.0;
+    o+=(cos(s+vec4(0.0,2.0,4.0,0.0))+2.0)/d/s;
+  }
+  o=customTanh(o*o/2e6);
+  fragColor=vec4(o.rgb,1.0);
+}`;
+
+function compile(src,type){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))console.error(gl.getShaderInfoLog(s));return s;}
+const prog=gl.createProgram();
+gl.attachShader(prog,compile(vertSrc,gl.VERTEX_SHADER));
+gl.attachShader(prog,compile(fragSrc,gl.FRAGMENT_SHADER));
+gl.linkProgram(prog);gl.useProgram(prog);
+const vao=gl.createVertexArray();gl.bindVertexArray(vao);
+const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+const uRes=gl.getUniformLocation(prog,'iResolution');
+const uTime=gl.getUniformLocation(prog,'iTime');
+const t0=performance.now();
+function render(){
+  canvas.width=canvas.clientWidth;canvas.height=canvas.clientHeight;
+  gl.viewport(0,0,canvas.width,canvas.height);
+  gl.uniform3f(uRes,canvas.width,canvas.height,window.devicePixelRatio||1);
+  gl.uniform1f(uTime,(performance.now()-t0)/1000);
+  gl.bindVertexArray(vao);gl.drawArrays(gl.TRIANGLES,0,3);
+  requestAnimationFrame(render);
+}
+render();
+</script>
+</body>
+</html>

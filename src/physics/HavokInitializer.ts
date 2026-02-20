@@ -4,8 +4,10 @@
  * Loads Havok WASM binary asynchronously and initializes the Havok physics plugin
  * with gravity and fixed timestep per Req 39.1, 39.2.
  *
- * Design: Extracted from ARCH v4.1 Grok doc.
- * - Havok WASM binary: ~1.2 MB (included in bundle size budget)
+ * Metro config forces @babylonjs/havok to the UMD entry point (CJS-compatible)
+ * to avoid the import.meta issue in ESM entry. Works on web + native.
+ *
+ * - Havok WASM binary: ~1.2 MB
  * - Gravity: Vector3(0, -9.81, 0)
  * - Fixed timestep: 1/60s (matches render loop target)
  */
@@ -14,6 +16,7 @@ import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { HavokPlugin } from '@babylonjs/core/Physics/v2/Plugins/havokPlugin';
 import type { Scene } from '@babylonjs/core/scene';
 import HavokPhysics from '@babylonjs/havok';
+import { isWeb } from '../utils/PlatformConfig';
 
 export class HavokInitializer {
   private static instance: HavokInitializer | null = null;
@@ -31,63 +34,36 @@ export class HavokInitializer {
 
   /**
    * Initialize Havok physics plugin asynchronously.
-   * Loads Havok WASM binary (~1.2 MB) and enables physics on the scene.
-   *
-   * @param scene - Babylon.js scene to enable physics on
-   * @returns Promise that resolves when physics is initialized
+   * Loads WASM binary and enables physics on the scene.
    */
   async initialize(scene: Scene): Promise<void> {
-    if (this.isInitialized) {
-      console.warn('[HavokInitializer] Already initialized');
-      return;
-    }
+    if (this.isInitialized) return;
 
-    try {
-      // Load Havok WASM binary asynchronously
-      const havokInstance = await HavokPhysics();
+    // On web, WASM is served from public/HavokPhysics.wasm.
+    // On native, the default locateFile behavior works (bundled with app).
+    const options = isWeb ? { locateFile: () => '/HavokPhysics.wasm' } : {};
+    const havokInstance = await HavokPhysics(options);
+    this.havokPlugin = new HavokPlugin(true, havokInstance);
 
-      // Create Havok plugin with debug mode disabled
-      this.havokPlugin = new HavokPlugin(true, havokInstance);
+    // Gravity: Vector3(0, -9.81, 0) per Req 39.2
+    scene.enablePhysics(new Vector3(0, -9.81, 0), this.havokPlugin);
 
-      // Enable physics on scene with gravity and fixed timestep
-      // Gravity: Vector3(0, -9.81, 0) per Req 39.2
-      // Fixed timestep: 1/60s (set via plugin, matches render loop target)
-      scene.enablePhysics(new Vector3(0, -9.81, 0), this.havokPlugin);
-
-      this.isInitialized = true;
-      console.log('[HavokInitializer] Havok physics initialized successfully');
-    } catch (error) {
-      console.error('[HavokInitializer] Failed to initialize Havok physics:', error);
-      throw error;
-    }
+    this.isInitialized = true;
+    console.log('[HavokInitializer] Havok physics initialized successfully');
   }
 
-  /**
-   * Get the initialized Havok plugin instance.
-   * @returns HavokPlugin instance or null if not initialized
-   */
   getPlugin(): HavokPlugin | null {
     return this.havokPlugin;
   }
 
-  /**
-   * Check if Havok physics is initialized.
-   * @returns true if initialized, false otherwise
-   */
   isReady(): boolean {
     return this.isInitialized;
   }
 
-  /**
-   * Dispose Havok physics plugin.
-   * Called during scene teardown.
-   */
   dispose(): void {
     if (this.havokPlugin) {
-      // Havok plugin disposal is handled by scene.dispose()
       this.havokPlugin = null;
     }
     this.isInitialized = false;
-    console.log('[HavokInitializer] Havok physics disposed');
   }
 }

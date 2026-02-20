@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 MAX_ITERATIONS=${1:-10}
 SPECS_NAME=${2:-}
 
-if [ -z "$SPECS_NAME" ]; then
+if [[ -z "$SPECS_NAME" ]]; then
   echo -e "${RED}❌ Usage: $0 <max_iterations> <specs_name>${NC}" >&2
   exit 1
 fi
@@ -37,13 +37,13 @@ SCRIPT_DIR="$(cd "$(dirname \
 # Set the specs directory path based on the provided specs name
 SPECS_DIR="$SCRIPT_DIR/.kiro/specs/$SPECS_NAME"
 # Check if the specs directory exists, exit with error if not found
-if [ ! -d "$SPECS_DIR" ]; then
+if [[ ! -d "$SPECS_DIR" ]]; then
   echo -e "${RED}❌ Error: No specs named '${BOLD}$SPECS_NAME${RED}' found in this project${NC}" >&2
   exit 1
 fi
 
 # Initialize progress log file if it doesn't exist
-if [ ! -f "$SPECS_DIR/progress.md" ]; then
+if [[ ! -f "$SPECS_DIR/progress.md" ]]; then
   echo "# Progress Log for spec: $SPECS_NAME" \
     > "$SPECS_DIR/progress.md"
   echo -e "${DIM}📝 Created progress.md${NC}"
@@ -51,7 +51,7 @@ fi
 
 # Initialize time log file if it doesn't exist
 TIME_LOG="$SPECS_DIR/specs_time.md"
-if [ ! -f "$TIME_LOG" ]; then
+if [[ ! -f "$TIME_LOG" ]]; then
   echo "# Time Log for spec: $SPECS_NAME" > "$TIME_LOG"
   echo -e "${DIM}📝 Created specs_time.md${NC}"
 fi
@@ -109,7 +109,7 @@ for i in $(seq 1 $MAX_ITERATIONS); do
     exit 0
   fi
 
-  if [ "$AUTO_MODE" = false ]; then
+  if [[ "$AUTO_MODE" = false ]]; then
     echo ""
     read -r -p "$(echo -e "${YELLOW}⏸️  Iteration $i done. Press Enter to continue...${NC} ")"
   fi

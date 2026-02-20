@@ -64,3 +64,14 @@ metro-cache/
 npm-debug.log
 yarn-error.log
 pnpm-debug.log
+
+# Playtest / prototype screenshots (ephemeral)
+playtest-*.png
+prototype-*.png
+game-*.png
+
+# Playwright MCP logs
+.playwright-mcp/
+
+# Claude conversation exports
+docs/claude-conversation-*.md

@@ -28,26 +28,29 @@ Cognitive Dissonance v3.0 is a cross-platform (web + Android + iOS) interactive 
 ```
 Entry Points (Metro)
 ├── index.web.tsx       → Web (Metro + Expo web + WebGPU)
-└── index.native.tsx    → Native (Metro + Expo SDK 55 + Babylon Native)
+└── index.native.tsx    → Native (Metro + Expo SDK 55 + Reactylon Native, in progress)
     │
     ▼
-App.tsx → EngineInitializer → SceneManager → CognitiveDissonanceRoot
+App.tsx → EngineInitializer → SceneManager → GameBootstrap
     │
     ▼
 Miniplex ECS (World.ts)
-├── Level Archetypes    → PlatterRotation | LeverTension | KeySequence | CrystallineCubeBoss
+├── Level Archetypes    → 25 designed (see docs/LEVEL_ARCHETYPES.md), 4 implemented: PlatterRotation | LeverTension | KeySequence | CrystallineCubeBoss
 ├── Hand Archetypes     → LeftHand | RightHand (26 joints each)
 ├── AR Archetypes       → WorldAnchored | Projected | ARSphere
 └── Enemy Archetypes    → YukaEnemy (7 traits) | CrystallineCubeBoss
     │
     ▼
-Core Systems (21 singletons)
+Core Systems (31 total: 4 bootstrap + 27 orchestrated singletons)
 ├── TensionSystem, DifficultyScalingSystem, PatternStabilizationSystem
 ├── CorruptionTendrilSystem, MechanicalAnimationSystem, EchoSystem
 ├── ProceduralMorphSystem, CrystallineCubeBossSystem
-├── ARSessionManager, XRManager, HandInteractionSystem
+├── ARSessionManager, HandInteractionSystem, SphereTrackballSystem
 ├── ImmersionAudioBridge, SpatialAudioManager
-└── ... (see docs/ARCHITECTURE.md for full list)
+├── ... (see docs/ARCHITECTURE.md for full 31-system list)
+│
+Standalone modules (not yet in SystemOrchestrator):
+└── XRManager, PhoneProjectionTouchSystem, DiegeticAccessibility, SharedDreamsSystem
     │
     ▼
 State Layer (Zustand)
@@ -60,7 +63,7 @@ State Layer (Zustand)
 
 - **Miniplex ECS is core**: All game entities (levels, hands, AR anchors, enemies, bosses) are Miniplex entities with archetype queries
 - **Imperative 3D**: All Babylon.js meshes/materials created in useEffect, not JSX
-- **Reactylon JSX**: Lowercase tags for lights/camera only (`<hemisphericLight>`, `<arcRotateCamera>`)
+- **Reactylon JSX**: Planned for lights/camera only (`<hemisphericLight>`, `<arcRotateCamera>`) -- not yet wired, all creation currently imperative
 - **Render loop**: `scene.registerBeforeRender(fn)` / `scene.unregisterBeforeRender(fn)`
 - **GSAP + Babylon**: gsap.to(mesh.position, {...}) works natively with Vector3
 - **CSP-safe shaders**: All GLSL in Effect.ShadersStore as static string literals
@@ -79,7 +82,7 @@ State Layer (Zustand)
 | TypeScript | 5.9 | Type safety (strict mode, ES2022 target) |
 | Babylon.js | 8.51 | 3D rendering engine (tree-shakable subpath imports only) |
 | Reactylon | 3.5.4 | Declarative Babylon.js + React reconciliation |
-| Reactylon Native | latest | Cross-platform: Babylon Native on mobile, WebGPU on web |
+| Reactylon Native | latest | Cross-platform native support (in progress -- currently web-only) |
 | Expo SDK | 55 | Dev-client, native modules, build tooling |
 | Metro | latest | Universal bundler (web + Android + iOS) |
 | Miniplex | 2 | Entity Component System (core architecture) |
@@ -131,7 +134,7 @@ Complete rebuild from Next.js web-only to Reactylon Native cross-platform (web +
 - Added logarithmic difficulty scaling system (endless progression)
 - Replaced Vitest with Jest + fast-check for property-based testing
 - Added Maestro for mobile E2E testing
-- WebGPU primary on web, Babylon Native (Metal/Vulkan) on mobile
+- WebGPU primary on web, native rendering via Reactylon Native (in progress -- currently web-only)
 
 **Key design decisions:**
 1. **Miniplex ECS elevated** — Levels ARE archetypes, all procedural params in ECS component data

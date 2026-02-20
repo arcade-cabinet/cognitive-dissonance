@@ -57,7 +57,7 @@ jobs:
           GZIP_SIZE=$(find dist -name "*.js" -print0 | xargs -0 cat | gzip -c | wc -c)
           echo "Total JS raw size: ${RAW_SIZE} bytes"
           echo "Total JS gzipped size: ${GZIP_SIZE} bytes"
-          if [ ${GZIP_SIZE} -ge 5242880 ]; then
+          if [[ ${GZIP_SIZE} -ge 5242880 ]]; then
             echo "Error: Total gzipped JS bundle size (${GZIP_SIZE} bytes) exceeds 5 MB limit"
             exit 1
           fi
@@ -150,24 +150,22 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Start Android Emulator
+      - name: Run Maestro E2E on Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
           target: google_apis
           arch: x86_64
-          script: echo "Emulator started"
+          script: |
+            # Install Maestro
+            curl -Ls "https://get.maestro.mobile.dev" | bash
+            export PATH="$HOME/.maestro/bin:$PATH"
 
-      - name: Install Maestro
-        run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "${HOME}/.maestro/bin" >> $GITHUB_PATH
+            # Install Debug APK
+            adb install android/app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Install Debug APK
-        run: adb install android/app/build/outputs/apk/debug/app-debug.apk
-
-      - name: Run Maestro E2E Flows
-        run: maestro test .maestro/
+            # Run Maestro E2E Flows
+            maestro test .maestro/
 
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()

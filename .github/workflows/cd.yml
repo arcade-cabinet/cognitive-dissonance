@@ -9,16 +9,17 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pages: write
-  id-token: write
+permissions: {}
 
 jobs:
   # ── Deploy Expo Web to GitHub Pages ──
   deploy-web:
     name: Deploy Web to GitHub Pages
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -57,6 +58,8 @@ jobs:
   deploy-android:
     name: Deploy Android Release APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -124,6 +127,8 @@ jobs:
   deploy-ios:
     name: Deploy iOS via EAS Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: vars.EAS_PROJECT_ID != ''
     steps:
       - uses: actions/checkout@v4

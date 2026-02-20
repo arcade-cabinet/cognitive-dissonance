@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Keycap Emergence — GSAP Spring + LED Glow</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#0a0a12;overflow:hidden;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh}
+  .platter{width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,#1a1a2e 0%,#0d0d18 70%,#060610 100%);border:2px solid #2a2a3a;position:relative;box-shadow:0 0 60px rgba(100,140,255,0.1),inset 0 0 40px rgba(0,0,0,0.5)}
+  .keycap{position:absolute;width:64px;height:50px;transform-style:preserve-3d;perspective:200px;cursor:pointer;user-select:none}
+  .keycap-body{width:100%;height:100%;position:relative;border-radius:8px;transform:translateY(60px) scale(0);background:linear-gradient(180deg,#e8e8ec 0%,#d0d0d8 60%,#b8b8c4 100%);box-shadow:0 4px 0 0 #888,0 6px 2px 0 #666,0 8px 8px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.8),inset 0 -1px 0 rgba(0,0,0,0.1)}
+  .keycap-body.emerged{transform:translateY(0) scale(1)}
+  .keycap-body.pressed{transform:translateY(3px) scale(0.98);box-shadow:0 1px 0 0 #888,0 2px 1px 0 #666,0 3px 4px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.6),inset 0 -1px 0 rgba(0,0,0,0.1)}
+  .keycap-dish{position:absolute;top:3px;left:4px;right:4px;bottom:6px;border-radius:5px;background:linear-gradient(180deg,#f0f0f4 0%,#e4e4ea 50%,#dcdce4 100%);box-shadow:inset 0 2px 4px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center}
+  .keycap-letter{font-size:22px;font-weight:700;color:#333;text-shadow:0 1px 0 rgba(255,255,255,0.5);font-family:-apple-system,system-ui,sans-serif}
+  .keycap-glow{position:absolute;bottom:-8px;left:10%;right:10%;height:16px;border-radius:50%;opacity:0;filter:blur(8px);transition:opacity 0.3s}
+  .keycap.active .keycap-glow{opacity:1}
+  .dust-particle{position:absolute;width:3px;height:3px;border-radius:50%;pointer-events:none;background:rgba(200,210,230,0.6)}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+</head>
+<body>
+<div class="platter" id="platter"></div>
+<script>
+const KEYS=['Q','W','E','R','T','A','S','D','F','G','H','Z','X','C'];
+const COLORS=['#4488ff','#44aaff','#44ccff','#66aaff','#4466ff','#8844ff','#aa44ff','#ff4488','#ff6644','#ffaa44','#44ff88','#44ffaa','#44ffcc','#88ff44'];
+const platter=document.getElementById('platter');
+const els=[];
+
+KEYS.forEach((key,i)=>{
+  const angle=(i/KEYS.length)*Math.PI*2-Math.PI/2;
+  const x=300+Math.cos(angle)*230-32;
+  const y=300+Math.sin(angle)*230-25;
+  const kc=document.createElement('div');
+  kc.className='keycap';
+  kc.style.left=x+'px';
+  kc.style.top=y+'px';
+
+  const body=document.createElement('div');
+  body.className='keycap-body';
+  const dish=document.createElement('div');
+  dish.className='keycap-dish';
+  const letter=document.createElement('span');
+  letter.className='keycap-letter';
+  letter.textContent=key;
+  dish.appendChild(letter);
+  body.appendChild(dish);
+
+  const glow=document.createElement('div');
+  glow.className='keycap-glow';
+  glow.style.background=COLORS[i];
+
+  kc.appendChild(body);
+  kc.appendChild(glow);
+
+  kc.addEventListener('mousedown',()=>{body.classList.add('pressed');kc.classList.add('active');});
+  kc.addEventListener('mouseup',()=>{body.classList.remove('pressed');setTimeout(()=>kc.classList.remove('active'),300);});
+
+  platter.appendChild(kc);
+  els.push(kc);
+});
+
+function spawnDust(kc){
+  for(let i=0;i<8;i++){
+    const d=document.createElement('div');
+    d.className='dust-particle';
+    const kx=parseFloat(kc.style.left)+32;
+    const ky=parseFloat(kc.style.top)+50;
+    d.style.left=(kx+(Math.random()-0.5)*40)+'px';
+    d.style.top=ky+'px';
+    platter.appendChild(d);
+    gsap.to(d,{x:(Math.random()-0.5)*60,y:-20-Math.random()*40,opacity:0,duration:0.6+Math.random()*0.4,ease:'power2.out',onComplete:()=>d.remove()});
+  }
+}
+
+function emergeKeycap(kc,delay){
+  const body=kc.querySelector('.keycap-body');
+  gsap.fromTo(body,{y:60,scale:0,rotateX:-20},{y:0,scale:1,rotateX:0,duration:0.8,delay:delay,ease:'elastic.out(1,0.5)',onStart:()=>setTimeout(()=>spawnDust(kc),delay*1000),onComplete:()=>{body.classList.add('emerged');kc.classList.add('active');setTimeout(()=>kc.classList.remove('active'),400);}});
+}
+
+setTimeout(()=>els.forEach((kc,i)=>emergeKeycap(kc,i*0.05)),500);
+
+document.addEventListener('keydown',e=>{const k=e.key.toUpperCase();const kc=els.find(el=>el.querySelector('.keycap-letter').textContent===k);if(kc){kc.querySelector('.keycap-body').classList.add('pressed');kc.classList.add('active');}});
+document.addEventListener('keyup',e=>{const k=e.key.toUpperCase();const kc=els.find(el=>el.querySelector('.keycap-letter').textContent===k);if(kc){kc.querySelector('.keycap-body').classList.remove('pressed');setTimeout(()=>kc.classList.remove('active'),300);}});
+</script>
+</body>
+</html>

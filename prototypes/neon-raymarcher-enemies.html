@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Neon Raymarcher — Enemy SDF with Smooth Union</title>
+<style>
+  * { margin: 0; padding: 0; }
+  body { background: #000; overflow: hidden; font-family: monospace; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #controls {
+    position: fixed; bottom: 20px; right: 20px;
+    background: rgba(0,0,0,0.85); color: #ccc; padding: 16px;
+    border-radius: 12px; border: 1px solid #333; min-width: 280px;
+    backdrop-filter: blur(10px); z-index: 10;
+  }
+  #controls h2 { color: #6cf; margin-bottom: 12px; font-size: 14px; letter-spacing: 2px; }
+  .ctrl { margin-bottom: 10px; }
+  .ctrl label { display: block; font-size: 11px; margin-bottom: 4px; color: #aaa; }
+  .ctrl input[type=range] { width: 100%; accent-color: #6cf; }
+  .ctrl .val { float: right; color: #6cf; }
+  #info {
+    position: fixed; top: 20px; left: 20px;
+    color: #666; font-size: 11px; line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info">
+  <strong style="color:#6cf">NEON RAYMARCHER ENEMIES</strong><br>
+  21st.dev reference: neon-raymarcher (66hex)<br>
+  128-step raymarching + sdBox SDF<br>
+  Smooth union (k=0.4) for organic blending<br>
+  Cyan rim: vec3(0.4, 0.8, 1.0)<br>
+  Dark base: vec3(0.1, 0.12, 0.15)<br>
+  <br>
+  <strong>Gap vs our code:</strong> We use simple<br>
+  distance-field coloring — this uses full<br>
+  128-step SDF raymarching with smooth union
+</div>
+<div id="controls">
+  <h2>NEON ENEMIES</h2>
+  <div class="ctrl">
+    <label>Enemy Count <span class="val" id="vCount">4</span></label>
+    <input type="range" id="count" min="2" max="8" step="1" value="4">
+  </div>
+  <div class="ctrl">
+    <label>Smooth Union K <span class="val" id="vSmooth">0.40</span></label>
+    <input type="range" id="smoothK" min="0.05" max="1" step="0.01" value="0.4">
+  </div>
+  <div class="ctrl">
+    <label>Rim Intensity <span class="val" id="vRim">0.50</span></label>
+    <input type="range" id="rimIntensity" min="0" max="2" step="0.01" value="0.5">
+  </div>
+  <div class="ctrl">
+    <label>Animation Speed <span class="val" id="vSpeed">1.00</span></label>
+    <input type="range" id="speed" min="0.1" max="3" step="0.1" value="1">
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl');
+
+const vertSrc = `attribute vec2 aPosition; void main() { gl_Position = vec4(aPosition, 0.0, 1.0); }`;
+
+// Neon Raymarcher — full SDF with smooth union, matching 21st.dev reference
+const fragSrc = `
+precision highp float;
+uniform vec2 iResolution;
+uniform float iTime;
+uniform float uSmoothK;
+uniform float uRimIntensity;
+uniform float uSpeed;
+uniform int uCount;
+
+#define MAX_STEPS 128
+#define PRECISION 0.0005
+
+// Rotation matrix
+mat4 rotationMatrix(vec3 axis, float angle) {
+    axis = normalize(axis);
+    float s = sin(angle);
+    float c = cos(angle);
+    float oc = 1.0 - c;
+    return mat4(
+        oc*axis.x*axis.x+c,         oc*axis.x*axis.y-axis.z*s, oc*axis.z*axis.x+axis.y*s, 0.0,
+        oc*axis.x*axis.y+axis.z*s,  oc*axis.y*axis.y+c,        oc*axis.y*axis.z-axis.x*s, 0.0,
+        oc*axis.z*axis.x-axis.y*s,  oc*axis.y*axis.z+axis.x*s, oc*axis.z*axis.z+c,        0.0,
+        0.0, 0.0, 0.0, 1.0
+    );
+}
+
+vec3 rotate(vec3 v, vec3 axis, float angle) {
+    return (rotationMatrix(axis, angle) * vec4(v, 1.0)).xyz;
+}
+
+// Fresnel — pow(1 + dot(eye, normal), 3.0)
+float fresnel(vec3 eye, vec3 normal) {
+    return pow(1.0 + dot(eye, normal), 3.0);
+}
+
+// Box SDF with rounded corners — 0.03 radius matches reference
+float sdBox(vec3 p, vec3 b) {
+    vec3 q = abs(p) - b;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+}
+
+// Smooth union — k=0.4 matches reference
+float opSmoothUnion(float d1, float d2, float k) {
+    float h = clamp(0.5 + 0.5*(d2-d1)/k, 0.0, 1.0);
+    return mix(d2, d1, h) - k*h*(1.0-h);
+}
+
+// Enemy positions: animated in circular/falling patterns
+vec3 enemyPos(int i, float time) {
+    float fi = float(i);
+    float t = fi / 4.0 * 6.28318;
+    float speed = time * uSpeed;
+    return vec3(
+        cos(t + speed * (1.0 + fi * 0.3)) * 1.75 * 0.1,
+        sin(speed * (0.5 + fi * 0.2) + t) * 4.5 * 0.1,
+        sin(speed * (0.3 + fi * 0.15) + t * 0.7) * 0.05
+    );
+}
+
+vec3 enemyRot(int i, float time) {
+    float fi = float(i);
+    float speed = time * uSpeed;
+    return vec3(
+        speed * (0.3 + fi * 0.2),
+        speed * (0.2 + fi * 0.15),
+        speed * (0.15 + fi * 0.1)
+    );
+}
+
+float sdf(vec3 p) {
+    float aspect = iResolution.x / iResolution.y;
+    vec3 correct = 0.1 * vec3(aspect, 1.0, 1.0);
+
+    // First enemy
+    vec3 pos0 = enemyPos(0, iTime);
+    vec3 rot0 = enemyRot(0, iTime);
+    vec3 tp = p + -pos0 * correct;
+    vec3 rp = rotate(tp, vec3(1.0, 1.0, 0.0), rot0.x + rot0.y);
+    float result = sdBox(rp, vec3(0.15)) - 0.03;
+
+    // Additional enemies with smooth union
+    for (int i = 1; i < 8; i++) {
+        if (i >= uCount) break;
+        vec3 posI = enemyPos(i, iTime);
+        vec3 rotI = enemyRot(i, iTime);
+        tp = p + -posI * correct;
+        rp = rotate(tp, vec3(1.0, 1.0, 0.0), rotI.x + rotI.y);
+        float box = sdBox(rp, vec3(0.15)) - 0.03;
+        result = opSmoothUnion(result, box, uSmoothK);
+    }
+
+    return result;
+}
+
+vec3 calcNormal(vec3 p) {
+    const float h = 0.001;
+    return normalize(vec3(
+        sdf(p + vec3(h,0,0)) - sdf(p - vec3(h,0,0)),
+        sdf(p + vec3(0,h,0)) - sdf(p - vec3(0,h,0)),
+        sdf(p + vec3(0,0,h)) - sdf(p - vec3(0,0,h))
+    ));
+}
+
+void main() {
+    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / iResolution.y;
+    float aspect = iResolution.x / iResolution.y;
+    vec3 ray = normalize(vec3(uv, -1.0));
+
+    // Camera at [0, 0, 2.3] — matches reference
+    vec3 camPos = vec3(0.0, 0.0, 2.3);
+    vec3 rayPos = camPos;
+    float totalDist = 0.0;
+    float tMax = 5.0;
+
+    for (int i = 0; i < MAX_STEPS; i++) {
+        float dist = sdf(rayPos);
+        if (dist < PRECISION || tMax < totalDist) break;
+        totalDist += dist;
+        rayPos = camPos + totalDist * ray;
+    }
+
+    vec3 color = vec3(0.0);
+    float alpha = 0.0;
+
+    if (totalDist < tMax) {
+        vec3 normal = calcNormal(rayPos);
+        vec3 viewDir = normalize(camPos - rayPos);
+        vec3 lightDir = normalize(vec3(-0.5, 0.8, 0.6));
+
+        float diff = max(dot(normal, lightDir), 0.0);
+
+        // Blinn-Phong specular pow(32)
+        vec3 halfDir = normalize(lightDir + viewDir);
+        float spec = pow(max(dot(normal, halfDir), 0.0), 32.0);
+
+        // Cyan rim light: vec3(0.4, 0.8, 1.0) — EXACT reference color
+        float rimLight = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0);
+        vec3 rimColor = vec3(0.4, 0.8, 1.0) * rimLight * uRimIntensity;
+
+        // Dark base color: vec3(0.1, 0.12, 0.15) — EXACT reference color
+        vec3 baseColor = vec3(0.1, 0.12, 0.15);
+
+        // Ambient occlusion
+        float ao = 1.0 - smoothstep(0.0, 0.3, totalDist / tMax);
+
+        color = baseColor * (0.1 + diff * 0.4) * ao;
+        color += vec3(1.0, 0.9, 0.8) * spec * 0.6;
+        color += rimColor;
+
+        // Atmospheric fog
+        float fog = 1.0 - exp(-totalDist * 0.2);
+        color = mix(color, vec3(0.0), fog);
+
+        alpha = 1.0;
+    }
+
+    gl_FragColor = vec4(color, 1.0);
+}
+`;
+
+function compile(src, type) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
+  return s;
+}
+
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(vertSrc, gl.VERTEX_SHADER));
+gl.attachShader(prog, compile(fragSrc, gl.FRAGMENT_SHADER));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+const aPos = gl.getAttribLocation(prog, 'aPosition');
+gl.enableVertexAttribArray(aPos);
+gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+const uRes = gl.getUniformLocation(prog, 'iResolution');
+const uTime = gl.getUniformLocation(prog, 'iTime');
+const uSmooth = gl.getUniformLocation(prog, 'uSmoothK');
+const uRim = gl.getUniformLocation(prog, 'uRimIntensity');
+const uSpeed = gl.getUniformLocation(prog, 'uSpeed');
+const uCount = gl.getUniformLocation(prog, 'uCount');
+
+const sliders = { smoothK: 0.4, rimIntensity: 0.5, speed: 1, count: 4 };
+const labels = { smoothK:'vSmooth', rimIntensity:'vRim', speed:'vSpeed', count:'vCount' };
+['smoothK','rimIntensity','speed','count'].forEach(id => {
+  const realId = id === 'smoothK' ? 'smoothK' : id;
+  const elId = id === 'smoothK' ? 'smoothK' : id;
+  document.getElementById(elId).oninput = function() {
+    sliders[id] = parseFloat(this.value);
+    document.getElementById(labels[id]).textContent =
+      id === 'count' ? this.value : parseFloat(this.value).toFixed(2);
+  };
+});
+
+const t0 = performance.now();
+function render() {
+  canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.uniform2f(uRes, canvas.width, canvas.height);
+  gl.uniform1f(uTime, (performance.now() - t0) / 1000);
+  gl.uniform1f(uSmooth, sliders.smoothK);
+  gl.uniform1f(uRim, sliders.rimIntensity);
+  gl.uniform1f(uSpeed, sliders.speed);
+  gl.uniform1i(uCount, Math.round(sliders.count));
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  requestAnimationFrame(render);
+}
+render();
+</script>
+</body>
+</html>

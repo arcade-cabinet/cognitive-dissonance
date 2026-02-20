@@ -100,7 +100,6 @@ export class AROcclusionMaterial {
           'alpha',
           'isCrystalline',
           'crystallineColor',
-          'crystallineRefraction',
         ],
         samplers: ['environmentDepthTexture'],
       },
@@ -114,7 +113,6 @@ export class AROcclusionMaterial {
     this.occlusionMaterial.setFloat('alpha', this.alpha);
     this.occlusionMaterial.setFloat('isCrystalline', this.isCrystalline ? 1.0 : 0.0);
     this.occlusionMaterial.setColor3('crystallineColor', this.crystallineColor);
-    this.occlusionMaterial.setFloat('crystallineRefraction', 1.5);
 
     // Apply occlusion material
     this.mesh.material = this.occlusionMaterial;

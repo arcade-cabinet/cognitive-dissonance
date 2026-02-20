@@ -1,10 +1,13 @@
+import { ShaderMaterial } from '@babylonjs/core/Materials/shaderMaterial';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3, Color4 } from '@babylonjs/core/Maths/math.color';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh';
+import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
 import { SolidParticleSystem } from '@babylonjs/core/Particles/solidParticleSystem';
 import type { Scene } from '@babylonjs/core/scene';
+import { useSeedStore } from '../store/seed-store';
 import { TensionSystem } from './TensionSystem';
 
 /**
@@ -27,10 +30,12 @@ export class CorruptionTendrilSystem {
   private scene: Scene | null = null;
   private colorPalette: Color3[] = [];
   private activeTendrils: Map<string, number> = new Map(); // keyName → particle index
+  private tendrilDirections: Map<number, Vector3> = new Map(); // particle idx → radial direction
   private lastSpawnTime: number = 0;
   private spawnInterval: number = 1000; // ms, will be scaled by tension
   private maxTendrils: number = 24;
   private tensionThreshold: number = 0.3;
+  private _stopped: boolean = false;
 
   private constructor() {}
 
@@ -51,32 +56,84 @@ export class CorruptionTendrilSystem {
     this.scene = scene;
     this.colorPalette = this.deriveColorPalette(seedHash);
 
-    // Create SolidParticleSystem with 24 cylinder shapes
+    // Create SolidParticleSystem with 24 sinuous tube tendril shapes
     this.sps = new SolidParticleSystem('corruptionTendrils', scene, {
       updatable: true,
       isPickable: false,
     });
 
-    // Create cylinder shape for tendrils (thin, elongated)
-    const cylinder = MeshBuilder.CreateCylinder(
+    // Create sinuous tube shape for tendrils (replaces primitive cylinder)
+    const segments = 12;
+    const tendrilPath: Vector3[] = [];
+    for (let j = 0; j <= segments; j++) {
+      const t = j / segments;
+      tendrilPath.push(
+        new Vector3(
+          Math.sin(t * Math.PI * 3) * 0.02, // sinuous X
+          t * 0.5, // height
+          Math.cos(t * Math.PI * 2) * 0.015, // sinuous Z
+        ),
+      );
+    }
+
+    const tendrilShape = MeshBuilder.CreateTube(
       'tendrilShape',
-      { height: 0.5, diameter: 0.02, tessellation: 8 },
+      {
+        path: tendrilPath,
+        radiusFunction: (_i: number, dist: number) => 0.01 * (1.0 - dist * 0.7), // taper from base to tip
+        tessellation: 6,
+        cap: Mesh.CAP_ALL,
+      },
       scene,
     );
 
     // Add 24 shapes to SPS
-    this.sps.addShape(cylinder, this.maxTendrils);
-    cylinder.dispose();
+    this.sps.addShape(tendrilShape, this.maxTendrils);
+    tendrilShape.dispose();
 
     // Build the SPS mesh
     const spsMesh = this.sps.buildMesh();
     spsMesh.parent = sphereMesh;
 
-    // Create material with emissive color
-    const material = new StandardMaterial('tendrilMaterial', scene);
-    material.emissiveColor = Color3.White();
-    material.disableLighting = true;
-    spsMesh.material = material;
+    // Try ShaderMaterial referencing corruptionTendril shader from registry
+    let materialApplied = false;
+    try {
+      const shaderMat = new ShaderMaterial(
+        'tendrilShaderMaterial',
+        scene,
+        { vertex: 'corruptionTendril', fragment: 'corruptionTendril' },
+        {
+          attributes: ['position', 'normal', 'uv'],
+          uniforms: [
+            'worldViewProjection',
+            'world',
+            'tension',
+            'time',
+            'corruptionLevel',
+            'baseColor',
+            'deviceQualityLOD',
+          ],
+          needAlphaBlending: true,
+        },
+      );
+      shaderMat.setFloat('tension', 0.0);
+      shaderMat.setFloat('time', 0.0);
+      shaderMat.setFloat('corruptionLevel', 0.0);
+      shaderMat.setFloat('deviceQualityLOD', 1.0);
+      spsMesh.material = shaderMat;
+      materialApplied = true;
+    } catch (_e) {
+      // ShaderMaterial not available — fall back to StandardMaterial
+      materialApplied = false;
+    }
+
+    // Fallback: StandardMaterial with emissive color
+    if (!materialApplied) {
+      const material = new StandardMaterial('tendrilMaterial', scene);
+      material.emissiveColor = Color3.White();
+      material.disableLighting = true;
+      spsMesh.material = material;
+    }
 
     // Initialize all particles as invisible
     this.sps.initParticles = () => {
@@ -95,13 +152,18 @@ export class CorruptionTendrilSystem {
     this.sps.updateParticle = (particle) => {
       if (!particle.isVisible) return particle;
 
-      // Animate tendril growth from center to rim
-      const growthSpeed = 0.02; // units per frame
-      particle.position.y += growthSpeed;
+      // Look up the stored radial direction for this tendril
+      const dir = this.tendrilDirections.get(particle.idx);
+      if (!dir) return particle;
 
-      // Check if tendril reached rim (y > 0.26, sphere radius is 0.26m)
-      if (particle.position.y > 0.26) {
+      // Animate tendril growth outward along its radial direction
+      const growthSpeed = 0.02; // units per frame
+      particle.position.addInPlace(dir.scale(growthSpeed));
+
+      // Check if tendril reached rim (distance from center > 0.26, sphere radius is 0.26m)
+      if (particle.position.length() > 0.26) {
         particle.isVisible = false;
+        this.tendrilDirections.delete(particle.idx);
         // Remove from active tendrils
         for (const [key, idx] of this.activeTendrils.entries()) {
           if (idx === particle.idx) {
@@ -118,9 +180,24 @@ export class CorruptionTendrilSystem {
   }
 
   /**
+   * Stop spawning and updating tendrils (called during shatter phase)
+   */
+  stop(): void {
+    this._stopped = true;
+  }
+
+  /**
+   * Resume spawning and updating tendrils (called on restart)
+   */
+  resume(): void {
+    this._stopped = false;
+  }
+
+  /**
    * Per-frame update — spawn tendrils based on tension
    */
   update(_deltaTime: number): void {
+    if (this._stopped) return;
     if (!this.sps || !this.scene) return;
 
     const tension = TensionSystem.getInstance().currentTension;
@@ -153,11 +230,27 @@ export class CorruptionTendrilSystem {
     // Make visible and position at sphere center
     particle.isVisible = true;
     particle.position = Vector3.Zero();
-    particle.rotation = new Vector3(0, 0, 0);
 
-    // Assign random color from palette
-    const color = this.colorPalette[Math.floor(Math.random() * this.colorPalette.length)];
+    // Assign random color from palette (seed-derived PRNG for determinism)
+    const rng = useSeedStore.getState().rng;
+    const color = this.colorPalette[Math.floor((rng?.() ?? Math.random()) * this.colorPalette.length)];
     particle.color = new Color4(color.r, color.g, color.b, 1.0);
+
+    // Random direction on sphere surface (spherical coordinates for uniform distribution)
+    const theta = (rng?.() ?? Math.random()) * Math.PI * 2;
+    const phi = Math.acos(2 * (rng?.() ?? Math.random()) - 1);
+    const direction = new Vector3(
+      Math.sin(phi) * Math.cos(theta),
+      Math.sin(phi) * Math.sin(theta),
+      Math.cos(phi),
+    ).normalize();
+
+    // Store direction for this particle's per-frame movement
+    this.tendrilDirections.set(particle.idx, direction);
+
+    // Rotate cylinder to align with direction (cylinders default along Y-axis)
+    particle.rotation.x = phi - Math.PI / 2;
+    particle.rotation.y = theta;
 
     // Assign to a random keycap (for now, just use particle index as key)
     const keyName = `key_${particle.idx}`;
@@ -223,7 +316,9 @@ export class CorruptionTendrilSystem {
       this.sps.particles[i].isVisible = false;
     }
     this.activeTendrils.clear();
+    this.tendrilDirections.clear();
     this.lastSpawnTime = 0;
+    this._stopped = false;
 
     console.log('[CorruptionTendrilSystem] Reset');
   }
@@ -238,6 +333,7 @@ export class CorruptionTendrilSystem {
     }
     this.scene = null;
     this.activeTendrils.clear();
+    this.tendrilDirections.clear();
     console.log('[CorruptionTendrilSystem] Disposed');
   }
 }

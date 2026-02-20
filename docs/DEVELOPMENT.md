@@ -232,32 +232,40 @@ class MySystem {
 ├── index.web.tsx              # Web entry (Metro + Expo web + WebGPU)
 ├── index.native.tsx           # Native entry (Metro + Expo SDK 55 dev-client)
 ├── App.tsx                    # Root component
+├── app.json                   # Expo app configuration
 ├── src/
-│   ├── engine/                # Engine initialization
-│   ├── ecs/                   # Miniplex ECS world + archetypes
-│   ├── systems/               # Core gameplay systems (singletons)
-│   ├── enemies/               # Enemy systems
-│   ├── objects/               # 3D object factories
-│   ├── shaders/               # GLSL shaders
-│   ├── ui/                    # Diegetic GUI
-│   ├── sequences/             # Title + game-over
-│   ├── fallback/              # WebGL2 degradation
-│   ├── xr/                    # AR/MR systems
-│   ├── audio/                 # Tone.js audio
-│   ├── store/                 # Zustand stores
-│   ├── utils/                 # Utilities
+│   ├── __mocks__/             # Jest mocks (react-native, tone)
 │   ├── accessibility/         # Voice commands + haptics
+│   ├── audio/                 # Tone.js audio
+│   ├── configs/               # Config loader + patterns.json
+│   ├── ecs/                   # Miniplex ECS world + archetypes
+│   ├── enemies/               # Enemy systems
+│   ├── engine/                # Engine initialization
+│   ├── fallback/              # WebGL2 degradation
 │   ├── multiplayer/           # WebRTC shared dreams
-│   └── types/                 # TypeScript types
-├── e2e/web/                   # Playwright web E2E
+│   ├── native/                # Native platform integrations (ARKit, ARCore, BabylonNative)
+│   ├── objects/               # 3D object factories
+│   ├── physics/               # Havok physics (keycap, platter, hand)
+│   ├── postprocess/           # Post-processing effects
+│   ├── sequences/             # Title + game-over + shatter
+│   ├── shaders/               # GLSL shaders + materials
+│   ├── store/                 # Zustand stores
+│   ├── systems/               # Core gameplay systems (singletons)
+│   ├── types/                 # TypeScript types
+│   ├── ui/                    # Diegetic GUI
+│   ├── utils/                 # Utilities (seed, device quality, platform config)
+│   └── xr/                    # AR/MR + XR + haptics systems
+├── e2e/web/                   # Playwright web E2E (5 spec files)
 ├── .maestro/                  # Maestro mobile E2E
 ├── android/                   # Android native project
 ├── ios/                       # iOS native project
+├── scripts/                   # Build analysis scripts
 └── docs/                      # Documentation
 ```
 
 ## References
 
 - [Architecture](./ARCHITECTURE.md) — System architecture
+- [Level Archetypes](./LEVEL_ARCHETYPES.md) — 25 Dream archetype definitions
 - [Testing](./TESTING.md) — Test infrastructure
 - [Deployment](./DEPLOYMENT.md) — Build and deployment

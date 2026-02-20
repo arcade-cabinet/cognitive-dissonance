@@ -24,6 +24,12 @@ export class PhoneProjectionTouchSystem {
   private onKeycapTouch: ((keyName: string) => void) | null = null;
   private onLeverTouch: ((pickDistance: number) => void) | null = null;
   private onRimTouch: ((pickX: number) => void) | null = null;
+  private onSphereDrag: ((dx: number, dy: number) => void) | null = null;
+
+  // Sphere drag tracking
+  private isSphereTouch = false;
+  private lastSphereX = 0;
+  private lastSphereY = 0;
 
   private constructor() {}
 
@@ -87,16 +93,41 @@ export class PhoneProjectionTouchSystem {
   }
 
   /**
-   * Handle pointer events (touch down, touch move)
+   * Register callback for sphere drag events (trackball rotation on mobile)
+   * @param callback Function to call with drag delta (dx, dy) in normalized units
+   */
+  setSphereDragCallback(callback: (dx: number, dy: number) => void): void {
+    this.onSphereDrag = callback;
+  }
+
+  /**
+   * Handle pointer events (touch down, touch move, touch up)
    * Routes to appropriate gameplay system based on picked mesh
    */
   private handlePointerEvent = (pointerInfo: PointerInfo): void => {
     if (!this.scene || !this.isActive) return;
 
-    const { type, pickInfo } = pointerInfo;
+    const { type, pickInfo, event } = pointerInfo;
+
+    // Handle pointer up — end sphere drag
+    if (type === PointerEventTypes.POINTERUP) {
+      this.isSphereTouch = false;
+      return;
+    }
 
     // Only handle pointer down and pointer move
     if (type !== PointerEventTypes.POINTERDOWN && type !== PointerEventTypes.POINTERMOVE) {
+      return;
+    }
+
+    // Sphere drag continuation (pointer move while dragging sphere)
+    if (type === PointerEventTypes.POINTERMOVE && this.isSphereTouch && this.onSphereDrag && event) {
+      const pointerEvent = event as PointerEvent;
+      const dx = (pointerEvent.clientX - this.lastSphereX) / (this.scene.getEngine().getRenderWidth() || 1);
+      const dy = (pointerEvent.clientY - this.lastSphereY) / (this.scene.getEngine().getRenderHeight() || 1);
+      this.onSphereDrag(dx, dy);
+      this.lastSphereX = pointerEvent.clientX;
+      this.lastSphereY = pointerEvent.clientY;
       return;
     }
 
@@ -107,7 +138,15 @@ export class PhoneProjectionTouchSystem {
     const meshName = mesh.name.toLowerCase();
 
     // Route to appropriate callback based on mesh name
-    if (meshName.includes('keycap')) {
+    if (meshName.includes('sphere')) {
+      // Sphere touch: begin trackball drag
+      if (type === PointerEventTypes.POINTERDOWN && event) {
+        this.isSphereTouch = true;
+        const pointerEvent = event as PointerEvent;
+        this.lastSphereX = pointerEvent.clientX;
+        this.lastSphereY = pointerEvent.clientY;
+      }
+    } else if (meshName.includes('keycap')) {
       // Extract keycap letter from mesh name (e.g., "keycap-A" → "A")
       const keyMatch = mesh.name.match(/keycap-([A-Z])/i);
       if (keyMatch && this.onKeycapTouch) {
@@ -142,5 +181,7 @@ export class PhoneProjectionTouchSystem {
     this.onKeycapTouch = null;
     this.onLeverTouch = null;
     this.onRimTouch = null;
+    this.onSphereDrag = null;
+    this.isSphereTouch = false;
   }
 }

@@ -35,5 +35,6 @@
     "docs",
     "android",
     "ios"
-  ]
+  ],
+  "extends": "expo/tsconfig.base"
 }

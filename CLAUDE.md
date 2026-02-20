@@ -48,9 +48,11 @@ useEffect(() => {
 <box name="box" size={1} />
 ```
 
-**Reactylon JSX only for lights/camera:**
+**Reactylon JSX for lights/camera (planned):**
+
+Note: Reactylon is in package.json and is being integrated for native platform support, but currently zero source files import from it. All Babylon.js creation is currently imperative. When Reactylon integration is active, use lowercase JSX tags for lights/camera only:
 ```typescript
-// ✅ Correct
+// Future pattern (when Reactylon is wired)
 <hemisphericLight name="light" intensity={0.7} direction={new Vector3(0, 1, 0)} />
 <arcRotateCamera name="camera" alpha={0} beta={0} radius={10} target={Vector3.Zero()} />
 ```
@@ -108,11 +110,23 @@ pnpm test          # Jest unit + PBT tests
 1. **Barrel imports from @babylonjs/core** — Always use subpath imports
 2. **Miniplex 1.x API** — Use `world.with()` and `world.add()` (not `archetype()` and `createEntity()`)
 3. **Biome auto-fix removes field declarations** — Re-add private fields after `biome check --write --unsafe`
-4. **JSX for meshes** — Only use JSX for lights/camera, create meshes imperatively
+4. **JSX for meshes** — All Babylon.js creation is currently imperative (Reactylon JSX integration in progress)
 5. **React re-renders for animation** — Use `scene.registerBeforeRender()` for per-frame logic
+
+## Memory Bank (Session Context)
+
+**Read these first at the start of every session:**
+- [Active Context](./docs/ACTIVE_CONTEXT.md) — Current work focus, recent changes, known issues
+- [Progress](./docs/PROGRESS.md) — Implementation status by priority (P0-P5), test counts
+
+**Update these at the end of every session:**
+- Update ACTIVE_CONTEXT.md with what changed, what's next, any new known issues
+- Update PROGRESS.md with status changes, new test counts, completed items
 
 ## References
 
 - [Architecture](./docs/ARCHITECTURE.md) — System architecture
+- [Level Archetypes](./docs/LEVEL_ARCHETYPES.md) — 25 Dream archetype definitions, seed slot system
 - [Development](./docs/DEVELOPMENT.md) — Local development workflow
 - [Testing](./docs/TESTING.md) — Test infrastructure
+- [Design Docs](./docs/design/) — 11 game design documents (extracted from Grok canonical docs)

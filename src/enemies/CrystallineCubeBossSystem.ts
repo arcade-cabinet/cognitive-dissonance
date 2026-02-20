@@ -1,4 +1,6 @@
+import { VertexBuffer } from '@babylonjs/core/Buffers/buffer';
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial';
+import { ShaderMaterial } from '@babylonjs/core/Materials/shaderMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import type { Mesh } from '@babylonjs/core/Meshes/mesh';
@@ -9,6 +11,7 @@ import { world } from '../ecs/World';
 import type { MechanicalDegradationSystem } from '../fallback/MechanicalDegradationSystem';
 import type { TensionSystem } from '../systems/TensionSystem';
 import type { GameEntity } from '../types';
+import { MechanicalHaptics } from '../xr/MechanicalHaptics';
 import type { ProceduralMorphSystem } from './ProceduralMorphSystem';
 
 /**
@@ -121,16 +124,72 @@ export class CrystallineCubeBossSystem {
     this.currentPhase = 0;
     this.bossHealth = 1.0;
 
-    // Create boss mesh: 0.6m cube with crystalline PBR material
-    this.bossMesh = MeshBuilder.CreateBox('crystallineCubeBoss', { size: 0.6 }, this.scene);
+    // Create faceted crystalline polyhedron (dodecahedron base with vertex displacement)
+    this.bossMesh = MeshBuilder.CreatePolyhedron('crystallineCubeBoss', { type: 1, size: 0.3 }, this.scene);
 
-    const material = new PBRMaterial('crystallineBossMaterial', this.scene);
-    material.metallic = 0.1;
-    material.roughness = 0.2;
-    material.albedoColor = new Color3(0.7, 0.9, 1.0); // Icy blue
-    material.emissiveColor = new Color3(0.3, 0.5, 0.8);
-    material.alpha = 0.85; // Translucent crystalline
-    this.bossMesh.material = material;
+    // Apply sine vertex displacement for crystalline faceted appearance
+    const positions = this.bossMesh.getVerticesData(VertexBuffer.PositionKind);
+    if (positions) {
+      for (let i = 0; i < positions.length; i += 3) {
+        const x = positions[i];
+        const y = positions[i + 1];
+        const z = positions[i + 2];
+        const mag = Math.sqrt(x * x + y * y + z * z + 0.001);
+        const disp = Math.sin(x * 8.0) * Math.sin(z * 8.0) * 0.05;
+        positions[i] += (disp * x) / mag;
+        positions[i + 1] += (disp * y) / mag;
+        positions[i + 2] += (disp * z) / mag;
+      }
+      this.bossMesh.setVerticesData(VertexBuffer.PositionKind, positions);
+    }
+
+    // Try ShaderMaterial referencing crystallineBoss shader from registry
+    let materialApplied = false;
+    try {
+      const shaderMat = new ShaderMaterial(
+        'crystallineBossShader',
+        this.scene,
+        { vertex: 'crystallineBoss', fragment: 'crystallineBoss' },
+        {
+          attributes: ['position', 'normal', 'uv'],
+          uniforms: [
+            'worldViewProjection',
+            'world',
+            'tension',
+            'time',
+            'corruptionLevel',
+            'baseColor',
+            'deviceQualityLOD',
+            'cameraPosition',
+          ],
+          needAlphaBlending: true,
+        },
+      );
+      shaderMat.setColor3('baseColor', new Color3(0.7, 0.9, 1.0));
+      shaderMat.setFloat('tension', 0.0);
+      shaderMat.setFloat('time', 0.0);
+      shaderMat.setFloat('corruptionLevel', 0.0);
+      shaderMat.setFloat('deviceQualityLOD', 1.0);
+      this.bossMesh.material = shaderMat;
+      materialApplied = true;
+    } catch (_e) {
+      // ShaderMaterial not available — fall back to PBR
+      materialApplied = false;
+    }
+
+    // PBR fallback when ShaderMaterial is not available
+    if (!materialApplied) {
+      const material = new PBRMaterial('crystallineBossMaterial', this.scene);
+      material.metallic = 0.1;
+      material.roughness = 0.05;
+      material.albedoColor = new Color3(0.7, 0.9, 1.0);
+      material.emissiveColor = new Color3(0.4, 0.6, 1.0);
+      material.alpha = 0.7;
+      material.subSurface.isRefractionEnabled = true;
+      material.subSurface.refractionIntensity = 0.8;
+      material.subSurface.indexOfRefraction = 1.5;
+      this.bossMesh.material = material;
+    }
 
     // Position above platter (1.2m above platter surface)
     const platterY = this.platterMesh.position.y;
@@ -161,12 +220,12 @@ export class CrystallineCubeBossSystem {
       },
     });
 
-    // Phase 0: Emerge (cube appears, fade in alpha from 0 to 0.85)
+    // Phase 0: Emerge (cube appears, fade in alpha from 0 to 0.7)
     this.timeline.fromTo(
       this.bossMesh.material,
       { alpha: 0 },
       {
-        alpha: 0.85,
+        alpha: 0.7,
         duration: 0.6,
         ease: 'power2.out',
         onStart: () => {
@@ -236,8 +295,8 @@ export class CrystallineCubeBossSystem {
       this.tensionSystem.setTension(0.98);
     }
 
-    // TODO: Fire heavy haptic pulse (will be implemented in Task 21 MechanicalHaptics)
-    // MechanicalHaptics.triggerContact(1.0, 'leverPull');
+    // Heavy haptic pulse on world-crush impact
+    MechanicalHaptics.getInstance().triggerContact(1.0, 'leverPull');
   }
 
   private onResolve(): void {

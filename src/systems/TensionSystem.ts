@@ -1,3 +1,5 @@
+import { useGameStore } from '../store/game-store';
+import { useSeedStore } from '../store/seed-store';
 import type { TensionCurveConfig } from '../types';
 
 /**
@@ -52,14 +54,14 @@ export class TensionSystem {
   }
 
   /**
-   * Increase tension by a scaled amount
-   * @param amount Base increase amount (will be scaled by tensionCurve.increaseRate)
+   * Increase tension by the given amount (clamped to 0.999).
+   * Callers pass the raw tension delta (e.g. tensionCurve.increaseRate for one pattern spawn).
+   * @param amount Raw tension increase
    */
   increase(amount: number): void {
     if (this._frozen || !this._tensionCurve) return;
 
-    const scaledAmount = amount * this._tensionCurve.increaseRate;
-    this._currentTension = Math.min(0.999, this._currentTension + scaledAmount);
+    this._currentTension = Math.min(0.999, this._currentTension + amount);
     this._notifyListeners();
 
     // Check for sphere shatter trigger
@@ -69,14 +71,15 @@ export class TensionSystem {
   }
 
   /**
-   * Decrease tension by a scaled amount with over-stabilization risk
-   * @param amount Base decrease amount (will be scaled by tensionCurve.decreaseRate)
+   * Decrease tension by the given amount, scaled by hand grip strength.
+   * Callers pass the raw tension delta (e.g. tensionCurve.decreaseRate for one key hold).
+   * @param amount Raw tension decrease
    * @param handGrip Optional hand grip strength (0.0–1.0, default 1.0 for keyboard)
    */
   decrease(amount: number, handGrip: number = 1.0): void {
     if (this._frozen || !this._tensionCurve) return;
 
-    const scaledAmount = amount * this._tensionCurve.decreaseRate * handGrip;
+    const scaledAmount = amount * handGrip;
     this._currentTension = Math.max(0.0, this._currentTension - scaledAmount);
     this._notifyListeners();
 
@@ -156,7 +159,8 @@ export class TensionSystem {
     if (!this._tensionCurve) return;
 
     if (this._currentTension < this._tensionCurve.overStabilizationThreshold) {
-      const roll = Math.random();
+      const rng = useSeedStore.getState().rng;
+      const roll = rng?.() ?? Math.random();
       if (roll < this._tensionCurve.reboundProbability) {
         console.log('[TensionSystem] Over-stabilization rebound triggered!');
         this._currentTension = Math.min(0.999, this._currentTension + this._tensionCurve.reboundAmount);
@@ -175,12 +179,12 @@ export class TensionSystem {
   }
 
   /**
-   * Trigger sphere shatter sequence
-   * This will be wired to the ShatterSequence system in Phase 15
+   * Trigger sphere shatter sequence.
+   * Sets game phase to 'shattered' which triggers GamePhaseManager → ShatterSequence pipeline.
    */
   private _triggerShatter(): void {
     console.log('[TensionSystem] Sphere shatter triggered at tension 0.999');
     this.freeze();
-    // TODO: Wire to ShatterSequence system when implemented
+    useGameStore.getState().setPhase('shattered');
   }
 }

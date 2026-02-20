@@ -6,10 +6,7 @@ on:
   push:
     branches-ignore: [main]
 
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+permissions: {}
 
 jobs:
   # ── Dependabot auto-merge ──────────────────────────
@@ -18,6 +15,9 @@ jobs:
   dependabot-automerge:
     name: Auto-merge Dependabot PR
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
     steps:
       - name: Auto-approve Dependabot PR
@@ -39,6 +39,9 @@ jobs:
   auto-merge-fix-pr:
     name: Auto-merge Fix PR
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     if: |
       github.event_name == 'pull_request' &&
       github.actor != 'dependabot[bot]' &&
@@ -135,6 +138,9 @@ jobs:
   rebase-on-push:
     name: Rebase Auto-merge PRs on Push
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

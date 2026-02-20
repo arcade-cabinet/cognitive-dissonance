@@ -1,4 +1,5 @@
 import * as fc from 'fast-check';
+import { useGameStore } from '../../store/game-store';
 import type { TensionCurveConfig } from '../../types';
 import { TensionSystem } from '../TensionSystem';
 
@@ -150,6 +151,28 @@ describe('TensionSystem', () => {
           testSystem.dispose();
         }),
       );
+    });
+  });
+
+  describe('Shatter Wiring', () => {
+    it('sets game phase to shattered when tension reaches 0.999', () => {
+      useGameStore.getState().setPhase('playing');
+      system.increase(2.0); // Will clamp at 0.999
+      expect(system.currentTension).toBe(0.999);
+      expect(useGameStore.getState().phase).toBe('shattered');
+    });
+
+    it('freezes tension after shatter trigger', () => {
+      system.increase(2.0); // Triggers shatter → freeze
+      const frozenTension = system.currentTension;
+      system.increase(0.1); // Should be no-op (frozen)
+      expect(system.currentTension).toBe(frozenTension);
+    });
+
+    it('does not trigger shatter below 0.999', () => {
+      useGameStore.getState().setPhase('playing');
+      system.increase(0.5);
+      expect(useGameStore.getState().phase).toBe('playing');
     });
   });
 

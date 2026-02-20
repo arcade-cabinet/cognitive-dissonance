@@ -304,7 +304,6 @@ Before deploying to production:
 - [ ] Audio tested on native (expo-audio bridge working)
 - [ ] Haptics tested on native (expo-haptics working)
 - [ ] Version number incremented in `app.json` and `package.json`
-- [ ] CHANGELOG.md updated with release notes
 - [ ] GitHub Release created with tag `vX.Y.Z`
 
 ## References

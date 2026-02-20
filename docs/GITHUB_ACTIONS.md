@@ -80,7 +80,7 @@ steps:
 
 **Exit criteria**: All Playwright tests passing
 
-**Test files**: `e2e/web/smoke.spec.ts`, `e2e/web/gameplay.spec.ts`
+**Test files**: `e2e/web/smoke.spec.ts`
 
 ### 5. mobile-e2e
 

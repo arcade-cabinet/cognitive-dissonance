@@ -27,6 +27,11 @@ interface SceneManagerProps {
   children: ReactNode;
 }
 
+/**
+ * SceneManager creates a Babylon.js Scene from the given engine and provides
+ * both scene and engine via React context. Used by the web path where the
+ * engine is created imperatively via EngineInitializer.
+ */
 export const SceneManager: React.FC<SceneManagerProps> = ({ engine, deviceQuality, children }) => {
   const [scene, setScene] = useState<Scene | null>(null);
 
@@ -58,5 +63,20 @@ export const SceneManager: React.FC<SceneManagerProps> = ({ engine, deviceQualit
     return null;
   }
 
+  return <SceneContext.Provider value={{ scene, engine }}>{children}</SceneContext.Provider>;
+};
+
+interface NativeSceneProviderProps {
+  scene: Scene;
+  engine: Engine | WebGPUEngine;
+  children: ReactNode;
+}
+
+/**
+ * NativeSceneProvider wraps children with the same SceneContext used by
+ * SceneManager, but accepts an already-created scene and engine (provided
+ * by Reactylon's <NativeEngine> + <Scene> components on iOS/Android).
+ */
+export const NativeSceneProvider: React.FC<NativeSceneProviderProps> = ({ scene, engine, children }) => {
   return <SceneContext.Provider value={{ scene, engine }}>{children}</SceneContext.Provider>;
 };

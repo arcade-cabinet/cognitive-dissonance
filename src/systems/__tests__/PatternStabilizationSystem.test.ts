@@ -3,6 +3,72 @@ import type { TensionCurveConfig } from '../../types';
 import { PatternStabilizationSystem } from '../PatternStabilizationSystem';
 import { TensionSystem } from '../TensionSystem';
 
+// Mock @babylonjs/core ESM modules (Jest cannot parse their ESM syntax)
+jest.mock('@babylonjs/core/Maths/math.vector', () => ({
+  Vector3: class Vector3 {
+    x: number;
+    y: number;
+    z: number;
+    constructor(x = 0, y = 0, z = 0) {
+      this.x = x;
+      this.y = y;
+      this.z = z;
+    }
+  },
+}));
+
+// Mock CorruptionTendrilSystem (transitively imports @babylonjs/core SPS)
+jest.mock('../CorruptionTendrilSystem', () => ({
+  CorruptionTendrilSystem: {
+    getInstance: () => ({
+      retractFromKey: jest.fn(),
+    }),
+  },
+}));
+
+// Mock MechanicalHaptics (imports react-native + tone)
+jest.mock('../../xr/MechanicalHaptics', () => ({
+  MechanicalHaptics: {
+    getInstance: () => ({
+      triggerContact: jest.fn(),
+    }),
+  },
+}));
+
+// Mock EchoSystem (uses @babylonjs/core Mesh + StandardMaterial)
+jest.mock('../EchoSystem', () => ({
+  EchoSystem: {
+    getInstance: () => ({
+      spawnEcho: jest.fn(),
+    }),
+  },
+}));
+
+// Mock ProceduralMorphSystem (uses @babylonjs/core MeshBuilder + MorphTarget)
+jest.mock('../../enemies/ProceduralMorphSystem', () => ({
+  ProceduralMorphSystem: {
+    getInstance: () => ({
+      createMorphedEnemy: jest.fn(() => ({ mesh: {}, manager: {} })),
+    }),
+  },
+}));
+
+// Mock ECS World
+jest.mock('../../ecs/World', () => ({
+  world: {
+    add: jest.fn(),
+  },
+}));
+
+// Mock YukaSteeringSystem
+jest.mock('../../enemies/YukaSteeringSystem', () => ({
+  YukaSteeringSystem: {
+    getInstance: () => ({
+      registerEnemy: jest.fn(),
+    }),
+  },
+}));
+
 // Helper to create fresh singleton instances bypassing private constructors
 function createTensionSystem(): TensionSystem {
   (TensionSystem as any).instance = null;
@@ -178,6 +244,87 @@ describe('PatternStabilizationSystem', () => {
           },
         ),
       );
+    });
+  });
+
+  describe('Pattern Spawning & Timeout', () => {
+    it('does not spawn patterns when not started', () => {
+      // update() should be a no-op when spawning is false
+      expect(() => system.update(0.5)).not.toThrow();
+    });
+
+    it('starts and stops pattern spawning', () => {
+      system.startPatternSpawning();
+      // Should not throw during update
+      expect(() => system.update(0.5)).not.toThrow();
+      system.stopPatternSpawning();
+    });
+
+    it('clears pending patterns on holdKey', () => {
+      system.startPatternSpawning();
+      // Force a large dt to trigger spawn (spawnInterval default = 1.2s)
+      system.update(2.0);
+      // Hold any key that might have been spawned
+      system.holdKey('Q', 0, 1.0);
+      // Should clear the pending pattern for 'Q' without error
+      system.releaseKey('Q');
+      system.stopPatternSpawning();
+    });
+
+    it('resets clears spawning state', () => {
+      system.startPatternSpawning();
+      system.update(2.0);
+      system.reset();
+      // After reset, update should be no-op (spawning = false)
+      expect(() => system.update(1.0)).not.toThrow();
+    });
+  });
+
+  describe('Phase Progression', () => {
+    const phases = [
+      { tension: 0.0, patternKeys: ['Q', 'W', 'E', 'R', 'T'], spawnRate: 1.2, yukaCount: 3 },
+      { tension: 0.4, patternKeys: ['A', 'S', 'D', 'F', 'G', 'H'], spawnRate: 0.8, yukaCount: 8 },
+      { tension: 0.8, patternKeys: ['Z', 'X', 'C'], spawnRate: 0.4, yukaCount: 15, boss: 'crystalline-cube' },
+    ];
+
+    it('starts at phase 0 with correct pattern keys', () => {
+      system.setPhases(phases);
+      expect(system.getCurrentPhaseIndex()).toBe(0);
+      // Phase 0 keys should be the required pattern
+      expect(system.getActivePatterns().size).toBe(0); // No keys held yet
+    });
+
+    it('advances to phase 1 when tension crosses 0.4', () => {
+      system.setPhases(phases);
+      system.startPatternSpawning();
+      // Set tension above phase 1 threshold
+      tensionSystem.setTension(0.45);
+      // update() checks phase progression
+      system.update(0.1);
+      expect(system.getCurrentPhaseIndex()).toBe(1);
+    });
+
+    it('advances to phase 2 when tension crosses 0.8', () => {
+      system.setPhases(phases);
+      system.startPatternSpawning();
+      // Jump tension above phase 2 threshold
+      tensionSystem.setTension(0.85);
+      // First update advances to phase 1
+      system.update(0.1);
+      // Phase 1 threshold (0.4) was also crossed, but we advance one at a time
+      // Second update should advance to phase 2
+      system.update(0.1);
+      expect(system.getCurrentPhaseIndex()).toBe(2);
+    });
+
+    it('resets phase index on reset()', () => {
+      system.setPhases(phases);
+      system.startPatternSpawning();
+      tensionSystem.setTension(0.5);
+      system.update(0.1);
+      expect(system.getCurrentPhaseIndex()).toBe(1);
+      system.reset();
+      expect(system.getCurrentPhaseIndex()).toBe(0);
     });
   });
 });

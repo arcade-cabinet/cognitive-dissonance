@@ -26,7 +26,11 @@ export default {
   testMatch: ['**/__tests__/**/*.test.ts', '**/*.test.ts'],
   moduleNameMapper: {
     '^@babylonjs/core/(.*)$': '<rootDir>/node_modules/@babylonjs/core/$1',
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^react-native$': '<rootDir>/src/__mocks__/react-native.ts',
+    '^tone$': '<rootDir>/src/__mocks__/tone.ts',
   },
+  transformIgnorePatterns: ['/node_modules/(?!.*@babylonjs)'],
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/**/index.ts'],
   coverageReporters: ['lcov', 'text-summary'],
   coverageDirectory: 'coverage',
@@ -53,7 +57,7 @@ src/
 
 ### Property-Based Tests
 
-23 property-based tests validate core system invariants:
+2027 tests across 53 test suites (including 30 property-based tests) validate core system invariants:
 
 **P1: Tension Clamping** — Tension always ∈ [0.0, 0.999]
 **P2: Over-Stabilization Threshold** — Rebound only triggers below 0.05
@@ -65,7 +69,7 @@ src/
 **P19: Difficulty Snapshot Bounds** — All fields within specified ranges
 **P21: Feedback Loop Stability** — Converges, doesn't diverge
 
-See `docs/ARCHITECTURE.md` for full list of 23 properties.
+See `docs/ARCHITECTURE.md` for system architecture details.
 
 ### Running Tests
 
@@ -97,18 +101,24 @@ pnpm test -- src/systems/__tests__/TensionSystem.test.ts
 export default defineConfig({
   testDir: './e2e/web',
   timeout: 30_000,
-  retries: 1,
+  retries: process.env.CI ? 2 : 0,
   use: {
     baseURL: 'http://localhost:8081',
     screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    trace: 'on-first-retry',
   },
   webServer: {
     command: 'pnpm web',
-    port: 8081,
+    url: 'http://localhost:8081',
     reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
   },
   projects: [
-    { name: 'chromium', use: { browserName: 'chromium' } },
+    {
+      name: 'chromium',
+      use: { browserName: 'chromium', viewport: { width: 1280, height: 720 } },
+    },
   ],
 });
 ```
@@ -117,10 +127,11 @@ export default defineConfig({
 
 ```text
 e2e/web/
-├── smoke.spec.ts          # App loads, engine initializes, scene renders
-├── gameplay.spec.ts       # Pattern stabilization, tension changes, game over
-└── helpers/
-    └── game-helpers.ts    # Shared test utilities
+├── smoke.spec.ts              # App loads, engine initializes, scene renders
+├── console-health.spec.ts     # Console error/warning monitoring
+├── gameplay-lifecycle.spec.ts  # Full gameplay lifecycle testing
+├── keyboard-interaction.spec.ts # Keyboard input and keycap interaction
+└── visual-regression.spec.ts  # Visual regression screenshot comparison
 ```
 
 ### Running Tests
@@ -188,5 +199,6 @@ Target coverage: 80%+ for core systems (TensionSystem, DifficultyScalingSystem, 
 ## References
 
 - [Architecture](./ARCHITECTURE.md) — System architecture
+- [Level Archetypes](./LEVEL_ARCHETYPES.md) — 25 Dream archetype definitions
 - [GitHub Actions](./GITHUB_ACTIONS.md) — CI/CD pipeline
 - [Development](./DEVELOPMENT.md) — Local development workflow

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Celestial Sphere — 6-Octave FBM + Fresnel Rim</title>
+<style>
+  * { margin: 0; padding: 0; }
+  body { background: #000; overflow: hidden; font-family: monospace; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #controls {
+    position: fixed; bottom: 20px; right: 20px;
+    background: rgba(0,0,0,0.85); color: #ccc; padding: 16px;
+    border-radius: 12px; border: 1px solid #333; min-width: 280px;
+    backdrop-filter: blur(10px); z-index: 10;
+  }
+  #controls h2 { color: #4af; margin-bottom: 12px; font-size: 14px; letter-spacing: 2px; }
+  .ctrl { margin-bottom: 10px; }
+  .ctrl label { display: block; font-size: 11px; margin-bottom: 4px; color: #aaa; }
+  .ctrl input[type=range] { width: 100%; accent-color: #4af; }
+  .ctrl .val { float: right; color: #4af; }
+  #info {
+    position: fixed; top: 20px; left: 20px;
+    color: #666; font-size: 11px; line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info">
+  <strong style="color:#4af">CELESTIAL SPHERE NEBULA</strong><br>
+  21st.dev reference: celestial-sphere-shader<br>
+  6-octave FBM with 3D Perlin noise<br>
+  Fresnel rim glow: pow(1-dot(N,V), 2.0)<br>
+  2-color smoothstep mixing (blue to red)<br>
+  <br>
+  <strong>Gap vs our code:</strong> We use 4 octaves FBM<br>
+  with 2D noise — reference uses 6 octaves + 3D noise
+</div>
+<div id="controls">
+  <h2>CELESTIAL ORB</h2>
+  <div class="ctrl">
+    <label>Tension (blue→red) <span class="val" id="vTension">0.00</span></label>
+    <input type="range" id="tension" min="0" max="1" step="0.01" value="0">
+  </div>
+  <div class="ctrl">
+    <label>Glow Intensity <span class="val" id="vGlow">1.50</span></label>
+    <input type="range" id="glow" min="0" max="3" step="0.01" value="1.5">
+  </div>
+  <div class="ctrl">
+    <label>Noise Scale <span class="val" id="vNoise">3.00</span></label>
+    <input type="range" id="noiseScale" min="1" max="8" step="0.1" value="3">
+  </div>
+  <div class="ctrl">
+    <label>Breathing Pulse <span class="val" id="vBreath">1.00</span></label>
+    <input type="range" id="breathing" min="0" max="2" step="0.01" value="1">
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl');
+
+const vertSrc = `
+  attribute vec2 aPosition;
+  void main() { gl_Position = vec4(aPosition, 0.0, 1.0); }
+`;
+
+// Full celestial sphere shader — matching 21st.dev reference exactly
+const fragSrc = `
+precision highp float;
+uniform vec2 iResolution;
+uniform float iTime;
+uniform float uTension;
+uniform float uGlowIntensity;
+uniform float uNoiseScale;
+uniform float uBreathing;
+
+// 3D hash for Perlin noise (reference uses 3D noise vectors, NOT 2D)
+vec3 hash3(vec3 p) {
+    p = vec3(
+        dot(p, vec3(127.1, 311.7, 74.7)),
+        dot(p, vec3(269.5, 183.3, 246.1)),
+        dot(p, vec3(113.5, 271.9, 124.6))
+    );
+    return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
+}
+
+// 3D Perlin noise — reference uses vec3 input, not vec2
+float noise3D(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    vec3 u = f * f * (3.0 - 2.0 * f);
+
+    return mix(mix(mix(dot(hash3(i + vec3(0,0,0)), f - vec3(0,0,0)),
+                       dot(hash3(i + vec3(1,0,0)), f - vec3(1,0,0)), u.x),
+                   mix(dot(hash3(i + vec3(0,1,0)), f - vec3(0,1,0)),
+                       dot(hash3(i + vec3(1,1,0)), f - vec3(1,1,0)), u.x), u.y),
+               mix(mix(dot(hash3(i + vec3(0,0,1)), f - vec3(0,0,1)),
+                       dot(hash3(i + vec3(1,0,1)), f - vec3(1,0,1)), u.x),
+                   mix(dot(hash3(i + vec3(0,1,1)), f - vec3(0,1,1)),
+                       dot(hash3(i + vec3(1,1,1)), f - vec3(1,1,1)), u.x), u.y), u.z);
+}
+
+// 6-octave FBM — reference uses 6 octaves (our code only uses 4!)
+float fbm(vec3 p) {
+    float value = 0.0;
+    float amplitude = 0.5;
+    float frequency = 1.0;
+    for (int i = 0; i < 6; i++) {
+        value += amplitude * noise3D(p * frequency);
+        amplitude *= 0.5;
+        frequency *= 2.0;
+    }
+    return value;
+}
+
+void main() {
+    vec2 uv = (gl_FragCoord.xy - 0.5 * iResolution.xy) / min(iResolution.x, iResolution.y);
+
+    // Breathing pulse: sphere radius oscillates
+    float breathe = 1.0 + sin(iTime * 1.8) * 0.03 * uBreathing;
+    float sphereRadius = 0.38 * breathe;
+
+    // Sphere from UV: d = 1 - dot(uv, uv) / r^2 — reference formula
+    float d = sphereRadius * sphereRadius - dot(uv, uv);
+
+    if (d < 0.0) {
+        // Outside sphere — dark background with subtle nebula dust
+        float bgNoise = fbm(vec3(uv * 4.0, iTime * 0.1)) * 0.03;
+        gl_FragColor = vec4(vec3(bgNoise), 1.0);
+        return;
+    }
+
+    // Sphere surface position: vec3(uv, sqrt(d)) — matches reference exactly
+    vec3 pos = vec3(uv, sqrt(d));
+    vec3 normal = normalize(pos);
+
+    // Animate noise through time (scroll through 3D noise space)
+    vec3 noisePos = pos * uNoiseScale + vec3(0.0, 0.0, iTime * 0.3);
+    float c = fbm(noisePos);
+
+    // 2-color mixing via smoothstep(0.4, 0.6, c) — reference formula
+    // Calm: deep blue (0.1, 0.6, 1.0) | Corrupt: fiery red (1.0, 0.3, 0.1)
+    vec3 calmColor = vec3(0.1, 0.6, 1.0);
+    vec3 violentColor = vec3(1.0, 0.3, 0.1);
+
+    // Tension drives the color mixing
+    float colorMix = smoothstep(0.4, 0.6, c);
+    vec3 nebulaColor = mix(calmColor, violentColor, colorMix * uTension + (1.0 - uTension) * colorMix * 0.3);
+
+    // At high tension, shift overall palette toward red
+    nebulaColor = mix(nebulaColor, violentColor, uTension * 0.6);
+
+    // Fresnel rim glow: pow(1.0 - dot(normalize(pos), vec3(0,0,1)), 2.0) * glow_intensity
+    // This is the EXACT 21st.dev reference formula
+    float fresnel = pow(1.0 - dot(normalize(pos), vec3(0.0, 0.0, 1.0)), 2.0) * uGlowIntensity;
+
+    // Fresnel color shifts with tension (blue rim -> red rim)
+    vec3 rimColor = mix(vec3(0.3, 0.6, 1.0), vec3(1.0, 0.2, 0.1), uTension);
+    nebulaColor += rimColor * fresnel;
+
+    // Static jitter above tension 0.7 — matches our implementation
+    if (uTension > 0.7) {
+        float intensity = (uTension - 0.7) / 0.3;
+        float grain = fract(sin(dot(uv * 80.0 + vec2(iTime * 0.3, 0.0), vec2(12.9898, 78.233))) * 43758.5453);
+        nebulaColor += grain * intensity * 0.25;
+    }
+
+    // Final brightness and contrast
+    nebulaColor *= 0.8 + c * 0.4;
+
+    gl_FragColor = vec4(nebulaColor, 1.0);
+}
+`;
+
+function compile(src, type) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
+  return s;
+}
+
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(vertSrc, gl.VERTEX_SHADER));
+gl.attachShader(prog, compile(fragSrc, gl.FRAGMENT_SHADER));
+gl.linkProgram(prog);
+gl.useProgram(prog);
+
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+const aPos = gl.getAttribLocation(prog, 'aPosition');
+gl.enableVertexAttribArray(aPos);
+gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+const uRes = gl.getUniformLocation(prog, 'iResolution');
+const uTime = gl.getUniformLocation(prog, 'iTime');
+const uTension = gl.getUniformLocation(prog, 'uTension');
+const uGlow = gl.getUniformLocation(prog, 'uGlowIntensity');
+const uNoise = gl.getUniformLocation(prog, 'uNoiseScale');
+const uBreath = gl.getUniformLocation(prog, 'uBreathing');
+
+const sliders = { tension: 0, glow: 1.5, noiseScale: 3, breathing: 1 };
+const labels = { tension:'vTension', glow:'vGlow', noiseScale:'vNoise', breathing:'vBreath' };
+['tension','glow','noiseScale','breathing'].forEach(id => {
+  document.getElementById(id).oninput = function() {
+    sliders[id] = parseFloat(this.value);
+    document.getElementById(labels[id]).textContent = parseFloat(this.value).toFixed(2);
+  };
+});
+
+const t0 = performance.now();
+function render() {
+  canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.uniform2f(uRes, canvas.width, canvas.height);
+  gl.uniform1f(uTime, (performance.now() - t0) / 1000);
+  gl.uniform1f(uTension, sliders.tension);
+  gl.uniform1f(uGlow, sliders.glow);
+  gl.uniform1f(uNoise, sliders.noiseScale);
+  gl.uniform1f(uBreath, sliders.breathing);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  requestAnimationFrame(render);
+}
+render();
+</script>
+</body>
+</html>

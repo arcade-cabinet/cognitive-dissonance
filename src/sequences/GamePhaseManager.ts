@@ -1,9 +1,6 @@
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Color3 } from '@babylonjs/core/Maths/math.color';
-import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import type { Mesh } from '@babylonjs/core/Meshes/mesh';
-import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder';
-import { SolidParticleSystem } from '@babylonjs/core/Particles/solidParticleSystem';
 import type { Scene } from '@babylonjs/core/scene';
 import gsap from 'gsap';
 import { type GamePhase, useGameStore } from '../store/game-store';
@@ -29,15 +26,16 @@ export class GamePhaseManager {
   private scene: Scene | null = null;
   private platterMesh: Mesh | null = null;
   private sphereMesh: Mesh | null = null;
+  private originalPlatterMaterial: import('@babylonjs/core/Materials/material').Material | null = null;
   private rimGlowMaterial: StandardMaterial | null = null;
   private loadingPulseTimeline: gsap.core.Timeline | null = null;
-  private shatterSPS: SolidParticleSystem | null = null;
   private restartEnabled = false;
   private restartTimeout: number | null = null;
 
   // Callbacks for external system integration
   private onPlayingPhaseStartCallback: (() => void) | null = null;
   private onShatteredPhaseStartCallback: (() => void) | null = null;
+  private onTitlePhaseStartCallback: (() => void) | null = null;
 
   private constructor() {}
 
@@ -57,6 +55,9 @@ export class GamePhaseManager {
     this.platterMesh = platterMesh;
     this.sphereMesh = sphereMesh;
 
+    // Cache the original platter material so we can restore it after loading phase
+    this.originalPlatterMaterial = platterMesh.material;
+
     // Create rim glow material for loading phase (Req 33.1)
     this.rimGlowMaterial = new StandardMaterial('rimGlow', scene);
     this.rimGlowMaterial.emissiveColor = new Color3(0.2, 0.6, 1.0); // Blue glow
@@ -67,8 +68,9 @@ export class GamePhaseManager {
       this.onPhaseChange(state.phase);
     });
 
-    // Start in loading phase
-    this.startLoadingPhase();
+    // Sync to current phase (may already be 'title' by the time we initialize)
+    const currentPhase = useGameStore.getState().phase;
+    this.onPhaseChange(currentPhase);
   }
 
   /**
@@ -83,6 +85,13 @@ export class GamePhaseManager {
    */
   setOnShatteredPhaseStart(callback: () => void): void {
     this.onShatteredPhaseStartCallback = callback;
+  }
+
+  /**
+   * Set callback for title phase start (triggers full state reset on restart).
+   */
+  setOnTitlePhaseStart(callback: () => void): void {
+    this.onTitlePhaseStartCallback = callback;
   }
 
   /**
@@ -141,12 +150,15 @@ export class GamePhaseManager {
       this.loadingPulseTimeline = null;
     }
 
-    // Restore platter material (will be set by MechanicalPlatter factory)
-    // Sphere already has SphereNebulaMaterial with calm blue at tension 0.0
-    // "COGNITIVE DISSONANCE" title already displayed by TitleAndGameOverSystem
+    // Restore original platter material (loading phase overrides it with rimGlowMaterial)
+    if (this.platterMesh && this.originalPlatterMaterial) {
+      this.platterMesh.material = this.originalPlatterMaterial;
+    }
 
-    // Ensure slit is closed and keycaps are retracted (handled by MechanicalAnimationSystem)
-    // This phase is the default state after engine initialization
+    // Trigger external reset callback (H1 fix: full state reset on restart)
+    if (this.onTitlePhaseStartCallback) {
+      this.onTitlePhaseStartCallback();
+    }
   }
 
   /**
@@ -169,13 +181,12 @@ export class GamePhaseManager {
   private startShatteredPhase(): void {
     if (!this.scene || !this.sphereMesh) return;
 
-    // Trigger external systems via callback (enemy freeze, platter stop)
+    // Trigger external systems via callback (enemy freeze, platter stop, ShatterSequence.trigger())
     if (this.onShatteredPhaseStartCallback) {
       this.onShatteredPhaseStartCallback();
     }
 
-    // Fracture sphere into 64 glass-shard particles
-    this.createShatterEffect();
+    // Shatter effect is handled exclusively by ShatterSequence (triggered from GameBootstrap's shattered callback)
 
     // "COGNITION SHATTERED" text already displayed by TitleAndGameOverSystem
 
@@ -184,79 +195,6 @@ export class GamePhaseManager {
     this.restartTimeout = window.setTimeout(() => {
       this.restartEnabled = true;
     }, 4000);
-  }
-
-  /**
-   * Create 64 glass-shard SolidParticleSystem for sphere shatter.
-   */
-  private createShatterEffect(): void {
-    if (!this.scene || !this.sphereMesh) return;
-
-    // Create SolidParticleSystem with 64 box shards
-    this.shatterSPS = new SolidParticleSystem('shatterSPS', this.scene);
-    const shardMesh = MeshBuilder.CreateBox('shard', { size: 0.05 }, this.scene);
-    this.shatterSPS.addShape(shardMesh, 64);
-    shardMesh.dispose();
-
-    const shatterMesh = this.shatterSPS.buildMesh();
-
-    // Position shards at sphere center
-    const spherePosition = this.sphereMesh.position.clone();
-
-    // Initialize particles with outward velocities
-    this.shatterSPS.initParticles = () => {
-      for (let i = 0; i < (this.shatterSPS?.nbParticles ?? 0); i++) {
-        const particle = this.shatterSPS?.particles[i];
-        if (!particle) continue;
-
-        // Start at sphere center
-        particle.position.copyFrom(spherePosition);
-
-        // Seed-derived outward velocity (radial + angular offset)
-        const rng = useSeedStore.getState().rng;
-        const theta = (i / 64) * Math.PI * 2 + ((rng?.() ?? 0.5) - 0.5) * 0.5;
-        const phi = Math.acos(2 * (rng?.() ?? 0.5) - 1);
-        const speed = 2.0 + (rng?.() ?? 0.5) * 3.0;
-
-        particle.velocity = new Vector3(
-          Math.sin(phi) * Math.cos(theta) * speed,
-          Math.sin(phi) * Math.sin(theta) * speed,
-          Math.cos(phi) * speed,
-        );
-
-        // Inherit sphere's current nebula color (tension-interpolated red)
-        particle.color = new Color3(1.0, 0.3, 0.1).toColor4(0.6);
-      }
-    };
-
-    // Update particles with velocity + gravity
-    this.shatterSPS.updateParticle = (particle) => {
-      particle.position.addInPlace(particle.velocity.scale(0.016)); // ~60fps
-      particle.velocity.y -= 0.3; // Gravity
-      return particle;
-    };
-
-    this.shatterSPS.initParticles();
-    this.shatterSPS.setParticles();
-
-    // Hide original sphere
-    this.sphereMesh.setEnabled(false);
-
-    // Animate shards for 3 seconds, then dispose
-    const updateLoop = () => {
-      if (this.shatterSPS) {
-        this.shatterSPS.setParticles();
-      }
-    };
-
-    this.scene.registerBeforeRender(updateLoop);
-
-    setTimeout(() => {
-      this.scene?.unregisterBeforeRender(updateLoop);
-      shatterMesh.dispose();
-      this.shatterSPS?.dispose();
-      this.shatterSPS = null;
-    }, 3000);
   }
 
   /**
@@ -309,11 +247,6 @@ export class GamePhaseManager {
       this.loadingPulseTimeline = null;
     }
 
-    if (this.shatterSPS) {
-      this.shatterSPS.dispose();
-      this.shatterSPS = null;
-    }
-
     if (this.restartTimeout !== null) {
       window.clearTimeout(this.restartTimeout);
       this.restartTimeout = null;
@@ -325,7 +258,9 @@ export class GamePhaseManager {
     this.scene = null;
     this.platterMesh = null;
     this.sphereMesh = null;
+    this.originalPlatterMaterial = null;
     this.onPlayingPhaseStartCallback = null;
     this.onShatteredPhaseStartCallback = null;
+    this.onTitlePhaseStartCallback = null;
   }
 }

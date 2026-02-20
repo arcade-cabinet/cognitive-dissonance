@@ -1,4 +1,13 @@
 import type { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import type {
+  ArchetypeComponent,
+  CrystallineCubeComponent,
+  KeycapComponent,
+  LeverComponent,
+  MorphCubeComponent,
+  PlatterComponent,
+  SphereComponent,
+} from '../ecs/components';
 
 // Yuka AI trait types
 export type YukaTrait =
@@ -152,4 +161,19 @@ export interface GameEntity {
   // Shared
   position?: { x: number; y: number; z: number };
   velocity?: { x: number; y: number; z: number };
+
+  // v3.0 Primitive components (Miniplex ECS)
+  keycap?: KeycapComponent;
+  lever?: LeverComponent;
+  platter?: PlatterComponent;
+  sphere?: SphereComponent;
+  crystallineCube?: CrystallineCubeComponent;
+  morphCube?: MorphCubeComponent;
+  archetype?: ArchetypeComponent;
+
+  // v3.0 Primitive mesh reference
+  mesh?: { dispose: () => void; name: string; position: { x: number; y: number; z: number } };
+
+  // v3.0 Primitive tag (for batch despawn)
+  primitiveTag?: string;
 }

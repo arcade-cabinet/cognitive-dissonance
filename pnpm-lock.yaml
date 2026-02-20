@@ -14,6 +14,9 @@ importers:
       '@babylonjs/havok':
         specifier: ^1.3.11
         version: 1.3.11
+      '@babylonjs/react-native':
+        specifier: ^1.9.0
+        version: 1.9.0(@babylonjs/core@8.51.2)(react-native-permissions@5.4.4(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
       expo:
         specifier: ~55.0.0-preview.11
         version: 55.0.0-preview.11(@babel/core@7.29.0)(@expo/dom-webview@55.0.3)(react-dom@19.2.0(react@19.2.0))(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
@@ -55,7 +58,7 @@ importers:
         version: 0.21.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       reactylon:
         specifier: ^3.5.4
-        version: 3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(@types/react@19.2.14)(react-dom@19.2.0(react@19.2.0))(react-reconciler@0.31.0(react@19.2.0))(react@19.2.0)
+        version: 3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(@babylonjs/react-native@1.9.0(@babylonjs/core@8.51.2)(react-native-permissions@5.4.4(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(@types/react@19.2.14)(react-dom@19.2.0(react@19.2.0))(react-reconciler@0.31.0(react@19.2.0))(react@19.2.0)
       seedrandom:
         specifier: ^3.0.5
         version: 3.0.5
@@ -104,7 +107,7 @@ importers:
         version: 0.7.4
       babel-plugin-reactylon:
         specifier: ^1.3.1
-        version: 1.3.1(@babel/core@7.29.0)(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(reactylon@3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(@types/react@19.2.14)(react-dom@19.2.0(react@19.2.0))(react-reconciler@0.31.0(react@19.2.0))(react@19.2.0))
+        version: 1.3.1(@babel/core@7.29.0)(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(reactylon@3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(@babylonjs/react-native@1.9.0(@babylonjs/core@8.51.2)(react-native-permissions@5.4.4(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(@types/react@19.2.14)(react-dom@19.2.0(react@19.2.0))(react-reconciler@0.31.0(react@19.2.0))(react@19.2.0))
       babel-preset-expo:
         specifier: ^55.0.5
         version: 55.0.5(@babel/core@7.29.0)(@babel/runtime@7.28.6)(expo@55.0.0-preview.11)(react-refresh@0.14.2)
@@ -626,6 +629,14 @@ packages:
 
   '@babylonjs/havok@1.3.11':
     resolution: {integrity: sha512-TnDU2c4yG+z4qzFZIL0v7QchNsFRPvDR2OI9/zAgX7UMhj//yMB57h8mxdUzjaeBjuJK7DUWX5rhgab/aVo+mg==}
+
+  '@babylonjs/react-native@1.9.0':
+    resolution: {integrity: sha512-HbM0CrOjLzvhwso+LVlECHfi0FhWd5AHhCeJtpys1qdvWiQMtnj9cAtybiD/Vz9S4EEQhwUjZNv3Cs42Zm4Mzw==}
+    peerDependencies:
+      '@babylonjs/core': '>=5.53.1'
+      react: '*'
+      react-native: '*'
+      react-native-permissions: '>=3.0.0'
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
@@ -1282,6 +1293,9 @@ packages:
   balanced-match@4.0.3:
     resolution: {integrity: sha512-1pHv8LX9CpKut1Zp4EXey7Z8OfH11ONNH6Dhi2WDUt31VVZFXZzKwXcysBgqSumFCmR+0dqjMK5v5JiFHzi0+g==}
     engines: {node: 20 || >=22}
+
+  base-64@0.1.0:
+    resolution: {integrity: sha512-Y5gU45svrR5tI2Vt/X9GPd3L0HNIKzGu202EjxrXMpuc2V2CiKgemAbUUsqYmZJvPtCXoUKjNZwBJzsNScUbXA==}
 
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
@@ -2651,6 +2665,16 @@ packages:
   react-is@18.3.1:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
 
+  react-native-permissions@5.4.4:
+    resolution: {integrity: sha512-WB5lRCBGXETfuaUhem2vgOceb9+URCeyfKpLGFSwoOffLuyJCA6+NTR3l1KLkrK4Ykxsig37z16/shUVufmt7A==}
+    peerDependencies:
+      react: '>=18.1.0'
+      react-native: '>=0.70.0'
+      react-native-windows: '>=0.70.0'
+    peerDependenciesMeta:
+      react-native-windows:
+        optional: true
+
   react-native-web@0.21.2:
     resolution: {integrity: sha512-SO2t9/17zM4iEnFvlu2DA9jqNbzNhoUP+AItkoCOyFmDMOhUnBBznBDCYN92fGdfAkfQlWzPoez6+zLxFNsZEg==}
     peerDependencies:
@@ -3830,6 +3854,15 @@ snapshots:
     dependencies:
       '@types/emscripten': 1.41.5
 
+  '@babylonjs/react-native@1.9.0(@babylonjs/core@8.51.2)(react-native-permissions@5.4.4(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)':
+    dependencies:
+      '@babylonjs/core': 8.51.2
+      base-64: 0.1.0
+      react: 19.2.0
+      react-native: 0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0)
+      react-native-permissions: 5.4.4(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
+      semver: 7.7.4
+
   '@bcoe/v8-coverage@0.2.3': {}
 
   '@biomejs/biome@2.4.1':
@@ -4758,13 +4791,13 @@ snapshots:
 
   babel-plugin-react-native-web@0.21.2: {}
 
-  babel-plugin-reactylon@1.3.1(@babel/core@7.29.0)(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(reactylon@3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(@types/react@19.2.14)(react-dom@19.2.0(react@19.2.0))(react-reconciler@0.31.0(react@19.2.0))(react@19.2.0)):
+  babel-plugin-reactylon@1.3.1(@babel/core@7.29.0)(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(reactylon@3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(@babylonjs/react-native@1.9.0(@babylonjs/core@8.51.2)(react-native-permissions@5.4.4(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(@types/react@19.2.14)(react-dom@19.2.0(react@19.2.0))(react-reconciler@0.31.0(react@19.2.0))(react@19.2.0)):
     dependencies:
       '@babel/core': 7.29.0
       '@babel/helper-plugin-utils': 7.28.6
       '@babylonjs/core': 8.51.2
       '@babylonjs/gui': 8.51.2(@babylonjs/core@8.51.2)
-      reactylon: 3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(@types/react@19.2.14)(react-dom@19.2.0(react@19.2.0))(react-reconciler@0.31.0(react@19.2.0))(react@19.2.0)
+      reactylon: 3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(@babylonjs/react-native@1.9.0(@babylonjs/core@8.51.2)(react-native-permissions@5.4.4(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(@types/react@19.2.14)(react-dom@19.2.0(react@19.2.0))(react-reconciler@0.31.0(react@19.2.0))(react@19.2.0)
 
   babel-plugin-syntax-hermes-parser@0.29.1:
     dependencies:
@@ -4841,6 +4874,8 @@ snapshots:
   balanced-match@1.0.2: {}
 
   balanced-match@4.0.3: {}
+
+  base-64@0.1.0: {}
 
   base64-js@1.5.1: {}
 
@@ -6439,6 +6474,11 @@ snapshots:
 
   react-is@18.3.1: {}
 
+  react-native-permissions@5.4.4(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0):
+    dependencies:
+      react: 19.2.0
+      react-native: 0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0)
+
   react-native-web@0.21.2(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
       '@babel/runtime': 7.28.6
@@ -6511,7 +6551,7 @@ snapshots:
 
   react@19.2.0: {}
 
-  reactylon@3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(@types/react@19.2.14)(react-dom@19.2.0(react@19.2.0))(react-reconciler@0.31.0(react@19.2.0))(react@19.2.0):
+  reactylon@3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.51.2(@babylonjs/core@8.51.2))(@babylonjs/react-native@1.9.0(@babylonjs/core@8.51.2)(react-native-permissions@5.4.4(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(@types/react@19.2.14)(react-dom@19.2.0(react@19.2.0))(react-reconciler@0.31.0(react@19.2.0))(react@19.2.0):
     dependencies:
       '@babylonjs/core': 8.51.2
       '@babylonjs/gui': 8.51.2(@babylonjs/core@8.51.2)
@@ -6523,6 +6563,7 @@ snapshots:
       suspend-react: 0.1.3(react@19.2.0)
       zustand: 5.0.11(@types/react@19.2.14)(react@19.2.0)
     optionalDependencies:
+      '@babylonjs/react-native': 1.9.0(@babylonjs/core@8.51.2)(react-native-permissions@5.4.4(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0))(react-native@0.83.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
       react-dom: 19.2.0(react@19.2.0)
     transitivePeerDependencies:
       - '@types/react'

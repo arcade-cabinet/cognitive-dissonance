@@ -36,6 +36,9 @@ export class KeyboardInputSystem {
   private mechanicalAnimationSystem: MechanicalAnimationSystem | null = null;
   private dreamTypeHandler: DreamTypeHandler | null = null;
 
+  // Callback for choreographed title→playing sequence (registered by GameBootstrap)
+  private titleEnterCallback: (() => void) | null = null;
+
   // Valid keycap letters (from MechanicalPlatter)
   private readonly validKeycapLetters = new Set(['Q', 'W', 'E', 'R', 'T', 'A', 'S', 'D', 'F', 'G', 'H', 'Z', 'X', 'C']);
 
@@ -61,6 +64,10 @@ export class KeyboardInputSystem {
     this.patternStabilizationSystem = patternStabilizationSystem;
     this.mechanicalAnimationSystem = mechanicalAnimationSystem;
     this.dreamTypeHandler = dreamTypeHandler;
+
+    // Initialize scene.metadata.pressedKeys for DreamHandler consumption
+    if (!scene.metadata) scene.metadata = {};
+    if (!scene.metadata.pressedKeys) scene.metadata.pressedKeys = new Set<string>();
 
     // Register keyboard observers
     scene.onKeyboardObservable.add((kbInfo) => {
@@ -152,6 +159,11 @@ export class KeyboardInputSystem {
     if (!this.activeKeys.has(key)) {
       this.activeKeys.set(key, { startTime: performance.now() });
 
+      // Sync to scene.metadata for DreamHandler consumption
+      if (this.scene?.metadata?.pressedKeys) {
+        this.scene.metadata.pressedKeys.add(key);
+      }
+
       // Call PatternStabilizationSystem.holdKey with grip strength 1.0 (Req 31.1)
       if (this.patternStabilizationSystem) {
         // Hold duration will be calculated on release
@@ -174,6 +186,11 @@ export class KeyboardInputSystem {
 
     // Remove from active keys
     this.activeKeys.delete(key);
+
+    // Sync to scene.metadata for DreamHandler consumption
+    if (this.scene?.metadata?.pressedKeys) {
+      this.scene.metadata.pressedKeys.delete(key);
+    }
 
     // Call PatternStabilizationSystem.releaseKey (Req 31.2)
     if (this.patternStabilizationSystem) {
@@ -234,16 +251,30 @@ export class KeyboardInputSystem {
   }
 
   /**
+   * Register callback for choreographed title→playing sequence.
+   * GameBootstrap registers this to animate keycap depress → click → orb roll
+   * before the phase actually transitions.
+   */
+  registerTitleEnterCallback(callback: () => void): void {
+    this.titleEnterCallback = callback;
+  }
+
+  /**
    * Handle Enter key press (phase transitions)
    * Validates: Requirement 31.5
    */
   private handleEnterPress(): void {
     const currentPhase = useGameStore.getState().phase;
 
-    // Title → Playing (Req 31.5)
+    // Title → Playing: delegate to choreography callback if registered
     if (currentPhase === 'title') {
-      useGameStore.getState().setPhase('playing');
-      console.log('[KeyboardInputSystem] Phase transition: title → playing');
+      if (this.titleEnterCallback) {
+        console.log('[KeyboardInputSystem] Enter pressed — delegating to start-game choreography');
+        this.titleEnterCallback();
+      } else {
+        useGameStore.getState().setPhase('playing');
+        console.log('[KeyboardInputSystem] Phase transition: title → playing');
+      }
       return;
     }
 
@@ -287,6 +318,9 @@ export class KeyboardInputSystem {
     // Clear active keys when disabled
     if (!enabled) {
       this.activeKeys.clear();
+      if (this.scene?.metadata?.pressedKeys) {
+        this.scene.metadata.pressedKeys.clear();
+      }
       this.spacebarStartTime = null;
       if (this.spacebarAnimationFrame !== null) {
         cancelAnimationFrame(this.spacebarAnimationFrame);
@@ -333,5 +367,6 @@ export class KeyboardInputSystem {
     this.patternStabilizationSystem = null;
     this.mechanicalAnimationSystem = null;
     this.dreamTypeHandler = null;
+    this.titleEnterCallback = null;
   }
 }

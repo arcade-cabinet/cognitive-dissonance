@@ -26,6 +26,8 @@ export class MechanicalAnimationSystem {
   private modeLever: Mesh | null = null;
   private keycaps: Map<string, Mesh> = new Map();
   private platter: Mesh | null = null;
+  /** Target rim positions per keycap (computed in MechanicalPlatter, set via setRimPositions) */
+  private rimPositions: Map<string, { x: number; y: number; z: number }> = new Map();
 
   // GSAP timelines
   private slitTimeline: gsap.core.Timeline | null = null;
@@ -71,6 +73,14 @@ export class MechanicalAnimationSystem {
   }
 
   /**
+   * Set target rim positions for keycap emerge/retract animations.
+   * Called from GameBootstrap with positions computed during platter creation.
+   */
+  setRimPositions(positions: Map<string, { x: number; y: number; z: number }>): void {
+    this.rimPositions = positions;
+  }
+
+  /**
    * Animate garage-door slit open
    * Top slides up, bottom slides down, staggered timing to simulate weight difference
    * Validates: Requirement 8.2
@@ -90,7 +100,7 @@ export class MechanicalAnimationSystem {
     this.slitTimeline.to(
       this.slitTop.position,
       {
-        y: 0.12, // 12cm up
+        y: 0.22, // well above platter surface (visible separation)
         duration: 1.2,
         ease: 'heavyMechanical',
       },
@@ -101,7 +111,7 @@ export class MechanicalAnimationSystem {
     this.slitTimeline.to(
       this.slitBottom.position,
       {
-        y: -0.12, // 12cm down
+        y: -0.22, // well below platter (visible separation)
         duration: 1.4,
         ease: 'heavyMechanical',
       },
@@ -122,22 +132,22 @@ export class MechanicalAnimationSystem {
 
     this.slitTimeline = gsap.timeline();
 
-    // Bottom slides up first (heavier, slower)
+    // Bottom slides up first (heavier, slower) — returns to closed position
     this.slitTimeline.to(
       this.slitBottom.position,
       {
-        y: 0,
+        y: 0.06,
         duration: 1.4,
         ease: 'heavyMechanical',
       },
       0,
     );
 
-    // Top slides down (lighter, starts 0.15s later)
+    // Top slides down (lighter, starts 0.15s later) — returns to closed position
     this.slitTimeline.to(
       this.slitTop.position,
       {
-        y: 0,
+        y: 0.12,
         duration: 1.2,
         ease: 'heavyMechanical',
       },
@@ -206,20 +216,20 @@ export class MechanicalAnimationSystem {
     const existingTimeline = this.keycapTimelines.get(keyName);
     existingTimeline?.kill();
 
-    // Keycap starts at platter center (y = -0.09, hidden inside)
-    // Emerges to rim position (y = 0, visible)
-    // Curved path simulates mechanical track
+    // Look up stored rim position (keycaps start retracted at center)
+    const rimPos = this.rimPositions.get(keyName);
+    const targetX = rimPos?.x ?? keycap.position.x;
+    const targetY = rimPos?.y ?? 0.09;
+    const targetZ = rimPos?.z ?? keycap.position.z;
 
-    const startY = -0.09;
-    const endY = 0;
-    const currentX = keycap.position.x;
-    const currentZ = keycap.position.z;
+    // Make keycap visible before animating
+    keycap.setEnabled(true);
 
-    // Create curved path (parabolic arc)
+    // Curved path from center to rim position
     const path = [
-      { x: 0, y: startY, z: 0 }, // Start at center
-      { x: currentX * 0.5, y: startY + 0.03, z: currentZ * 0.5 }, // Mid-point with slight lift
-      { x: currentX, y: endY, z: currentZ }, // End at rim
+      { x: 0, y: -0.02, z: 0 }, // Start at center (retracted)
+      { x: targetX * 0.5, y: -0.02 + 0.03, z: targetZ * 0.5 }, // Mid-point with slight lift
+      { x: targetX, y: targetY, z: targetZ }, // End at rim
     ];
 
     const timeline = gsap.timeline();
@@ -249,16 +259,23 @@ export class MechanicalAnimationSystem {
     const existingTimeline = this.keycapTimelines.get(keyName);
     existingTimeline?.kill();
 
-    const currentX = keycap.position.x;
-    const currentZ = keycap.position.z;
+    // Use stored rim position as starting point
+    const rimPos = this.rimPositions.get(keyName);
+    const startX = rimPos?.x ?? keycap.position.x;
+    const startY = rimPos?.y ?? 0.09;
+    const startZ = rimPos?.z ?? keycap.position.z;
 
     const path = [
-      { x: currentX, y: 0, z: currentZ }, // Start at rim
-      { x: currentX * 0.5, y: -0.03, z: currentZ * 0.5 }, // Mid-point
-      { x: 0, y: -0.09, z: 0 }, // End at center (hidden)
+      { x: startX, y: startY, z: startZ }, // Start at rim
+      { x: startX * 0.5, y: -0.03, z: startZ * 0.5 }, // Mid-point
+      { x: 0, y: -0.02, z: 0 }, // End at center (retracted)
     ];
 
-    const timeline = gsap.timeline();
+    const timeline = gsap.timeline({
+      onComplete: () => {
+        keycap.setEnabled(false); // Hide after retraction completes
+      },
+    });
 
     timeline.to(keycap.position, {
       motionPath: {
@@ -336,6 +353,7 @@ export class MechanicalAnimationSystem {
     this.slitBottom = null;
     this.modeLever = null;
     this.keycaps.clear();
+    this.rimPositions.clear();
     this.platter = null;
     this.modeLeverCallback = null;
   }

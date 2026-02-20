@@ -64,10 +64,10 @@ pnpm test:e2e:mobile:ios     # Maestro iOS only
 ```text
 Entry Points (Metro)
 ├── index.web.tsx       → Web (WebGPU / WebGL2)
-└── index.native.tsx    → Native (Babylon Native Metal/Vulkan)
+└── index.native.tsx    → Native (Reactylon Native, in progress)
     │
     ▼
-App.tsx → EngineInitializer → SceneManager → CognitiveDissonanceRoot
+App.tsx → EngineInitializer → SceneManager → GameBootstrap
     │
     ▼
 Miniplex ECS (World.ts)
@@ -77,7 +77,7 @@ Miniplex ECS (World.ts)
 └── Enemy Archetypes    → YukaEnemy (7 traits) | CrystallineCubeBoss
     │
     ▼
-Core Systems (21 singletons)
+Core Systems (24 singletons)
 ├── TensionSystem, DifficultyScalingSystem, PatternStabilizationSystem
 ├── CorruptionTendrilSystem, MechanicalAnimationSystem, EchoSystem
 ├── ProceduralMorphSystem, CrystallineCubeBossSystem
@@ -106,7 +106,7 @@ Everything is diegetic — no HUD. Coherence displayed as a glowing ring on the 
 - **7 Enemy Morph Traits**: GPU vertex morphing with unique Yuka AI behaviors
 - **Crystalline-Cube Boss**: 5-phase GSAP world-crush timeline
 - **WebGPU on Web**: Primary renderer with WebGL2 fallback
-- **Babylon Native on Mobile**: Metal (iOS) / Vulkan (Android)
+- **Native Rendering**: Via Reactylon Native (in progress -- currently web-only)
 - **GLSL-First Shaders**: Auto-converted to WGSL on WebGPU
 - **Havok Physics**: 6DoF keycap constraints, platter hinge
 - **Tone.js Exclusive Audio**: Spatial procedural SFX, seed-derived BPM/swing

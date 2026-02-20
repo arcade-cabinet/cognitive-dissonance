@@ -8,6 +8,8 @@ const config: Config = {
   moduleNameMapper: {
     '^@babylonjs/core/(.*)$': '<rootDir>/node_modules/@babylonjs/core/$1',
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^react-native$': '<rootDir>/src/__mocks__/react-native.ts',
+    '^tone$': '<rootDir>/src/__mocks__/tone.ts',
   },
   transformIgnorePatterns: [
     '/node_modules/(?!.*@babylonjs)',

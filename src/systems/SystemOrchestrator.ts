@@ -2,8 +2,10 @@ import type { Engine } from '@babylonjs/core/Engines/engine';
 import type { Scene } from '@babylonjs/core/scene';
 import { ImmersionAudioBridge } from '../audio/ImmersionAudioBridge';
 import { SpatialAudioManager } from '../audio/SpatialAudioManager';
+import { world } from '../ecs/World';
 import { CrystallineCubeBossSystem } from '../enemies/CrystallineCubeBossSystem';
 import { ProceduralMorphSystem } from '../enemies/ProceduralMorphSystem';
+import { YukaSteeringSystem } from '../enemies/YukaSteeringSystem';
 import { MechanicalDegradationSystem } from '../fallback/MechanicalDegradationSystem';
 import { HandPhysics } from '../physics/HandPhysics';
 import { HavokInitializer } from '../physics/HavokInitializer';
@@ -12,7 +14,11 @@ import { PlatterPhysics } from '../physics/PlatterPhysics';
 import { PostProcessCorruption } from '../postprocess/PostProcessCorruption';
 import { GamePhaseManager } from '../sequences/GamePhaseManager';
 import { ShatterSequence } from '../sequences/ShatterSequence';
+import { ArchetypeActivationSystem } from '../ecs/ArchetypeActivationSystem';
+import { DreamSequencer } from '../sequences/DreamSequencer';
 import { ARSessionManager } from '../xr/ARSessionManager';
+import { HandInteractionSystem } from '../xr/HandInteractionSystem';
+import { MechanicalHaptics } from '../xr/MechanicalHaptics';
 import { CorruptionTendrilSystem } from './CorruptionTendrilSystem';
 import { DifficultyScalingSystem } from './DifficultyScalingSystem';
 import { DreamTypeHandler } from './DreamTypeHandler';
@@ -20,19 +26,22 @@ import { EchoSystem } from './EchoSystem';
 import { KeyboardInputSystem } from './KeyboardInputSystem';
 import { MechanicalAnimationSystem } from './MechanicalAnimationSystem';
 import { PatternStabilizationSystem } from './PatternStabilizationSystem';
+import { SphereTrackballSystem } from './SphereTrackballSystem';
 import { TensionSystem } from './TensionSystem';
 
 /**
- * SystemOrchestrator — Manages initialization order, per-frame update order, and disposal order for all game systems.
+ * SystemOrchestrator — Manages initialization order, per-frame update order,
+ * and disposal order for all game systems.
  *
- * Initialization order (25 systems):
- * 1. EngineInitializer → SceneManager → DeviceQuality → ECS World (handled externally)
- * 2. MechanicalPlatter (handled externally)
- * 3. SphereNebulaMaterial (handled externally)
- * 4. DiegeticCoherenceRing (handled externally)
- * 5. HavokInitializer (physics engine)
- * 6. KeycapPhysics
- * 7. PlatterPhysics
+ * Physics: Uses force/torque simulation (no Havok WASM dependency).
+ * Audio: Tone.js audio graph created during init; AudioContext resumed on
+ *        first user gesture via ImmersionAudioBridge.resumeOnUserGesture().
+ *
+ * Initialization order (31 systems):
+ * 1-4. EngineInitializer, SceneManager, DeviceQuality, ECS World (external)
+ * 5. HavokInitializer (WASM physics engine)
+ * 6. KeycapPhysics (force/torque simulation)
+ * 7. PlatterPhysics (force/torque simulation)
  * 8. HandPhysics
  * 9. TensionSystem
  * 10. DifficultyScalingSystem
@@ -43,7 +52,7 @@ import { TensionSystem } from './TensionSystem';
  * 15. ProceduralMorphSystem
  * 16. CrystallineCubeBossSystem
  * 17. PostProcessCorruption
- * 18. ImmersionAudioBridge
+ * 18. ImmersionAudioBridge (audio graph only — context deferred)
  * 19. SpatialAudioManager
  * 20. DreamTypeHandler
  * 21. ARSessionManager
@@ -51,22 +60,22 @@ import { TensionSystem } from './TensionSystem';
  * 23. MechanicalDegradationSystem
  * 24. GamePhaseManager
  * 25. ShatterSequence
+ * 26. YukaSteeringSystem
+ * 27. HandInteractionSystem
+ * 28. SphereTrackballSystem
+ * 29. MechanicalHaptics
+ * 30. ArchetypeActivationSystem
+ * 31. DreamSequencer
  *
- * Per-frame update order (12 systems):
- * 1. KeyboardInputSystem (input)
- * 2. PatternStabilizationSystem (gameplay)
- * 3. DifficultyScalingSystem (difficulty recomputation)
- * 4. TensionSystem (state)
- * 5. CorruptionTendrilSystem (visuals)
- * 6. ProceduralMorphSystem (enemies)
- * 7. CrystallineCubeBossSystem (boss)
- * 8. EchoSystem (feedback)
- * 9. MechanicalDegradationSystem (fallback)
- * 10. PostProcessCorruption (post-process)
- * 11. ImmersionAudioBridge (audio)
- * 12. DreamTypeHandler (archetype logic)
+ * Per-frame update order (6 active systems):
+ * 1. DifficultyScalingSystem
+ * 2. CorruptionTendrilSystem
+ * 3. ProceduralMorphSystem
+ * 4. YukaSteeringSystem
+ * 5. PatternStabilizationSystem
+ * 6. DreamTypeHandler
  *
- * Disposal order: reverse of initialization order
+ * Disposal order: reverse of initialization
  *
  * Validates: Requirement 32
  */
@@ -95,9 +104,17 @@ export class SystemOrchestrator {
   private mechanicalDegradationSystem: MechanicalDegradationSystem | null = null;
   private gamePhaseManager: GamePhaseManager | null = null;
   private shatterSequence: ShatterSequence | null = null;
+  private yukaSteeringSystem: YukaSteeringSystem | null = null;
+  private handInteractionSystem: HandInteractionSystem | null = null;
+  private sphereTrackballSystem: SphereTrackballSystem | null = null;
+  private mechanicalHaptics: MechanicalHaptics | null = null;
+  private archetypeActivationSystem: ArchetypeActivationSystem | null = null;
+  private dreamSequencer: DreamSequencer | null = null;
 
-  // Per-frame update callbacks
+  // Per-frame update callbacks (stored for unregistration)
   private updateCallbacks: Array<() => void> = [];
+  private scene: Scene | null = null;
+  private updatesEnabled = true;
 
   private constructor() {}
 
@@ -109,114 +126,115 @@ export class SystemOrchestrator {
   }
 
   /**
-   * Initialize all systems in the specified order.
-   * Systems 1-4 (EngineInitializer, SceneManager, DeviceQuality, ECS World) are handled externally.
-   * Systems 5-25 are initialized here.
-   *
-   * @param engine - Babylon.js engine instance
-   * @param scene - Babylon.js scene instance
+   * Initialize all systems in order.
+   * Systems 1-4 (Engine, Scene, DeviceQuality, ECS) are handled by GameBootstrap.
    */
   async initAll(_engine: Engine, scene: Scene): Promise<void> {
-    // 5. HavokInitializer (physics engine)
+    // 5. HavokInitializer (WASM physics engine — universal via UMD entry)
     this.havokInitializer = HavokInitializer.getInstance();
     await this.havokInitializer.initialize(scene);
 
     // 6. KeycapPhysics
     this.keycapPhysics = KeycapPhysics.getInstance();
-    // KeycapPhysics.applyKeycapPhysics() will be called for each keycap when platter is created
 
     // 7. PlatterPhysics
     this.platterPhysics = PlatterPhysics.getInstance();
-    // PlatterPhysics.applyPlatterPhysics() and applyLeverPhysics() will be called when platter is created
 
     // 8. HandPhysics
     this.handPhysics = HandPhysics.getInstance();
     this.handPhysics.initialize(scene);
 
-    // 9. TensionSystem
+    // 8. TensionSystem
     this.tensionSystem = TensionSystem.getInstance();
-    // TensionSystem.init() will be called when first Dream is spawned (requires tensionCurve from Level_Archetype entity)
 
-    // 10. DifficultyScalingSystem
+    // 9. DifficultyScalingSystem
     this.difficultyScalingSystem = DifficultyScalingSystem.getInstance();
-    // DifficultyScalingSystem.initialize() will be called when first Dream is spawned (requires difficultyConfig from Level_Archetype entity)
 
-    // 11. PatternStabilizationSystem
+    // 10. PatternStabilizationSystem
     this.patternStabilizationSystem = PatternStabilizationSystem.getInstance();
-    // PatternStabilizationSystem.setLevelEntity() will be called when first Dream is spawned
 
-    // 12. CorruptionTendrilSystem
+    // 11. CorruptionTendrilSystem (mesh wiring deferred)
     this.corruptionTendrilSystem = CorruptionTendrilSystem.getInstance();
-    // CorruptionTendrilSystem initialization deferred until sphere mesh is available
 
-    // 13. MechanicalAnimationSystem
+    // 12. MechanicalAnimationSystem (mesh wiring deferred)
     this.mechanicalAnimationSystem = MechanicalAnimationSystem.getInstance();
-    // MechanicalAnimationSystem initialization deferred until platter meshes are available
 
-    // 14. EchoSystem
+    // 13. EchoSystem
     this.echoSystem = EchoSystem.getInstance();
-    // EchoSystem initialization deferred until scene is available
 
-    // 15. ProceduralMorphSystem
-    this.proceduralMorphSystem = ProceduralMorphSystem.getInstance();
-    // ProceduralMorphSystem initialization deferred until scene is available
+    // 14. ProceduralMorphSystem (requires scene + ECS world)
+    this.proceduralMorphSystem = ProceduralMorphSystem.getInstance(scene, world);
 
-    // 16. CrystallineCubeBossSystem
+    // 15. CrystallineCubeBossSystem
     this.crystallineCubeBossSystem = CrystallineCubeBossSystem.getInstance();
-    // CrystallineCubeBossSystem initialization deferred until scene is available
 
-    // 17. PostProcessCorruption
+    // 16. PostProcessCorruption (camera wiring deferred)
     this.postProcessCorruption = PostProcessCorruption.getInstance();
-    // PostProcessCorruption initialization deferred until camera is available
 
-    // 18. ImmersionAudioBridge
+    // 17. ImmersionAudioBridge (audio graph only — AudioContext deferred to user gesture)
     this.immersionAudioBridge = ImmersionAudioBridge.getInstance();
     await this.immersionAudioBridge.initialize();
 
-    // 19. SpatialAudioManager
+    // 18. SpatialAudioManager
     this.spatialAudioManager = SpatialAudioManager.getInstance();
-    // SpatialAudioManager initialization deferred until scene is available
 
-    // 20. DreamTypeHandler
+    // 19. DreamTypeHandler
     this.dreamTypeHandler = DreamTypeHandler.getInstance();
-    // DreamTypeHandler initialization deferred until first Dream is spawned
 
-    // 21. ARSessionManager
+    // 20. ARSessionManager
     this.arSessionManager = new ARSessionManager();
-    // ARSessionManager initialization deferred until user initiates AR session
 
-    // 22. KeyboardInputSystem
+    // 21. KeyboardInputSystem (scene wiring deferred)
     this.keyboardInputSystem = KeyboardInputSystem.getInstance();
-    // KeyboardInputSystem initialization deferred until scene is available
 
-    // 23. MechanicalDegradationSystem
+    // 22. MechanicalDegradationSystem
     if (this.tensionSystem) {
       this.mechanicalDegradationSystem = MechanicalDegradationSystem.getInstance(scene, this.tensionSystem);
     }
-    // MechanicalDegradationSystem activation deferred until platter meshes are available
 
-    // 24. GamePhaseManager
+    // 23. GamePhaseManager (mesh wiring deferred)
     this.gamePhaseManager = GamePhaseManager.getInstance();
-    // GamePhaseManager initialization deferred until platter and sphere meshes are available
 
-    // 25. ShatterSequence
+    // 24. ShatterSequence (mesh wiring deferred)
     this.shatterSequence = ShatterSequence.getInstance();
-    // ShatterSequence initialization deferred until platter and sphere meshes are available
 
-    // Register per-frame update callbacks in the specified order
+    // 25. YukaSteeringSystem (mesh wiring deferred)
+    this.yukaSteeringSystem = YukaSteeringSystem.getInstance();
+
+    // 26. HandInteractionSystem (mesh wiring deferred — activated by ARSessionManager)
+    this.handInteractionSystem = HandInteractionSystem.getInstance();
+
+    // 27. SphereTrackballSystem (mesh wiring deferred — core trackball interaction)
+    this.sphereTrackballSystem = SphereTrackballSystem.getInstance();
+
+    // 28. MechanicalHaptics (Tone.js brown noise rumble — init deferred to user gesture)
+    this.mechanicalHaptics = MechanicalHaptics.getInstance();
+
+    // 30. ArchetypeActivationSystem (configures primitive entities per-Dream)
+    this.archetypeActivationSystem = ArchetypeActivationSystem.getInstance();
+
+    // 31. DreamSequencer (session-level Dream pacing orchestrator)
+    this.dreamSequencer = DreamSequencer.getInstance();
+
+    // Store scene reference for unregistration in disposeAll()
+    this.scene = scene;
+
+    // Register per-frame update callbacks
     this.registerUpdateCallbacks(scene);
   }
 
   /**
-   * Register per-frame update callbacks via scene.registerBeforeRender in the specified order.
-   *
-   * @param scene - Babylon.js scene instance
+   * Enable or disable per-frame update callbacks.
+   * Used to gate updates during shattered phase (H3 race condition fix).
    */
+  setUpdatesEnabled(enabled: boolean): void {
+    this.updatesEnabled = enabled;
+  }
+
   private registerUpdateCallbacks(scene: Scene): void {
-    // 1. KeyboardInputSystem (input) — no per-frame update needed (event-driven)
-    // 2. PatternStabilizationSystem (gameplay) — no per-frame update needed (event-driven)
-    // 3. DifficultyScalingSystem (difficulty recomputation)
+    // DifficultyScalingSystem
     const difficultyUpdate = () => {
+      if (!this.updatesEnabled) return;
       if (this.difficultyScalingSystem) {
         const elapsedMs = performance.now() - (scene.metadata?.dreamStartTime ?? 0);
         this.difficultyScalingSystem.update(elapsedMs);
@@ -225,9 +243,9 @@ export class SystemOrchestrator {
     this.updateCallbacks.push(difficultyUpdate);
     scene.registerBeforeRender(difficultyUpdate);
 
-    // 4. TensionSystem (state) — no per-frame update needed (event-driven via increase/decrease calls)
-    // 5. CorruptionTendrilSystem (visuals)
+    // CorruptionTendrilSystem
     const corruptionUpdate = () => {
+      if (!this.updatesEnabled) return;
       if (this.corruptionTendrilSystem) {
         const dt = scene.getEngine().getDeltaTime() / 1000;
         this.corruptionTendrilSystem.update(dt);
@@ -236,8 +254,9 @@ export class SystemOrchestrator {
     this.updateCallbacks.push(corruptionUpdate);
     scene.registerBeforeRender(corruptionUpdate);
 
-    // 6. ProceduralMorphSystem (enemies)
+    // ProceduralMorphSystem
     const morphUpdate = () => {
+      if (!this.updatesEnabled) return;
       if (this.proceduralMorphSystem) {
         const dt = scene.getEngine().getDeltaTime() / 1000;
         this.proceduralMorphSystem.update(dt);
@@ -246,18 +265,35 @@ export class SystemOrchestrator {
     this.updateCallbacks.push(morphUpdate);
     scene.registerBeforeRender(morphUpdate);
 
-    // 7. CrystallineCubeBossSystem (boss) — self-registers its own update loop in initialize()
-    // 8. EchoSystem (feedback) — no per-frame update needed (event-driven)
-    // 9. MechanicalDegradationSystem (fallback) — self-registers its own update loop in activate()
+    // YukaSteeringSystem (AI enemy movement)
+    const yukaUpdate = () => {
+      if (!this.updatesEnabled) return;
+      if (this.yukaSteeringSystem) {
+        const dt = scene.getEngine().getDeltaTime() / 1000;
+        this.yukaSteeringSystem.update(dt);
+      }
+    };
+    this.updateCallbacks.push(yukaUpdate);
+    scene.registerBeforeRender(yukaUpdate);
 
-    // 10. PostProcessCorruption (post-process) — no per-frame update needed (tension listener updates effects)
-    // 11. ImmersionAudioBridge (audio) — no per-frame update needed (tension listener updates reverb)
-    // 12. DreamTypeHandler (archetype logic)
+    // PatternStabilizationSystem (pattern spawn + timeout checks)
+    const patternUpdate = () => {
+      if (!this.updatesEnabled) return;
+      if (this.patternStabilizationSystem) {
+        const dt = scene.getEngine().getDeltaTime() / 1000;
+        this.patternStabilizationSystem.update(dt);
+      }
+    };
+    this.updateCallbacks.push(patternUpdate);
+    scene.registerBeforeRender(patternUpdate);
+
+    // DreamTypeHandler
     const dreamUpdate = () => {
+      if (!this.updatesEnabled) return;
       if (this.dreamTypeHandler) {
         const handler = this.dreamTypeHandler.getCurrentHandler();
         if (handler) {
-          handler.update(scene.getEngine().getDeltaTime() / 1000); // convert ms to seconds
+          handler.update(scene.getEngine().getDeltaTime() / 1000);
         }
       }
     };
@@ -269,7 +305,32 @@ export class SystemOrchestrator {
    * Dispose all systems in reverse initialization order.
    */
   disposeAll(): void {
-    // Reverse order: 25 → 5
+    // Unregister all per-frame callbacks from scene before clearing (M7 fix)
+    if (this.scene) {
+      for (const cb of this.updateCallbacks) {
+        this.scene.unregisterBeforeRender(cb);
+      }
+    }
+    this.updateCallbacks = [];
+
+    this.dreamSequencer?.dispose();
+    this.dreamSequencer = null;
+
+    this.archetypeActivationSystem?.dispose();
+    this.archetypeActivationSystem = null;
+
+    this.mechanicalHaptics?.dispose();
+    this.mechanicalHaptics = null;
+
+    this.sphereTrackballSystem?.dispose();
+    this.sphereTrackballSystem = null;
+
+    this.handInteractionSystem?.dispose();
+    this.handInteractionSystem = null;
+
+    this.yukaSteeringSystem?.dispose();
+    this.yukaSteeringSystem = null;
+
     this.shatterSequence?.dispose();
     this.shatterSequence = null;
 
@@ -321,7 +382,6 @@ export class SystemOrchestrator {
     this.tensionSystem?.dispose();
     this.tensionSystem = null;
 
-    // Physics systems (reverse order: 8 → 5)
     this.handPhysics?.dispose();
     this.handPhysics = null;
 
@@ -334,16 +394,10 @@ export class SystemOrchestrator {
     this.havokInitializer?.dispose();
     this.havokInitializer = null;
 
-    // Clear update callbacks
-    this.updateCallbacks = [];
+    this.scene = null;
   }
 
-  /**
-   * Get system instance by name (for external access).
-   */
-  getHavokInitializer(): HavokInitializer | null {
-    return this.havokInitializer;
-  }
+  // ── System accessors ──
 
   getKeycapPhysics(): KeycapPhysics | null {
     return this.keycapPhysics;
@@ -423,5 +477,29 @@ export class SystemOrchestrator {
 
   getShatterSequence(): ShatterSequence | null {
     return this.shatterSequence;
+  }
+
+  getYukaSteeringSystem(): YukaSteeringSystem | null {
+    return this.yukaSteeringSystem;
+  }
+
+  getHandInteractionSystem(): HandInteractionSystem | null {
+    return this.handInteractionSystem;
+  }
+
+  getSphereTrackballSystem(): SphereTrackballSystem | null {
+    return this.sphereTrackballSystem;
+  }
+
+  getMechanicalHaptics(): MechanicalHaptics | null {
+    return this.mechanicalHaptics;
+  }
+
+  getArchetypeActivationSystem(): ArchetypeActivationSystem | null {
+    return this.archetypeActivationSystem;
+  }
+
+  getDreamSequencer(): DreamSequencer | null {
+    return this.dreamSequencer;
   }
 }

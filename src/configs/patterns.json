@@ -1,0 +1,50 @@
+{
+  "seed": "cognitive-dissonance-v30",
+  "phases": [
+    {
+      "tension": 0.0,
+      "patternKeys": ["Q", "W", "E", "R", "T"],
+      "spawnRate": 1.2,
+      "yukaCount": 3
+    },
+    {
+      "tension": 0.4,
+      "patternKeys": ["A", "S", "D", "F", "G", "H"],
+      "spawnRate": 0.8,
+      "yukaCount": 8
+    },
+    {
+      "tension": 0.8,
+      "patternKeys": ["Z", "X", "C"],
+      "spawnRate": 0.4,
+      "yukaCount": 15,
+      "boss": "crystalline-cube"
+    }
+  ],
+  "tensionCurves": {
+    "default": {
+      "increaseRate": 0.005,
+      "decreaseRate": 0.01,
+      "overStabilizationThreshold": 0.05,
+      "reboundProbability": 0.15,
+      "reboundAmount": 0.05,
+      "dampingFactor": 0.85
+    },
+    "aggressive": {
+      "increaseRate": 0.008,
+      "decreaseRate": 0.006,
+      "overStabilizationThreshold": 0.03,
+      "reboundProbability": 0.25,
+      "reboundAmount": 0.08,
+      "dampingFactor": 0.75
+    },
+    "forgiving": {
+      "increaseRate": 0.003,
+      "decreaseRate": 0.014,
+      "overStabilizationThreshold": 0.08,
+      "reboundProbability": 0.08,
+      "reboundAmount": 0.03,
+      "dampingFactor": 0.92
+    }
+  }
+}

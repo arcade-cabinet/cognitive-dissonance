@@ -4,6 +4,7 @@ import type { Scene } from '@babylonjs/core/scene';
 import { LeftHand, RightHand } from '../ecs/World';
 import type { MechanicalAnimationSystem } from '../systems/MechanicalAnimationSystem';
 import type { PatternStabilizationSystem } from '../systems/PatternStabilizationSystem';
+import { SphereTrackballSystem } from '../systems/SphereTrackballSystem';
 import type { TensionSystem } from '../systems/TensionSystem';
 import { MechanicalHaptics } from './MechanicalHaptics';
 
@@ -170,23 +171,37 @@ export class HandInteractionSystem {
   }
 
   /**
-   * Check if joints are surrounding the sphere (cradle gesture)
+   * Check if joints are surrounding the sphere (cradle gesture).
+   * When cradling, track hand centroid motion and route to SphereTrackballSystem
+   * for arcball rotation (the core interaction mechanic).
    */
   private checkSphereInteraction(hand: { joints?: { joint: { position: Vector3 } }[] }): void {
     if (!hand.joints || !this.tensionSystem || !this.sphereMesh) return;
 
-    // Count how many joints are within sphere proximity
+    // Count how many joints are within sphere proximity and compute centroid
     let jointsNearSphere = 0;
+    const centroid = Vector3.Zero();
 
     for (const joint of hand.joints) {
       const distance = Vector3.Distance(joint.joint.position, this.sphereMesh.position);
       if (distance < this.SPHERE_PROXIMITY) {
         jointsNearSphere++;
+        centroid.addInPlace(joint.joint.position);
       }
     }
 
     // If 5+ joints are near sphere, consider it a cradle gesture
     if (jointsNearSphere >= 5) {
+      centroid.scaleInPlace(1 / jointsNearSphere);
+
+      // Compute hand motion delta relative to sphere center
+      const spherePos = this.sphereMesh.getAbsolutePosition();
+      const relativeMotion = centroid.subtract(spherePos);
+
+      // Route hand motion to SphereTrackballSystem for arcball rotation
+      const trackball = SphereTrackballSystem.getInstance();
+      trackball.applyRotationDelta(relativeMotion.x, relativeMotion.y);
+
       // Increase tension (sphere contact is destabilizing)
       this.tensionSystem.increase(0.02);
 

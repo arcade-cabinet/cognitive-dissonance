@@ -24,5 +24,17 @@ export default defineConfig({
         viewport: { width: 1280, height: 720 },
       },
     },
+    {
+      name: 'gpu-playthrough',
+      use: {
+        browserName: 'chromium',
+        channel: 'chrome',
+        headless: false,
+        viewport: { width: 1280, height: 720 },
+        video: 'on',
+      },
+      testMatch: '**/multi-dream-playthrough.spec.ts',
+      timeout: 180_000,
+    },
   ],
 });
