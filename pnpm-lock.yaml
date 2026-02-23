@@ -9,17 +9,17 @@ importers:
   .:
     dependencies:
       '@babylonjs/core':
-        specifier: ^8.51.2
-        version: 8.51.2
+        specifier: ^8.52.0
+        version: 8.52.0
       '@babylonjs/gui':
         specifier: ^8.52.0
-        version: 8.52.0(@babylonjs/core@8.51.2)
+        version: 8.52.0(@babylonjs/core@8.52.0)
       '@babylonjs/havok':
         specifier: ^1.3.11
         version: 1.3.11
       '@babylonjs/loaders':
         specifier: ^8.52.0
-        version: 8.52.0(@babylonjs/core@8.51.2)(babylonjs-gltf2interface@8.51.2)
+        version: 8.52.0(@babylonjs/core@8.52.0)(babylonjs-gltf2interface@8.51.2)
       gsap:
         specifier: ^3.14.2
         version: 3.14.2
@@ -37,7 +37,7 @@ importers:
         version: 19.2.4(react@19.2.4)
       reactylon:
         specifier: ^3.5.4
-        version: 3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.52.0(@babylonjs/core@8.51.2))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-reconciler@0.31.0(react@19.2.4))(react@19.2.4)
+        version: 3.5.4(@babylonjs/core@8.52.0)(@babylonjs/gui@8.52.0(@babylonjs/core@8.52.0))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-reconciler@0.31.0(react@19.2.4))(react@19.2.4)
       seedrandom:
         specifier: ^3.0.5
         version: 3.0.5
@@ -92,7 +92,7 @@ importers:
         version: 10.0.0(@babel/core@7.29.0)(webpack@5.105.2)
       babel-plugin-reactylon:
         specifier: ^1.3.1
-        version: 1.3.1(@babel/core@7.29.0)(@babylonjs/core@8.51.2)(@babylonjs/gui@8.52.0(@babylonjs/core@8.51.2))(reactylon@3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.52.0(@babylonjs/core@8.51.2))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-reconciler@0.31.0(react@19.2.4))(react@19.2.4))
+        version: 1.3.1(@babel/core@7.29.0)(@babylonjs/core@8.52.0)(@babylonjs/gui@8.52.0(@babylonjs/core@8.52.0))(reactylon@3.5.4(@babylonjs/core@8.52.0)(@babylonjs/gui@8.52.0(@babylonjs/core@8.52.0))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-reconciler@0.31.0(react@19.2.4))(react@19.2.4))
       jsdom:
         specifier: ^28.1.0
         version: 28.1.0
@@ -257,8 +257,8 @@ packages:
     resolution: {integrity: sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A==}
     engines: {node: '>=6.9.0'}
 
-  '@babylonjs/core@8.51.2':
-    resolution: {integrity: sha512-dBSiPFtqlbc+hehSBF/yea4EPCLmKfYNjDkhYi/xXaFkoEFadua+iN3wo/meMfeFJ02wQwLTc/7o6we4z2zJzQ==}
+  '@babylonjs/core@8.52.0':
+    resolution: {integrity: sha512-4W6I20Q+8llgWFX8TElJNUo6mKMZWanB/KR5HVIyGyveMikc8BXzIg+mExvJ+0PNUqHM07FcZfNMQSa5MZ/SuA==}
 
   '@babylonjs/gui@8.52.0':
     resolution: {integrity: sha512-kdMuBI/6OnRZfcU7Vldj7Sd9ywYQSB1w+qvsHFnHv+27qFw3atBTNGqyUGCrtdxM4jp4vrK3QEXw+xolmk6eyg==}
@@ -2186,19 +2186,19 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
-  '@babylonjs/core@8.51.2': {}
+  '@babylonjs/core@8.52.0': {}
 
-  '@babylonjs/gui@8.52.0(@babylonjs/core@8.51.2)':
+  '@babylonjs/gui@8.52.0(@babylonjs/core@8.52.0)':
     dependencies:
-      '@babylonjs/core': 8.51.2
+      '@babylonjs/core': 8.52.0
 
   '@babylonjs/havok@1.3.11':
     dependencies:
       '@types/emscripten': 1.41.5
 
-  '@babylonjs/loaders@8.52.0(@babylonjs/core@8.51.2)(babylonjs-gltf2interface@8.51.2)':
+  '@babylonjs/loaders@8.52.0(@babylonjs/core@8.52.0)(babylonjs-gltf2interface@8.51.2)':
     dependencies:
-      '@babylonjs/core': 8.51.2
+      '@babylonjs/core': 8.52.0
       babylonjs-gltf2interface: 8.51.2
 
   '@bcoe/v8-coverage@1.0.2': {}
@@ -2879,13 +2879,13 @@ snapshots:
       find-up: 5.0.0
       webpack: 5.105.2
 
-  babel-plugin-reactylon@1.3.1(@babel/core@7.29.0)(@babylonjs/core@8.51.2)(@babylonjs/gui@8.52.0(@babylonjs/core@8.51.2))(reactylon@3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.52.0(@babylonjs/core@8.51.2))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-reconciler@0.31.0(react@19.2.4))(react@19.2.4)):
+  babel-plugin-reactylon@1.3.1(@babel/core@7.29.0)(@babylonjs/core@8.52.0)(@babylonjs/gui@8.52.0(@babylonjs/core@8.52.0))(reactylon@3.5.4(@babylonjs/core@8.52.0)(@babylonjs/gui@8.52.0(@babylonjs/core@8.52.0))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-reconciler@0.31.0(react@19.2.4))(react@19.2.4)):
     dependencies:
       '@babel/core': 7.29.0
       '@babel/helper-plugin-utils': 7.28.6
-      '@babylonjs/core': 8.51.2
-      '@babylonjs/gui': 8.52.0(@babylonjs/core@8.51.2)
-      reactylon: 3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.52.0(@babylonjs/core@8.51.2))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-reconciler@0.31.0(react@19.2.4))(react@19.2.4)
+      '@babylonjs/core': 8.52.0
+      '@babylonjs/gui': 8.52.0(@babylonjs/core@8.52.0)
+      reactylon: 3.5.4(@babylonjs/core@8.52.0)(@babylonjs/gui@8.52.0(@babylonjs/core@8.52.0))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-reconciler@0.31.0(react@19.2.4))(react@19.2.4)
 
   babylonjs-gltf2interface@8.51.2: {}
 
@@ -3319,10 +3319,10 @@ snapshots:
 
   react@19.2.4: {}
 
-  reactylon@3.5.4(@babylonjs/core@8.51.2)(@babylonjs/gui@8.52.0(@babylonjs/core@8.51.2))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-reconciler@0.31.0(react@19.2.4))(react@19.2.4):
+  reactylon@3.5.4(@babylonjs/core@8.52.0)(@babylonjs/gui@8.52.0(@babylonjs/core@8.52.0))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-reconciler@0.31.0(react@19.2.4))(react@19.2.4):
     dependencies:
-      '@babylonjs/core': 8.51.2
-      '@babylonjs/gui': 8.52.0(@babylonjs/core@8.51.2)
+      '@babylonjs/core': 8.52.0
+      '@babylonjs/gui': 8.52.0(@babylonjs/core@8.52.0)
       acorn: 8.15.0
       its-fine: 1.2.5(@types/react@19.2.14)(react@19.2.4)
       lodash-es: 4.17.23
