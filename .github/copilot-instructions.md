@@ -87,19 +87,6 @@ Effect.ShadersStore["myVertexShader"] = `
 
 ## File Structure
 
-```
-src/
-├── engine/                   # Engine initialization
-├── ecs/                      # Miniplex ECS world + archetypes
-├── systems/                  # Core gameplay systems (singletons)
-├── enemies/                  # Enemy systems
-├── objects/                  # 3D object factories
-├── shaders/                  # GLSL shaders
-├── xr/                       # AR/MR systems
-├── audio/                    # Tone.js audio
-├── store/                    # Zustand stores
-└── types/                    # TypeScript types
-```
 
 ## Commands
 
