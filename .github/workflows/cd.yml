@@ -37,7 +37,7 @@ jobs:
         env:
           CI: "true"
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: e2e-reports
@@ -113,7 +113,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload APKs
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: android-debug-apks
