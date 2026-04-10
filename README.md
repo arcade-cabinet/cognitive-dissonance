@@ -1,3 +1,10 @@
+---
+title: Cognitive Dissonance v3.0
+updated: 2026-04-10
+status: current
+domain: product
+---
+
 # Cognitive Dissonance v3.0
 
 A cross-platform (web + Android + iOS) interactive 3D experience where you hold a fragile glass AI mind together as its own thoughts try to escape. Built with Reactylon Native + Babylon.js 8 + Miniplex ECS.

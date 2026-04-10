@@ -1,3 +1,10 @@
+---
+title: Automated Workflows
+updated: 2026-04-10
+status: current
+domain: ops
+---
+
 # Automated Workflows — Cognitive Dissonance v3.0
 
 ## Dependabot Configuration

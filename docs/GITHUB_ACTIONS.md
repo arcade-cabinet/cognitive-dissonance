@@ -1,3 +1,10 @@
+---
+title: GitHub Actions CI/CD
+updated: 2026-04-10
+status: current
+domain: ops
+---
+
 # GitHub Actions CI/CD — Cognitive Dissonance v3.0
 
 ## Overview

@@ -1,5 +1,13 @@
+---
+title: Implementation Progress (Deprecated)
+updated: 2026-04-10
+status: stale
+domain: context
+---
+
 # Implementation Progress — Cognitive Dissonance v3.0
 
+> **Deprecated:** See `docs/STATE.md` for current state instead.
 > **Last Updated:** 2026-02-20
 > **Test State:** 64 suites, 3,297 tests passing | TypeScript: 0 errors | Biome: 0 errors on source
 > **Active Branch:** fix/v3-audit-comprehensive-fixes

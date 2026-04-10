@@ -1,5 +1,13 @@
+---
+title: Active Context (Deprecated)
+updated: 2026-04-10
+status: stale
+domain: context
+---
+
 # Active Context — Cognitive Dissonance v3.0
 
+> **Deprecated:** See `docs/STATE.md` for current state instead.
 > **Last Updated:** 2026-02-20
 > **Current Focus:** Visual design fixes from E2E playthrough + comprehensive visual tests
 > **Sessions:** 9 (context compacted seven times)

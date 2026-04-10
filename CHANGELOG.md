@@ -1,3 +1,10 @@
+---
+title: Changelog
+updated: 2026-04-10
+status: current
+domain: context
+---
+
 # Changelog
 
 All notable changes to Cognitive Dissonance (formerly Psyduck Panic) will be documented in this file.

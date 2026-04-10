@@ -1,3 +1,10 @@
+---
+title: AGENTS.md — Cross-Agent Memory Bank
+updated: 2026-04-10
+status: current
+domain: technical
+---
+
 # AGENTS.md — Cognitive Dissonance v3.0 Cross-Agent Memory Bank
 
 > Persistent context for AI agents working on Cognitive Dissonance v3.0.

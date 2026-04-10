@@ -1,3 +1,10 @@
+---
+title: Architecture
+updated: 2026-04-10
+status: current
+domain: technical
+---
+
 # Architecture — Cognitive Dissonance v3.0
 
 ## Overview

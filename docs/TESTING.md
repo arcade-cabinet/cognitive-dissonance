@@ -1,3 +1,10 @@
+---
+title: Testing Strategy
+updated: 2026-04-10
+status: current
+domain: quality
+---
+
 # Testing — Cognitive Dissonance v3.0
 
 ## Overview

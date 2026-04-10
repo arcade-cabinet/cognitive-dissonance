@@ -1,3 +1,10 @@
+---
+title: Design System
+updated: 2026-04-10
+status: current
+domain: product
+---
+
 # Design System — Cognitive Dissonance v3.0
 
 ## Brand Identity

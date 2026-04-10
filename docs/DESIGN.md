@@ -1,3 +1,10 @@
+---
+title: Design Vision
+updated: 2026-04-10
+status: current
+domain: product
+---
+
 # Design Vision — Cognitive Dissonance v3.0
 
 ## Core Vision

@@ -1,3 +1,10 @@
+---
+title: Deployment
+updated: 2026-04-10
+status: current
+domain: ops
+---
+
 # Deployment — Cognitive Dissonance v3.0
 
 ## Overview

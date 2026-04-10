@@ -1,3 +1,10 @@
+---
+title: Development
+updated: 2026-04-10
+status: current
+domain: technical
+---
+
 # Development — Cognitive Dissonance v3.0
 
 ## Prerequisites

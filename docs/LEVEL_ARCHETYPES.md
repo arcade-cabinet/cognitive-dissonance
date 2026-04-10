@@ -1,3 +1,10 @@
+---
+title: Level Archetypes (25 Designs)
+updated: 2026-04-10
+status: current
+domain: product
+---
+
 # Level Archetypes — Cognitive Dissonance v3.0
 
 ## Design Philosophy

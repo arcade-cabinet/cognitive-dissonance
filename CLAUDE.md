@@ -1,3 +1,10 @@
+---
+title: Claude Instructions — Cognitive Dissonance v3.0
+updated: 2026-04-10
+status: current
+domain: technical
+---
+
 # Claude Instructions — Cognitive Dissonance v3.0
 
 ## Project Overview

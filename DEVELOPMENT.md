@@ -1,4 +1,13 @@
+---
+title: Development Guide (Deprecated)
+updated: 2026-04-10
+status: stale
+domain: technical
+---
+
 # Development Guide
+
+> **Deprecated:** See `docs/DEVELOPMENT.md` for current development guide.
 
 ## Quick Start
 

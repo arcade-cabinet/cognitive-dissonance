@@ -1,3 +1,10 @@
+---
+title: Android App Signing
+updated: 2026-04-10
+status: current
+domain: ops
+---
+
 # Android App Signing Configuration
 
 This document explains how to configure Android app signing for production releases.
