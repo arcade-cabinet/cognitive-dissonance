@@ -13,8 +13,8 @@ permissions:
 
 jobs:
   # ── Dependabot auto-merge ──────────────────────────
-  # CI is skipped for Dependabot PRs — CD's comprehensive
-  # E2E matrix catches dependency issues on merge to main.
+  # Auto-approves and enables auto-merge. The --auto flag
+  # waits for required status checks (CI) before merging.
   dependabot-automerge:
     name: Auto-merge Dependabot PR
     runs-on: ubuntu-latest

@@ -29,6 +29,17 @@ Thumbs.db
 *.swp
 *.swo
 
+# Expo
+.expo/
+
+# Playwright MCP
+.playwright-mcp/
+
+# Screenshots (local-only playtest/prototype captures)
+playtest-*.png
+prototype-*.png
+game-*.png
+
 # Android
 android/app/build/
 android/.gradle/

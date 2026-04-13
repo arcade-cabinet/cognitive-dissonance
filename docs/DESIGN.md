@@ -1,7 +1,6 @@
 # Design Vision — Cognitive Dissonance v2
 
-> Full design corpus in `docs/memory-bank/grok-doc/`. Start with `main-conversation/INDEX.md`.
-> For the definitive memory bank, see `docs/memory-bank/`.
+> Design vision and visual language for Cognitive Dissonance.
 
 ## Core Vision
 
@@ -47,7 +46,7 @@ The player sees a heavy industrial black metal platter lying flat, with a transp
 
 ## Design Pivots (Historical)
 
-See `docs/memory-bank/design-decisions.md` for the full rationale behind:
+Key design pivots from v1 to v2:
 1. Glass sphere replacing NS-5 android bust
 2. Pattern stabilization replacing Missile Command
 3. Buried seed replacing visible seed

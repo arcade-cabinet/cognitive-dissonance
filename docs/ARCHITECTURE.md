@@ -1,14 +1,12 @@
 # Architecture — Cognitive Dissonance v2
 
-> **For design rationale**: See `DESIGN.md`  
-> **For agent task list**: See `docs/memory-bank/handoff.md`  
-> **For conversation history**: See `docs/memory-bank/grok-doc/main-conversation/INDEX.md`
+> **For design rationale**: See `DESIGN.md`
 
 ## Stack
 
 - **Next.js 16** (App Router, Turbopack) + **React 19** + **TypeScript 5.9**
-- **Babylon.js 8.51** + **Reactylon 3.5.4** (declarative 3D)
-- **GSAP 3.12** (CustomEase, MotionPath, Flip) + **Tone.js 14.8** (adaptive spatial audio)
+- **Babylon.js 8.56** + **Reactylon 3.5.4** (declarative 3D)
+- **GSAP 3.14** (CustomEase, MotionPath, Flip) + **Tone.js 15** (adaptive spatial audio)
 - **Zustand 5** (state) + **Miniplex 2** (ECS) + **Yuka.js 0.7** (enemy AI)
 - **seedrandom 3.0** (buried seed) + **Tailwind CSS 4** (2D overlays)
 - **Biome 2.4** (lint/format) + **Vitest 4** (tests) + **Playwright 1.58** (E2E)
@@ -135,7 +133,6 @@ docs/           Documentation
   ARCHITECTURE.md         This file (tech architecture)
   DESIGN_SYSTEM.md        Design tokens + visual language
   DEPLOYMENT.md           Build + deploy + CI/CD
-  memory-bank/            Agent memory + conversation history
 ```
 
 ## Current Status (v2.0)

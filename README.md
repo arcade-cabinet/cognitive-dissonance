@@ -6,8 +6,8 @@ A haunting interactive 3D browser experience where you hold a fragile glass AI m
 
 - **Next.js 16** (Turbopack) — App Router, SSR framework
 - **Babylon.js 8** + **Reactylon 3.5** — Declarative 3D rendering
-- **GSAP 3.12** — Mechanical animations (garage-door keycaps, CustomEase)
-- **Tone.js 14.8** — Adaptive spatial audio score
+- **GSAP 3.14** — Mechanical animations (garage-door keycaps, CustomEase)
+- **Tone.js 15** — Adaptive spatial audio score
 - **Zustand 5** — State management (tension, coherence, seed, input)
 - **Yuka.js 0.7** — Enemy AI behaviors
 - **Tailwind CSS 4** — 2D overlay styling
@@ -46,8 +46,7 @@ src/
   game/           Miniplex ECS world
   types/          TypeScript declarations
 e2e/              Playwright E2E tests
-docs/
-  memory-bank/    Project context + design decisions
+docs/             Architecture, design, deployment docs
 ```
 
 ## Game Design
@@ -60,7 +59,7 @@ Everything is diegetic — no HUD. Coherence displayed as a glowing ring on the 
 
 - **[AGENTS.md](./AGENTS.md)** — Cross-agent memory bank
 - **[CLAUDE.md](./CLAUDE.md)** — Claude-specific instructions
-- **[docs/memory-bank/](./docs/memory-bank/)** — Full project context (activeContext, progress, systemPatterns, techContext, design-decisions, handoff)
+- **[docs/](./docs/)** — Architecture, design, deployment, design system
 
 ## License
 
