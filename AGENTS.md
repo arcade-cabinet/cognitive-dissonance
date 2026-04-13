@@ -2,9 +2,6 @@
 
 > Persistent context for AI agents working on Cognitive Dissonance.
 > Read this file at the start of every task. Update it after significant changes.
-> Deep context lives in `docs/memory-bank/` — read those files for full detail.
->
-> The full Grok conversation corpus is in `docs/memory-bank/grok-doc/` (165 indexed turns, 52 prose docs, 7 shader-port turns, 26 definitive code extractions) and `docs/code-fragments/` (170 versioned iterations). Read `docs/memory-bank/grok-doc/main-conversation/INDEX.md` first — it maps every design decision. The live code in `src/` is the implementation; the corpus is the design intent.
 
 ---
 
@@ -74,10 +71,10 @@ Next.js 16 App Router (Turbopack)
 | Next.js | 16.1 | App Router, Turbopack bundler |
 | React | 19 | UI components |
 | TypeScript | 5.9 | Type safety |
-| Babylon.js | 8.51 | 3D rendering engine |
+| Babylon.js | 8.56 | 3D rendering engine |
 | Reactylon | 3.5.4 | Declarative Babylon.js + React |
-| GSAP | 3.12 | Advanced animations |
-| Tone.js | 14.8 | Adaptive spatial audio |
+| GSAP | 3.14 | Advanced animations |
+| Tone.js | 15 | Adaptive spatial audio |
 | Zustand | 5 | Global state management |
 | Miniplex | 2 | Entity Component System |
 | Yuka.js | 0.7 | Enemy AI behaviors |
@@ -106,7 +103,7 @@ pnpm test:e2e     # Playwright E2E via xvfb-run (run `pnpm test:e2e` for current
 
 Complete ground-up rebuild from Vite + R3F + Three.js to Next.js + Babylon.js + Reactylon.
 
-**Foundation fix (current branch `feat/reactylon-migration`):**
+**Foundation fix:**
 - Upgraded Next.js 15 → 16 (Turbopack default)
 - Upgraded React 18 → 19
 - Replaced ESLint with Biome 2.4.1

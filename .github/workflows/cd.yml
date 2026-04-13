@@ -20,7 +20,7 @@ jobs:
     name: Build + Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/setup
 
       - name: Unit Tests
@@ -37,7 +37,7 @@ jobs:
         env:
           CI: "true"
 
-      - uses: actions/upload-artifact@v7.0.1
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: e2e-reports
@@ -55,7 +55,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/setup
 
       - name: Build static export for GitHub Pages
@@ -67,16 +67,16 @@ jobs:
         run: touch out/.nojekyll
 
       - name: Configure Pages
-        uses: actions/configure-pages@v6
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: out
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
 
   # ── Build Android Debug APKs ──
   android-apk:
@@ -84,20 +84,20 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-and-test]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: ./.github/actions/setup
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
           java-version: 17
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
 
       - name: Cache Gradle
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             ~/.gradle/caches
@@ -113,34 +113,10 @@ jobs:
         continue-on-error: true
 
       - name: Upload APKs
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: android-debug-apks
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 30
           if-no-files-found: warn
-
-      - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main' && steps.apk-build.outcome == 'success'
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: v2.0.0-${{ github.run_number }}
-          name: "v2.0.0 Build ${{ github.run_number }}"
-          body: |
-            ## Cognitive Dissonance v2.0.0
-
-            Debug build from commit ${{ github.sha }}.
-
-            ### Downloads
-            - **Web**: https://arcade-cabinet.github.io/cognitive-dissonance/
-            - **Android APKs**: Attached below (debug builds, all architectures)
-
-            ### What's New
-            Complete v2.0 implementation — see PR #172 for full details.
-          files: android/app/build/outputs/apk/debug/*.apk
-          draft: false
-          prerelease: true
-          generate_release_notes: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

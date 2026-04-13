@@ -6,11 +6,9 @@ This file contains **Claude-specific** development instructions. For project doc
 
 - **[AGENTS.md](./AGENTS.md)** — Cross-agent memory bank (architecture, patterns, tech context)
 - **[README.md](./README.md)** — Installation, controls, architecture overview
-- **[docs/memory-bank/](./docs/memory-bank/)** — Cline-style memory bank (6 core files + design decisions)
+- **[docs/](./docs/)** — Architecture, design, deployment, design system
 
-Always read AGENTS.md before starting work. Update AGENTS.md and docs/memory-bank/ after significant changes.
-
-> The full Grok conversation corpus lives in `docs/memory-bank/grok-doc/` and `docs/code-fragments/`. Start with `docs/memory-bank/grok-doc/main-conversation/INDEX.md` to navigate. Read `docs/memory-bank/handoff.md` for the complete implementation roadmap.
+Always read AGENTS.md before starting work. Update AGENTS.md after significant changes.
 
 ## Design Vision (Critical)
 
@@ -63,6 +61,5 @@ src/
   game/         Miniplex ECS world
   types/        TypeScript declarations
 e2e/            Playwright E2E tests (smoke, gameplay, governor)
-docs/
-  memory-bank/  Cline-style memory bank (6 core files)
+docs/           Architecture, design, deployment docs
 ```
