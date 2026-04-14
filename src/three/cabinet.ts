@@ -51,7 +51,12 @@ export interface Cabinet {
   platter: IndustrialPlatter;
   aiCore: AICore;
   skyRain: SkyRain;
-  emergentControls: EmergentControls;
+  /**
+   * Current emergent-controls rig. Accessor (not bare property) because the
+   * internal reference is swapped when Level.inputSchema changes — callers
+   * must always fetch the live instance, not hold on to a stale one.
+   */
+  getEmergentControls(): EmergentControls;
   corruption: CorruptionEffect;
   /** Advance one frame (renders + steps physics). Called from rAF. */
   render(deltaSeconds: number): void;
@@ -249,7 +254,7 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     platter,
     aiCore,
     skyRain,
-    emergentControls,
+    getEmergentControls: () => emergentControls,
     corruption,
     render,
     resize,

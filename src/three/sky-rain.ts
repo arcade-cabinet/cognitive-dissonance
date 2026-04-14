@@ -132,12 +132,15 @@ export function createSkyRain(scene: Scene, opts: SkyRainOptions = {}): SkyRain 
       const p = particles[i];
       if (!p.alive) continue;
       p.position.addScaledVector(p.velocity, deltaSeconds);
-      // Integrate rotation
-      const q = new Quaternion().setFromAxisAngle(
-        new Vector3(p.angularVel.x, p.angularVel.y, p.angularVel.z).normalize(),
-        p.angularVel.length() * deltaSeconds,
-      );
-      p.rotation.premultiply(q);
+      // Integrate rotation. Skip when the angular-velocity vector is
+      // (effectively) zero — normalize() of a zero vector returns NaN and
+      // corrupts the quaternion downstream.
+      const angSpeed = p.angularVel.length();
+      if (angSpeed > 1e-6) {
+        const axis = new Vector3(p.angularVel.x, p.angularVel.y, p.angularVel.z).multiplyScalar(1 / angSpeed);
+        const q = new Quaternion().setFromAxisAngle(axis, angSpeed * deltaSeconds);
+        p.rotation.premultiply(q);
+      }
 
       if (p.position.y < floorY) {
         p.alive = false;
