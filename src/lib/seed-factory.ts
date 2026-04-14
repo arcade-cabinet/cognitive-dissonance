@@ -1,4 +1,4 @@
-import { useSeedStore } from '@/store/seed-store';
+import { Seed, world } from '@/sim/world';
 
 export type EnemyConfig = {
   amount: number;
@@ -19,7 +19,9 @@ export const generateFromSeed = (): {
   enemyConfig: EnemyConfig;
   keycapPortrait: KeycapPortraitParams;
 } => {
-  const { rng } = useSeedStore.getState();
+  const seed = world.get(Seed);
+  if (!seed) throw new Error('Seed trait not initialized on world');
+  const { rng } = seed;
 
   const a = rng();
   const b = rng();
