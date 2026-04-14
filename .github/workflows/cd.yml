@@ -148,15 +148,11 @@ jobs:
       - name: Sync Capacitor (copy web → ios/)
         run: pnpm exec cap sync ios
 
-      - name: Install CocoaPods
-        working-directory: ios/App
-        run: pod install --repo-update
-
-      - name: Build iOS (unsigned archive)
+      - name: Build iOS (unsigned, for simulator)
         working-directory: ios/App
         run: |
           xcodebuild \
-            -workspace App.xcworkspace \
+            -project App.xcodeproj \
             -scheme App \
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
