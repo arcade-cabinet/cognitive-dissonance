@@ -43,7 +43,9 @@ export async function detectDevice(): Promise<DeviceProfile> {
 
   if (isNative) {
     const info = await Device.getInfo();
-    platform = info.platform === 'ios' ? 'ios' : 'android';
+    if (info.platform === 'ios') platform = 'ios';
+    else if (info.platform === 'android') platform = 'android';
+    else platform = 'web'; // electron/other native shells fall back to web
   }
 
   const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
@@ -97,8 +99,8 @@ export function invalidateDeviceProfile(): void {
  * Pick a render scale factor appropriate for the device.
  *
  * - Phone: 1.0 (no supersampling — GPU is precious)
- * - Tablet: 1.25 (mild sharpness bump)
- * - Desktop: pixelRatio (native retina)
+ * - Tablet: up to 1.5 (mild sharpness bump, capped at 1.5x CSS pixels)
+ * - Desktop: pixelRatio up to 2 (native retina, capped at 2x)
  *
  * Keep canvas backing-buffer = cssWidth * renderScale.
  */

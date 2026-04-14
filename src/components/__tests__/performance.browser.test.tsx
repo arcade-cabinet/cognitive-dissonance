@@ -15,9 +15,11 @@ describe('Performance sanity', () => {
   let harness: SceneHarness | null = null;
 
   afterEach(async () => {
-    await new Promise((r) => setTimeout(r, 50));
-    harness?.dispose();
-    harness = null;
+    if (harness) {
+      await harness.waitFrames(2);
+      harness.dispose();
+      harness = null;
+    }
   });
 
   test('AISphere renders 60 frames in reasonable time (< 3s)', async () => {

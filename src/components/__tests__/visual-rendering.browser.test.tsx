@@ -21,9 +21,11 @@ describe('Visual rendering', () => {
   let harness: SceneHarness | null = null;
 
   afterEach(async () => {
-    await new Promise((r) => setTimeout(r, 50));
-    harness?.dispose();
-    harness = null;
+    if (harness) {
+      await harness.waitFrames(2);
+      harness.dispose();
+      harness = null;
+    }
   });
 
   test('AISphere renders visible pixels (celestial shader)', async () => {

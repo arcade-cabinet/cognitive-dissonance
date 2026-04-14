@@ -25,10 +25,13 @@ describe('Full game loop', () => {
   });
 
   afterEach(async () => {
-    await new Promise((r) => setTimeout(r, 50));
-    harness?.dispose();
-    harness = null;
+    // Reset global phase FIRST so observers stop before teardown.
     useGameStore.getState().setPhase('title');
+    if (harness) {
+      await harness.waitFrames(2);
+      harness.dispose();
+      harness = null;
+    }
   });
 
   test('title → playing → shatter → gameover', async () => {

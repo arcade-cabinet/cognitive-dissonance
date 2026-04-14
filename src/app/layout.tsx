@@ -10,12 +10,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  // Cover the notch/home-indicator safe areas; we handle safe-area-inset CSS
-  // vars manually in components that need them (game canvas is full-bleed).
+  // Keep browser zoom enabled — low-vision players need it. Game scaling
+  // is handled separately via device detection + responsive CSS.
   viewportFit: 'cover',
-  // Lock to black so the initial flash matches scene clear color
   themeColor: '#000000',
 };
 

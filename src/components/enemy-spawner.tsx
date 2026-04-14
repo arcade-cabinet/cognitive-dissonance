@@ -211,9 +211,21 @@ export default function EnemySpawner() {
 
     scheduleWave();
 
+    // Track phase transitions so we can spawn an immediate wave when play begins
+    // (avoids a 0.3–1.8s silent grace period right after pressing start).
+    let wasPlaying = false;
     const observer = scene.onBeforeRenderObservable.add(() => {
-      // Gate on playing phase — no spawning/tension during title/gameover
-      if (useGameStore.getState().phase !== 'playing') return;
+      const playing = useGameStore.getState().phase === 'playing';
+      if (!playing) {
+        wasPlaying = false;
+        fixedState.accumulator = 0; // prevent accumulated dt burst on resume
+        return;
+      }
+      if (!wasPlaying) {
+        wasPlaying = true;
+        spawnWave();
+        scheduleWave();
+      }
       const dt = scene.getEngine().getDeltaTime() / 1000;
       runFixedSteps(fixedState, dt, fixedStep, tick);
     });

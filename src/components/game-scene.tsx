@@ -76,24 +76,26 @@ export default function GameScene({ coherence, reducedMotion }: GameSceneProps) 
         onSceneReady={(scene) => {
           scene.clearColor = new BABYLON.Color4(0.04, 0.04, 0.06, 1);
 
-          // Responsive camera: phone portrait needs more distance + top-down
-          // angle to fit the full platter, desktop/tablet landscape use the
-          // default 3/4 angle.
           const engine = scene.getEngine();
           const canvas = engine.getRenderingCanvas();
-          const w = canvas?.clientWidth ?? 1280;
-          const h = canvas?.clientHeight ?? 800;
-          const isPortrait = h > w;
-          const isNarrow = w < 600;
 
-          const radius = isPortrait && isNarrow ? 11 : 8;
-          const beta = isPortrait && isNarrow ? Math.PI / 2.5 : Math.PI / 3;
+          const computeFraming = (): { radius: number; beta: number } => {
+            const w = canvas?.clientWidth ?? 1280;
+            const h = canvas?.clientHeight ?? 800;
+            const isPortrait = h > w;
+            const isNarrow = w < 600;
+            return {
+              radius: isPortrait && isNarrow ? 11 : 8,
+              beta: isPortrait && isNarrow ? Math.PI / 2.5 : Math.PI / 3,
+            };
+          };
 
+          const initial = computeFraming();
           const camera = new BABYLON.ArcRotateCamera(
             'camera',
             Math.PI / 4,
-            beta,
-            radius,
+            initial.beta,
+            initial.radius,
             BABYLON.Vector3.Zero(),
             scene,
           );
@@ -106,13 +108,31 @@ export default function GameScene({ coherence, reducedMotion }: GameSceneProps) 
           }
           scene.activeCamera = camera;
 
-          // Expose scene for E2E/browser test diagnostics. Use globalThis
-          // (more portable than window for SSR boundaries) and only in dev
-          // to avoid leaking scene references in production bundles.
+          // Recompute framing on resize/rotation so phone portrait ↔ landscape
+          // doesn't leave the camera over-zoomed or clipped.
+          const onResize = () => {
+            const { radius, beta } = computeFraming();
+            camera.radius = radius;
+            camera.beta = beta;
+          };
+          const resizeObserver =
+            typeof window !== 'undefined' && window.ResizeObserver && canvas ? new ResizeObserver(onResize) : null;
+          if (resizeObserver && canvas) resizeObserver.observe(canvas);
+          if (typeof window !== 'undefined') window.addEventListener('orientationchange', onResize);
+
+          scene.onDisposeObservable.addOnce(() => {
+            if (resizeObserver) resizeObserver.disconnect();
+            if (typeof window !== 'undefined') window.removeEventListener('orientationchange', onResize);
+          });
+
+          // Expose scene for E2E/browser test diagnostics only in dev.
+          // Only clear the reference if this scene still owns it (protects
+          // against overlapping scene lifetimes during test teardown).
           if (typeof globalThis !== 'undefined' && process.env.NODE_ENV !== 'production') {
-            (globalThis as unknown as { __scene: BABYLON.Scene }).__scene = scene;
+            const g = globalThis as unknown as { __scene?: BABYLON.Scene };
+            g.__scene = scene;
             scene.onDisposeObservable.addOnce(() => {
-              delete (globalThis as unknown as { __scene?: BABYLON.Scene }).__scene;
+              if (g.__scene === scene) delete g.__scene;
             });
           }
         }}

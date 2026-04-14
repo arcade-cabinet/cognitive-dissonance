@@ -60,10 +60,24 @@ export async function mountScene(children: ReactNode): Promise<SceneHarness> {
     </Engine>,
   );
 
-  // Wait for engine to mount and scene to be ready
-  const scene = await waitForScene(() => capturedScene);
-  const canvas = container.querySelector('canvas');
-  if (!canvas) throw new Error('Canvas not created by Reactylon');
+  // Wait for engine to mount and scene to be ready. If setup fails, clean up
+  // the mounted root + DOM so the failure doesn't leak state into sibling tests.
+  let scene: BABYLON.Scene;
+  let canvas: HTMLCanvasElement;
+  try {
+    scene = await waitForScene(() => capturedScene);
+    const maybeCanvas = container.querySelector('canvas');
+    if (!maybeCanvas) throw new Error('Canvas not created by Reactylon');
+    canvas = maybeCanvas;
+  } catch (err) {
+    try {
+      root.unmount();
+    } catch {
+      // ignore — we're already in an error path
+    }
+    container.remove();
+    throw err;
+  }
 
   return {
     container,

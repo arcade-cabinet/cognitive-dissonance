@@ -21,12 +21,16 @@ describe('Visual gallery', () => {
   let harness: SceneHarness | null = null;
 
   afterEach(async () => {
-    await new Promise((r) => setTimeout(r, 50));
-    harness?.dispose();
-    harness = null;
-    // Reset global phase so tests that flip to 'playing' don't leak into
-    // subsequent tests (prevents order-dependent failures).
+    // Reset global phase FIRST so in-flight observers stop spawning before
+    // we dispose the scene (prevents leak into the next test, and prevents
+    // Babylon race conditions during disposal).
     useGameStore.getState().setPhase('title');
+    if (harness) {
+      // Two frames is enough to let phase-gated observers no-op before teardown.
+      await harness.waitFrames(2);
+      harness.dispose();
+      harness = null;
+    }
   });
 
   test('AISphere — isolation', async () => {

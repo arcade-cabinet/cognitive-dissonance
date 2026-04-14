@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-        assertEquals("com.arcadecabinet.cognitivedissonance", appContext.getPackageName());
+        assertEquals(com.arcadecabinet.cognitivedissonance.BuildConfig.APPLICATION_ID, appContext.getPackageName());
     }
 }

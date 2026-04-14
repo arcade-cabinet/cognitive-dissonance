@@ -15,12 +15,17 @@ export default defineConfig({
     exclude: ['node_modules/**', 'e2e/**'],
     // Suppress unhandled rejections from Babylon.js async texture loaders
     // (race between scene disposal and env texture async completion).
-    // Very narrow match — only suppress postProcessManager-on-null which is
-    // the specific Babylon.js teardown race pattern.
+    // Very narrow match — only suppress the specific env-texture teardown race
+    // ('postProcessManager' property access on a null scene reference).
     onUnhandledError: (error) => {
       const msg = error?.message ?? '';
-      // Babylon.js env texture loader fires callback after scene is disposed
-      if (msg.includes("reading 'postProcessManager'")) return false;
+      const stack = error?.stack ?? '';
+      // Tight match: both the exact property name AND a Babylon stack frame
+      // must appear. Prevents masking unrelated TypeError null-derefs.
+      const isBabylonTeardownRace =
+        msg.includes("reading 'postProcessManager'") &&
+        /@babylonjs|EnvironmentHelper|environmentTextures|EnvironmentTexture/i.test(stack);
+      if (isBabylonTeardownRace) return false;
       return true;
     },
     browser: {

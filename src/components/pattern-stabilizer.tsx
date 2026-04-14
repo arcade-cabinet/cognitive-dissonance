@@ -138,8 +138,12 @@ export default function PatternStabilizer() {
     };
 
     const observer = scene.onBeforeRenderObservable.add(() => {
-      // Gate on playing phase — no patterns spawning during title/gameover
-      if (useGameStore.getState().phase !== 'playing') return;
+      // Gate on playing phase — no patterns spawning during title/gameover.
+      // Reset accumulator so a long title phase doesn't trigger burst ticks on resume.
+      if (useGameStore.getState().phase !== 'playing') {
+        fixedState.accumulator = 0;
+        return;
+      }
       const dt = scene.getEngine().getDeltaTime() / 1000;
       runFixedSteps(fixedState, dt, fixedStep, tick);
     });
