@@ -39,7 +39,7 @@ describe('Performance sanity', () => {
       <>
         <AISphere reducedMotion={true} />
         <Platter />
-        <DiegeticGUI coherence={50} />
+        <DiegeticGUI />
         <SPSEnemies />
       </>,
     );

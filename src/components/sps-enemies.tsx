@@ -1,4 +1,4 @@
-import * as BABYLON from '@babylonjs/core';
+import { Color3, MeshBuilder, SolidParticleSystem, StandardMaterial } from '@babylonjs/core';
 import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 import { useLevelStore } from '@/store/level-store';
@@ -13,19 +13,19 @@ import { useLevelStore } from '@/store/level-store';
  */
 export default function SPSEnemies() {
   const scene = useScene();
-  const spsRef = useRef<BABYLON.SolidParticleSystem | null>(null);
+  const spsRef = useRef<SolidParticleSystem | null>(null);
 
   useEffect(() => {
     if (!scene) return;
 
-    const SPS = new BABYLON.SolidParticleSystem('enemiesSPS', scene, { updatable: true });
-    const model = BABYLON.MeshBuilder.CreateBox('spsModel', { size: 0.35 }, scene);
+    const SPS = new SolidParticleSystem('enemiesSPS', scene, { updatable: true });
+    const model = MeshBuilder.CreateBox('spsModel', { size: 0.35 }, scene);
     SPS.addShape(model, 120);
     model.dispose();
 
     const mesh = SPS.buildMesh();
-    const mat = new BABYLON.StandardMaterial('spsMat', scene);
-    mat.emissiveColor = new BABYLON.Color3(0.2, 0.8, 1.0);
+    const mat = new StandardMaterial('spsMat', scene);
+    mat.emissiveColor = new Color3(0.2, 0.8, 1.0);
     mat.alpha = 0.7;
     mesh.material = mat;
 

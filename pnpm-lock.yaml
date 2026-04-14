@@ -9,17 +9,14 @@ importers:
   .:
     dependencies:
       '@babylonjs/core':
-        specifier: ^8.53.0
-        version: 8.56.2
+        specifier: ^9.2.1
+        version: 9.2.1
       '@babylonjs/gui':
-        specifier: ^8.53.0
-        version: 8.56.2(@babylonjs/core@8.56.2)
+        specifier: ^9.2.1
+        version: 9.2.1(@babylonjs/core@9.2.1)
       '@babylonjs/havok':
-        specifier: ^1.3.11
+        specifier: ^1.3.12
         version: 1.3.12
-      '@babylonjs/loaders':
-        specifier: ^8.53.0
-        version: 8.56.2(@babylonjs/core@8.56.2)(babylonjs-gltf2interface@8.56.2)
       '@capacitor/android':
         specifier: ^8.3.0
         version: 8.3.0(@capacitor/core@8.3.0)
@@ -61,7 +58,7 @@ importers:
         version: 19.2.5(react@19.2.5)
       reactylon:
         specifier: ^3.5.4
-        version: 3.5.7(@babylonjs/core@8.56.2)(@babylonjs/gui@8.56.2(@babylonjs/core@8.56.2))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react-reconciler@0.31.0(react@19.2.5))(react@19.2.5)
+        version: 3.5.7(@babylonjs/core@9.2.1)(@babylonjs/gui@9.2.1(@babylonjs/core@9.2.1))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react-reconciler@0.31.0(react@19.2.5))(react@19.2.5)
       seedrandom:
         specifier: ^3.0.5
         version: 3.0.5
@@ -73,8 +70,8 @@ importers:
         version: 0.7.8
     devDependencies:
       '@biomejs/biome':
-        specifier: 2.4.5
-        version: 2.4.5
+        specifier: 2.4.11
+        version: 2.4.11
       '@capacitor/cli':
         specifier: ^8.3.0
         version: 8.3.0
@@ -113,27 +110,24 @@ importers:
         version: 4.1.4(@vitest/browser@4.1.4)(vitest@4.1.4)
       babel-plugin-reactylon:
         specifier: ^1.3.1
-        version: 1.3.2(@babel/core@7.29.0)(@babylonjs/core@8.56.2)(@babylonjs/gui@8.56.2(@babylonjs/core@8.56.2))(reactylon@3.5.7(@babylonjs/core@8.56.2)(@babylonjs/gui@8.56.2(@babylonjs/core@8.56.2))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react-reconciler@0.31.0(react@19.2.5))(react@19.2.5))
+        version: 1.3.2(@babel/core@7.29.0)(@babylonjs/core@9.2.1)(@babylonjs/gui@9.2.1(@babylonjs/core@9.2.1))(reactylon@3.5.7(@babylonjs/core@9.2.1)(@babylonjs/gui@9.2.1(@babylonjs/core@9.2.1))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react-reconciler@0.31.0(react@19.2.5))(react@19.2.5))
       jsdom:
-        specifier: ^28.1.0
-        version: 28.1.0
+        specifier: ^29.0.2
+        version: 29.0.2
       tailwindcss:
         specifier: ^4.2.1
         version: 4.2.2
       typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
+        specifier: ^6.0.2
+        version: 6.0.2
       vite:
         specifier: ^8.0.8
         version: 8.0.8(@types/node@25.6.0)(jiti@2.6.1)
       vitest:
         specifier: ^4.0.18
-        version: 4.1.4(@types/node@25.6.0)(@vitest/browser-playwright@4.1.4)(@vitest/coverage-v8@4.1.4)(jsdom@28.1.0)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))
+        version: 4.1.4(@types/node@25.6.0)(@vitest/browser-playwright@4.1.4)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))
 
 packages:
-
-  '@acemir/cssom@0.9.31':
-    resolution: {integrity: sha512-ZnR3GSaH+/vJ0YlHau21FjfLYjMpYVIzTD8M8vIEQvIGxeOXyXdzCI140rrCY862p/C/BbzWsjc1dgnM9mkoTA==}
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -143,8 +137,9 @@ packages:
     resolution: {integrity: sha512-02OhhkKtgNRuicQ/nF3TRnGsxL9wp0r3Y7VlKWyOHHGmGyvXv03y+PnymU8FKFJMTjIr1Bk8U2g1HWSLrpAHww==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
 
-  '@asamuzakjp/dom-selector@6.8.1':
-    resolution: {integrity: sha512-MvRz1nCqW0fsy8Qz4dnLIvhOlMzqDVBabZx6lH+YywFDdjXhMY37SmpV1XFX3JzG5GWHn63j6HX6QPr3lZXHvQ==}
+  '@asamuzakjp/dom-selector@7.0.9':
+    resolution: {integrity: sha512-r3ElRr7y8ucyN2KdICwGsmj19RoN13CLCa/pvGydghWK6ZzeKQ+TcDjVdtEZz2ElpndM5jXw//B9CEee0mWnVg==}
+    engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
 
   '@asamuzakjp/nwsapi@2.3.9':
     resolution: {integrity: sha512-n8GuYSrI9bF7FFZ/SjhwevlHc8xaVlb/7HmHelnc/PZXBD2ZR49NnN9sMMuDdEGPeeRQ5d0hqlSlEpgCX3Wl0Q==}
@@ -236,80 +231,74 @@ packages:
     resolution: {integrity: sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A==}
     engines: {node: '>=6.9.0'}
 
-  '@babylonjs/core@8.56.2':
-    resolution: {integrity: sha512-UShs1pt8tSTLYOoITWclXPNrUZUpuHvB2Ur2L1D+uM8c9qaAYOi9gjkurOkQwIlbPGqwQHWImGEyiyix0mQ1dg==}
+  '@babylonjs/core@9.2.1':
+    resolution: {integrity: sha512-G3409wiBQTMJPzbTPV8Lz36cfmCsvp2+7nXYRisnMet1qnelogWXM+XOcZZIzDjMCwV7eII1UzETnnS0GpBfTQ==}
 
-  '@babylonjs/gui@8.56.2':
-    resolution: {integrity: sha512-p1zGvZpxnM6aQbWXWf94Q4TrOZ2VQoMUqeNBTgaGWZ4PhxYyqFU7AN3CaqDjhfn7YTAm/Rjx0E0B5EQMDPsQBA==}
+  '@babylonjs/gui@9.2.1':
+    resolution: {integrity: sha512-PFOHbhfE7R3VMtJskhSkZ6qUJwCFL/piy4nFhDO7V0l7QWTCv3bGu/alx58i8dL4N0qMAydBspiNccYGEXKmMQ==}
     peerDependencies:
-      '@babylonjs/core': ^8.0.0
+      '@babylonjs/core': ^9.0.0
 
   '@babylonjs/havok@1.3.12':
     resolution: {integrity: sha512-KR5Z7DBkVEgdvHLMDh2VWe/nHvUG8+MdLBiAE0iM19KIHAPqPRVITPAZKx4SQusK5nqm4ZXDcKv5OYtViIxLzA==}
-
-  '@babylonjs/loaders@8.56.2':
-    resolution: {integrity: sha512-I2klIhTl4HLVVQEMsBpEh5YqbCCi1hA1oajRVCUcy+9Vfh0owzHEGau0GsVRlAOeYEBDNUrfOj0N6nFGTjNQ6g==}
-    peerDependencies:
-      '@babylonjs/core': ^8.0.0
-      babylonjs-gltf2interface: ^8.0.0
 
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@biomejs/biome@2.4.5':
-    resolution: {integrity: sha512-OWNCyMS0Q011R6YifXNOg6qsOg64IVc7XX6SqGsrGszPbkVCoaO7Sr/lISFnXZ9hjQhDewwZ40789QmrG0GYgQ==}
+  '@biomejs/biome@2.4.11':
+    resolution: {integrity: sha512-nWxHX8tf3Opb/qRgZpBbsTOqOodkbrkJ7S+JxJAruxOReaDPPmPuLBAGQ8vigyUgo0QBB+oQltNEAvalLcjggA==}
     engines: {node: '>=14.21.3'}
     hasBin: true
 
-  '@biomejs/cli-darwin-arm64@2.4.5':
-    resolution: {integrity: sha512-lGS4Nd5O3KQJ6TeWv10mElnx1phERhBxqGP/IKq0SvZl78kcWDFMaTtVK+w3v3lusRFxJY78n07PbKplirsU5g==}
+  '@biomejs/cli-darwin-arm64@2.4.11':
+    resolution: {integrity: sha512-wOt+ed+L2dgZanWyL6i29qlXMc088N11optzpo10peayObBaAshbTcxKUchzEMp9QSY8rh5h6VfAFE3WTS1rqg==}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [darwin]
 
-  '@biomejs/cli-darwin-x64@2.4.5':
-    resolution: {integrity: sha512-6MoH4tyISIBNkZ2Q5T1R7dLd5BsITb2yhhhrU9jHZxnNSNMWl+s2Mxu7NBF8Y3a7JJcqq9nsk8i637z4gqkJxQ==}
+  '@biomejs/cli-darwin-x64@2.4.11':
+    resolution: {integrity: sha512-gZ6zR8XmZlExfi/Pz/PffmdpWOQ8Qhy7oBztgkR8/ylSRyLwfRPSadmiVCV8WQ8PoJ2MWUy2fgID9zmtgUUJmw==}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [darwin]
 
-  '@biomejs/cli-linux-arm64-musl@2.4.5':
-    resolution: {integrity: sha512-iqLDgpzobG7gpBF0fwEVS/LT8kmN7+S0E2YKFDtqliJfzNLnAiV2Nnyb+ehCDCJgAZBASkYHR2o60VQWikpqIg==}
+  '@biomejs/cli-linux-arm64-musl@2.4.11':
+    resolution: {integrity: sha512-+Sbo1OAmlegtdwqFE8iOxFIWLh1B3OEgsuZfBpyyN/kWuqZ8dx9ZEes6zVnDMo+zRHF2wLynRVhoQmV7ohxl2Q==}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
 
-  '@biomejs/cli-linux-arm64@2.4.5':
-    resolution: {integrity: sha512-U1GAG6FTjhAO04MyH4xn23wRNBkT6H7NentHh+8UxD6ShXKBm5SY4RedKJzkUThANxb9rUKIPc7B8ew9Xo/cWg==}
+  '@biomejs/cli-linux-arm64@2.4.11':
+    resolution: {integrity: sha512-avdJaEElXrKceK0va9FkJ4P5ci3N01TGkc6ni3P8l3BElqbOz42Wg2IyX3gbh0ZLEd4HVKEIrmuVu/AMuSeFFA==}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-  '@biomejs/cli-linux-x64-musl@2.4.5':
-    resolution: {integrity: sha512-NlKa7GpbQmNhZf9kakQeddqZyT7itN7jjWdakELeXyTU3pg/83fTysRRDPJD0akTfKDl6vZYNT9Zqn4MYZVBOA==}
+  '@biomejs/cli-linux-x64-musl@2.4.11':
+    resolution: {integrity: sha512-bexd2IklK7ZgPhrz6jXzpIL6dEAH9MlJU1xGTrypx+FICxrXUp4CqtwfiuoDKse+UlgAlWtzML3jrMqeEAHEhA==}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [linux]
     libc: [musl]
 
-  '@biomejs/cli-linux-x64@2.4.5':
-    resolution: {integrity: sha512-NdODlSugMzTlENPTa4z0xB82dTUlCpsrOxc43///aNkTLblIYH4XpYflBbf5ySlQuP8AA4AZd1qXhV07IdrHdQ==}
+  '@biomejs/cli-linux-x64@2.4.11':
+    resolution: {integrity: sha512-TagWV0iomp5LnEnxWFg4nQO+e52Fow349vaX0Q/PIcX6Zhk4GGBgp3qqZ8PVkpC+cuehRctMf3+6+FgQ8jCEFQ==}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@biomejs/cli-win32-arm64@2.4.5':
-    resolution: {integrity: sha512-EBfrTqRIWOFSd7CQb/0ttjHMR88zm3hGravnDwUA9wHAaCAYsULKDebWcN5RmrEo1KBtl/gDVJMrFjNR0pdGUw==}
+  '@biomejs/cli-win32-arm64@2.4.11':
+    resolution: {integrity: sha512-RJhaTnY8byzxDt4bDVb7AFPHkPcjOPK3xBip4ZRTrN3TEfyhjLRm3r3mqknqydgVTB74XG8l4jMLwEACEeihVg==}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [win32]
 
-  '@biomejs/cli-win32-x64@2.4.5':
-    resolution: {integrity: sha512-Pmhv9zT95YzECfjEHNl3mN9Vhusw9VA5KHY0ZvlGsxsjwS5cb7vpRnHzJIv0vG7jB0JI7xEaMH9ddfZm/RozBw==}
+  '@biomejs/cli-win32-x64@2.4.11':
+    resolution: {integrity: sha512-A8D3JM/00C2KQgUV3oj8Ba15EHEYwebAGCy5Sf9GAjr5Y3+kJIYOiESoqRDeuRZueuMdCsbLZIUqmPhpYXJE9A==}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
@@ -807,10 +796,6 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  agent-base@7.1.4:
-    resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
-    engines: {node: '>= 14'}
-
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
     engines: {node: '>=8'}
@@ -845,9 +830,6 @@ packages:
       '@babylonjs/core': ^7.0.0 || ^8.0.0 || ^9.0.0
       '@babylonjs/gui': ^7.0.0 || ^8.0.0 || ^9.0.0
       reactylon: ^3.0.0
-
-  babylonjs-gltf2interface@8.56.2:
-    resolution: {integrity: sha512-c2k14C9mPR0pnfksjBdC4uXEos3t2IAYxcMgn5tI1OSC3aDfr6JAq4kADM4gfN9cUo2qIiDdSg6geUVeU8vi6w==}
 
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
@@ -916,10 +898,6 @@ packages:
   css-tree@3.2.1:
     resolution: {integrity: sha512-X7sjQzceUhu1u7Y/ylrRZFU2FS6LRiFVp6rKLPg23y3x3c3DOKAwuXGDp+PAGjh6CSnCjYeAul8pcT8bAl+lSA==}
     engines: {node: ^10 || ^12.20.0 || ^14.13.0 || >=15.0.0}
-
-  cssstyle@6.2.0:
-    resolution: {integrity: sha512-Fm5NvhYathRnXNVndkUsCCuR63DCLVVwGOOwQw782coXFi5HhkXdu289l59HlXZBawsyNccXfWRYvLzcDCdDig==}
-    engines: {node: '>=20'}
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
@@ -1039,14 +1017,6 @@ packages:
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
 
-  http-proxy-agent@7.0.2:
-    resolution: {integrity: sha512-T1gkAiYYDWYx3V5Bmyu7HcfcvL7mUrTWiM6yOfa3PIphViJ/gFPbvidQ+veqSOHci/PxBcDabeUNCzpOODJZig==}
-    engines: {node: '>= 14'}
-
-  https-proxy-agent@7.0.6:
-    resolution: {integrity: sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw==}
-    engines: {node: '>= 14'}
-
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
 
@@ -1100,9 +1070,9 @@ packages:
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
 
-  jsdom@28.1.0:
-    resolution: {integrity: sha512-0+MoQNYyr2rBHqO1xilltfDjV9G7ymYGlAUazgcDLQaUf8JDHbuGwsxN6U9qWaElZ4w1B2r7yEGIL3GdeW3Rug==}
-    engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
+  jsdom@29.0.2:
+    resolution: {integrity: sha512-9VnGEBosc/ZpwyOsJBCQ/3I5p7Q5ngOY14a9bf5btenAORmZfDse1ZEheMiWcJ3h81+Fv7HmJFdS0szo/waF2w==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=24.0.0}
     peerDependencies:
       canvas: ^3.0.0
     peerDependenciesMeta:
@@ -1542,8 +1512,8 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
-  typescript@5.9.3:
-    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+  typescript@6.0.2:
+    resolution: {integrity: sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -1749,8 +1719,6 @@ packages:
 
 snapshots:
 
-  '@acemir/cssom@0.9.31': {}
-
   '@alloc/quick-lru@5.2.0': {}
 
   '@asamuzakjp/css-color@5.1.10':
@@ -1760,13 +1728,12 @@ snapshots:
       '@csstools/css-parser-algorithms': 4.0.0(@csstools/css-tokenizer@4.0.0)
       '@csstools/css-tokenizer': 4.0.0
 
-  '@asamuzakjp/dom-selector@6.8.1':
+  '@asamuzakjp/dom-selector@7.0.9':
     dependencies:
       '@asamuzakjp/nwsapi': 2.3.9
       bidi-js: 1.0.3
       css-tree: 3.2.1
       is-potential-custom-element-name: 1.0.1
-      lru-cache: 11.3.5
 
   '@asamuzakjp/nwsapi@2.3.9': {}
 
@@ -1884,56 +1851,51 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
-  '@babylonjs/core@8.56.2': {}
+  '@babylonjs/core@9.2.1': {}
 
-  '@babylonjs/gui@8.56.2(@babylonjs/core@8.56.2)':
+  '@babylonjs/gui@9.2.1(@babylonjs/core@9.2.1)':
     dependencies:
-      '@babylonjs/core': 8.56.2
+      '@babylonjs/core': 9.2.1
 
   '@babylonjs/havok@1.3.12':
     dependencies:
       '@types/emscripten': 1.41.5
 
-  '@babylonjs/loaders@8.56.2(@babylonjs/core@8.56.2)(babylonjs-gltf2interface@8.56.2)':
-    dependencies:
-      '@babylonjs/core': 8.56.2
-      babylonjs-gltf2interface: 8.56.2
-
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@biomejs/biome@2.4.5':
+  '@biomejs/biome@2.4.11':
     optionalDependencies:
-      '@biomejs/cli-darwin-arm64': 2.4.5
-      '@biomejs/cli-darwin-x64': 2.4.5
-      '@biomejs/cli-linux-arm64': 2.4.5
-      '@biomejs/cli-linux-arm64-musl': 2.4.5
-      '@biomejs/cli-linux-x64': 2.4.5
-      '@biomejs/cli-linux-x64-musl': 2.4.5
-      '@biomejs/cli-win32-arm64': 2.4.5
-      '@biomejs/cli-win32-x64': 2.4.5
+      '@biomejs/cli-darwin-arm64': 2.4.11
+      '@biomejs/cli-darwin-x64': 2.4.11
+      '@biomejs/cli-linux-arm64': 2.4.11
+      '@biomejs/cli-linux-arm64-musl': 2.4.11
+      '@biomejs/cli-linux-x64': 2.4.11
+      '@biomejs/cli-linux-x64-musl': 2.4.11
+      '@biomejs/cli-win32-arm64': 2.4.11
+      '@biomejs/cli-win32-x64': 2.4.11
 
-  '@biomejs/cli-darwin-arm64@2.4.5':
+  '@biomejs/cli-darwin-arm64@2.4.11':
     optional: true
 
-  '@biomejs/cli-darwin-x64@2.4.5':
+  '@biomejs/cli-darwin-x64@2.4.11':
     optional: true
 
-  '@biomejs/cli-linux-arm64-musl@2.4.5':
+  '@biomejs/cli-linux-arm64-musl@2.4.11':
     optional: true
 
-  '@biomejs/cli-linux-arm64@2.4.5':
+  '@biomejs/cli-linux-arm64@2.4.11':
     optional: true
 
-  '@biomejs/cli-linux-x64-musl@2.4.5':
+  '@biomejs/cli-linux-x64-musl@2.4.11':
     optional: true
 
-  '@biomejs/cli-linux-x64@2.4.5':
+  '@biomejs/cli-linux-x64@2.4.11':
     optional: true
 
-  '@biomejs/cli-win32-arm64@2.4.5':
+  '@biomejs/cli-win32-arm64@2.4.11':
     optional: true
 
-  '@biomejs/cli-win32-x64@2.4.5':
+  '@biomejs/cli-win32-x64@2.4.11':
     optional: true
 
   '@blazediff/core@1.9.1': {}
@@ -2361,7 +2323,7 @@ snapshots:
       '@vitest/mocker': 4.1.4(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))
       playwright: 1.59.1
       tinyrainbow: 3.1.0
-      vitest: 4.1.4(@types/node@25.6.0)(@vitest/browser-playwright@4.1.4)(@vitest/coverage-v8@4.1.4)(jsdom@28.1.0)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))
+      vitest: 4.1.4(@types/node@25.6.0)(@vitest/browser-playwright@4.1.4)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))
     transitivePeerDependencies:
       - bufferutil
       - msw
@@ -2377,7 +2339,7 @@ snapshots:
       pngjs: 7.0.0
       sirv: 3.0.2
       tinyrainbow: 3.1.0
-      vitest: 4.1.4(@types/node@25.6.0)(@vitest/browser-playwright@4.1.4)(@vitest/coverage-v8@4.1.4)(jsdom@28.1.0)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))
+      vitest: 4.1.4(@types/node@25.6.0)(@vitest/browser-playwright@4.1.4)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))
       ws: 8.20.0
     transitivePeerDependencies:
       - bufferutil
@@ -2397,7 +2359,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.0.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.4(@types/node@25.6.0)(@vitest/browser-playwright@4.1.4)(@vitest/coverage-v8@4.1.4)(jsdom@28.1.0)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))
+      vitest: 4.1.4(@types/node@25.6.0)(@vitest/browser-playwright@4.1.4)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))
     optionalDependencies:
       '@vitest/browser': 4.1.4(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))(vitest@4.1.4)
 
@@ -2446,8 +2408,6 @@ snapshots:
 
   acorn@8.16.0: {}
 
-  agent-base@7.1.4: {}
-
   ansi-regex@5.0.1: {}
 
   ansi-styles@4.3.0:
@@ -2471,15 +2431,13 @@ snapshots:
       '@babel/runtime': 7.29.2
       tslib: 2.8.1
 
-  babel-plugin-reactylon@1.3.2(@babel/core@7.29.0)(@babylonjs/core@8.56.2)(@babylonjs/gui@8.56.2(@babylonjs/core@8.56.2))(reactylon@3.5.7(@babylonjs/core@8.56.2)(@babylonjs/gui@8.56.2(@babylonjs/core@8.56.2))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react-reconciler@0.31.0(react@19.2.5))(react@19.2.5)):
+  babel-plugin-reactylon@1.3.2(@babel/core@7.29.0)(@babylonjs/core@9.2.1)(@babylonjs/gui@9.2.1(@babylonjs/core@9.2.1))(reactylon@3.5.7(@babylonjs/core@9.2.1)(@babylonjs/gui@9.2.1(@babylonjs/core@9.2.1))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react-reconciler@0.31.0(react@19.2.5))(react@19.2.5)):
     dependencies:
       '@babel/core': 7.29.0
       '@babel/helper-plugin-utils': 7.28.6
-      '@babylonjs/core': 8.56.2
-      '@babylonjs/gui': 8.56.2(@babylonjs/core@8.56.2)
-      reactylon: 3.5.7(@babylonjs/core@8.56.2)(@babylonjs/gui@8.56.2(@babylonjs/core@8.56.2))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react-reconciler@0.31.0(react@19.2.5))(react@19.2.5)
-
-  babylonjs-gltf2interface@8.56.2: {}
+      '@babylonjs/core': 9.2.1
+      '@babylonjs/gui': 9.2.1(@babylonjs/core@9.2.1)
+      reactylon: 3.5.7(@babylonjs/core@9.2.1)(@babylonjs/gui@9.2.1(@babylonjs/core@9.2.1))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react-reconciler@0.31.0(react@19.2.5))(react@19.2.5)
 
   balanced-match@4.0.4: {}
 
@@ -2537,13 +2495,6 @@ snapshots:
     dependencies:
       mdn-data: 2.27.1
       source-map-js: 1.2.1
-
-  cssstyle@6.2.0:
-    dependencies:
-      '@asamuzakjp/css-color': 5.1.10
-      '@csstools/css-syntax-patches-for-csstree': 1.1.3(css-tree@3.2.1)
-      css-tree: 3.2.1
-      lru-cache: 11.3.5
 
   csstype@3.2.3: {}
 
@@ -2640,20 +2591,6 @@ snapshots:
 
   html-escaper@2.0.2: {}
 
-  http-proxy-agent@7.0.2:
-    dependencies:
-      agent-base: 7.1.4
-      debug: 4.4.3
-    transitivePeerDependencies:
-      - supports-color
-
-  https-proxy-agent@7.0.6:
-    dependencies:
-      agent-base: 7.1.4
-      debug: 4.4.3
-    transitivePeerDependencies:
-      - supports-color
-
   inherits@2.0.4: {}
 
   ini@4.1.3: {}
@@ -2696,19 +2633,19 @@ snapshots:
 
   js-tokens@4.0.0: {}
 
-  jsdom@28.1.0:
+  jsdom@29.0.2:
     dependencies:
-      '@acemir/cssom': 0.9.31
-      '@asamuzakjp/dom-selector': 6.8.1
+      '@asamuzakjp/css-color': 5.1.10
+      '@asamuzakjp/dom-selector': 7.0.9
       '@bramus/specificity': 2.4.2
+      '@csstools/css-syntax-patches-for-csstree': 1.1.3(css-tree@3.2.1)
       '@exodus/bytes': 1.15.0
-      cssstyle: 6.2.0
+      css-tree: 3.2.1
       data-urls: 7.0.0
       decimal.js: 10.6.0
       html-encoding-sniffer: 6.0.0
-      http-proxy-agent: 7.0.2
-      https-proxy-agent: 7.0.6
       is-potential-custom-element-name: 1.0.1
+      lru-cache: 11.3.5
       parse5: 8.0.0
       saxes: 6.0.0
       symbol-tree: 3.2.4
@@ -2721,7 +2658,6 @@ snapshots:
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - '@noble/hashes'
-      - supports-color
 
   jsesc@3.1.0: {}
 
@@ -2921,10 +2857,10 @@ snapshots:
 
   react@19.2.5: {}
 
-  reactylon@3.5.7(@babylonjs/core@8.56.2)(@babylonjs/gui@8.56.2(@babylonjs/core@8.56.2))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react-reconciler@0.31.0(react@19.2.5))(react@19.2.5):
+  reactylon@3.5.7(@babylonjs/core@9.2.1)(@babylonjs/gui@9.2.1(@babylonjs/core@9.2.1))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react-reconciler@0.31.0(react@19.2.5))(react@19.2.5):
     dependencies:
-      '@babylonjs/core': 8.56.2
-      '@babylonjs/gui': 8.56.2(@babylonjs/core@8.56.2)
+      '@babylonjs/core': 9.2.1
+      '@babylonjs/gui': 9.2.1(@babylonjs/core@9.2.1)
       acorn: 8.16.0
       its-fine: 1.2.5(@types/react@19.2.14)(react@19.2.5)
       lodash-es: 4.18.1
@@ -3107,7 +3043,7 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  typescript@5.9.3: {}
+  typescript@6.0.2: {}
 
   undici-types@7.19.2: {}
 
@@ -3137,7 +3073,7 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.6.1
 
-  vitest@4.1.4(@types/node@25.6.0)(@vitest/browser-playwright@4.1.4)(@vitest/coverage-v8@4.1.4)(jsdom@28.1.0)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1)):
+  vitest@4.1.4(@types/node@25.6.0)(@vitest/browser-playwright@4.1.4)(@vitest/coverage-v8@4.1.4)(jsdom@29.0.2)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1)):
     dependencies:
       '@vitest/expect': 4.1.4
       '@vitest/mocker': 4.1.4(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))
@@ -3163,7 +3099,7 @@ snapshots:
       '@types/node': 25.6.0
       '@vitest/browser-playwright': 4.1.4(playwright@1.59.1)(vite@8.0.8(@types/node@25.6.0)(jiti@2.6.1))(vitest@4.1.4)
       '@vitest/coverage-v8': 4.1.4(@vitest/browser@4.1.4)(vitest@4.1.4)
-      jsdom: 28.1.0
+      jsdom: 29.0.2
     transitivePeerDependencies:
       - msw
 

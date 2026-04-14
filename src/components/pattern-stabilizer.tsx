@@ -1,4 +1,4 @@
-import * as BABYLON from '@babylonjs/core';
+import { type Color3, Color4, ParticleSystem, Vector3 } from '@babylonjs/core';
 import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 import { world } from '@/game/world';
@@ -12,11 +12,11 @@ import { useSeedStore } from '@/store/seed-store';
 interface Pattern {
   id: number;
   colorIndex: number;
-  color: BABYLON.Color3;
+  color: Color3;
   progress: number;
   speed: number;
   angle: number;
-  particleSystem: BABYLON.ParticleSystem;
+  particleSystem: ParticleSystem;
   entity: import('@/game/world').GameEntity;
 }
 
@@ -49,16 +49,16 @@ export default function PatternStabilizer() {
       const speed = 0.3 + rng() * curTension * 1.2;
       const patternId = idCounter.current++;
 
-      const ps = new BABYLON.ParticleSystem(`pattern${patternId}`, 60, scene);
-      ps.emitter = new BABYLON.Vector3(0, 0.4, 0);
+      const ps = new ParticleSystem(`pattern${patternId}`, 60, scene);
+      ps.emitter = new Vector3(0, 0.4, 0);
       ps.minSize = 0.015;
       ps.maxSize = 0.045;
-      ps.color1 = new BABYLON.Color4(color.r, color.g, color.b, 1);
-      ps.color2 = new BABYLON.Color4(color.r * 0.5, color.g * 0.5, color.b * 0.5, 0.5);
+      ps.color1 = new Color4(color.r, color.g, color.b, 1);
+      ps.color2 = new Color4(color.r * 0.5, color.g * 0.5, color.b * 0.5, 0.5);
       ps.emitRate = 70;
       ps.minLifeTime = 1.8;
       ps.maxLifeTime = 3.2;
-      ps.createPointEmitter(new BABYLON.Vector3(-0.05, -0.05, -0.05), new BABYLON.Vector3(0.05, 0.05, 0.05));
+      ps.createPointEmitter(new Vector3(-0.05, -0.05, -0.05), new Vector3(0.05, 0.05, 0.05));
       ps.start();
 
       const entity = world.add({
@@ -97,7 +97,7 @@ export default function PatternStabilizer() {
         p.progress += p.speed * dt;
 
         const radius = p.progress * 0.52;
-        p.particleSystem.emitter = new BABYLON.Vector3(Math.cos(p.angle) * radius, 0.4, Math.sin(p.angle) * radius);
+        p.particleSystem.emitter = new Vector3(Math.cos(p.angle) * radius, 0.4, Math.sin(p.angle) * radius);
 
         if (heldKeycaps.has(p.colorIndex)) {
           p.progress = Math.max(0, p.progress - 2.4 * dt);

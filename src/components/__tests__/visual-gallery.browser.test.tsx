@@ -46,7 +46,7 @@ describe('Visual gallery', () => {
   });
 
   test('DiegeticGUI — isolation', async () => {
-    harness = await mountScene(<DiegeticGUI coherence={75} />);
+    harness = await mountScene(<DiegeticGUI />);
     await harness.waitFrames(20);
     expect(harness.scene.getMeshByName('coherenceBgRing')).toBeTruthy();
   });
@@ -83,7 +83,7 @@ describe('Visual gallery', () => {
     harness = await mountScene(
       <>
         <Platter />
-        <DiegeticGUI coherence={50} />
+        <DiegeticGUI />
         <SPSEnemies />
       </>,
     );

@@ -1,14 +1,27 @@
-import * as BABYLON from '@babylonjs/core';
+import {
+  HavokPlugin,
+  type Mesh,
+  MeshBuilder,
+  Physics6DoFConstraint,
+  PhysicsBody,
+  PhysicsConstraintAxis,
+  PhysicsConstraintMotorType,
+  PhysicsMotionType,
+  type PhysicsShape,
+  PhysicsShapeBox,
+  Quaternion,
+  Vector3,
+} from '@babylonjs/core';
 import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 
 interface KeyPhysicsBinding {
-  body: BABYLON.PhysicsBody;
-  anchorBody: BABYLON.PhysicsBody;
-  constraint: BABYLON.Physics6DoFConstraint;
-  shape: BABYLON.PhysicsShape;
-  anchorShape: BABYLON.PhysicsShape;
-  anchorMesh: BABYLON.Mesh;
+  body: PhysicsBody;
+  anchorBody: PhysicsBody;
+  constraint: Physics6DoFConstraint;
+  shape: PhysicsShape;
+  anchorShape: PhysicsShape;
+  anchorMesh: Mesh;
 }
 
 /**
@@ -22,7 +35,7 @@ interface KeyPhysicsBinding {
  */
 export default function PhysicsKeys() {
   const scene = useScene();
-  const pluginRef = useRef<BABYLON.HavokPlugin | null>(null);
+  const pluginRef = useRef<HavokPlugin | null>(null);
   const bindingsRef = useRef<KeyPhysicsBinding[]>([]);
   const disposedRef = useRef(false);
 
@@ -49,8 +62,8 @@ export default function PhysicsKeys() {
 
         if (disposedRef.current) return;
 
-        const plugin = new BABYLON.HavokPlugin(true, havokInstance);
-        scene.enablePhysics(new BABYLON.Vector3(0, -9.81, 0), plugin);
+        const plugin = new HavokPlugin(true, havokInstance);
+        scene.enablePhysics(new Vector3(0, -9.81, 0), plugin);
         pluginRef.current = plugin;
 
         scene.onAfterRenderObservable.addOnce(() => {
@@ -61,21 +74,21 @@ export default function PhysicsKeys() {
           );
 
           for (const mesh of keycapMeshes) {
-            let body: BABYLON.PhysicsBody | null = null;
-            let anchorBody: BABYLON.PhysicsBody | null = null;
-            let constraint: BABYLON.Physics6DoFConstraint | null = null;
-            let shape: BABYLON.PhysicsShape | null = null;
-            let anchorShape: BABYLON.PhysicsShape | null = null;
-            let anchorMesh: BABYLON.Mesh | null = null;
+            let body: PhysicsBody | null = null;
+            let anchorBody: PhysicsBody | null = null;
+            let constraint: Physics6DoFConstraint | null = null;
+            let shape: PhysicsShape | null = null;
+            let anchorShape: PhysicsShape | null = null;
+            let anchorMesh: Mesh | null = null;
 
             try {
-              body = new BABYLON.PhysicsBody(mesh, BABYLON.PhysicsMotionType.DYNAMIC, false, scene);
+              body = new PhysicsBody(mesh, PhysicsMotionType.DYNAMIC, false, scene);
 
               const extents = mesh.getBoundingInfo().boundingBox.extendSize.scale(2);
-              shape = new BABYLON.PhysicsShapeBox(
-                BABYLON.Vector3.Zero(),
-                BABYLON.Quaternion.Identity(),
-                new BABYLON.Vector3(extents.x, extents.y, extents.z),
+              shape = new PhysicsShapeBox(
+                Vector3.Zero(),
+                Quaternion.Identity(),
+                new Vector3(extents.x, extents.y, extents.z),
                 scene,
               );
               shape.material = { friction: 0.6, restitution: 0.05 };
@@ -84,58 +97,55 @@ export default function PhysicsKeys() {
               body.setLinearDamping(4);
               body.setAngularDamping(12);
 
-              anchorMesh = BABYLON.MeshBuilder.CreateBox(`${mesh.name}_anchor`, { size: 0.01 }, scene);
+              anchorMesh = MeshBuilder.CreateBox(`${mesh.name}_anchor`, { size: 0.01 }, scene);
               const worldPos = mesh.getAbsolutePosition();
-              const worldRotation = BABYLON.Quaternion.FromRotationMatrix(mesh.getWorldMatrix().getRotationMatrix());
+              const worldRotation = Quaternion.FromRotationMatrix(mesh.getWorldMatrix().getRotationMatrix());
               anchorMesh.position.copyFrom(worldPos);
               anchorMesh.rotationQuaternion = worldRotation;
               anchorMesh.isVisible = false;
               anchorMesh.isPickable = false;
               anchorMesh.parent = null;
 
-              anchorBody = new BABYLON.PhysicsBody(anchorMesh, BABYLON.PhysicsMotionType.STATIC, false, scene);
-              anchorShape = new BABYLON.PhysicsShapeBox(
-                BABYLON.Vector3.Zero(),
-                BABYLON.Quaternion.Identity(),
-                new BABYLON.Vector3(0.01, 0.01, 0.01),
+              anchorBody = new PhysicsBody(anchorMesh, PhysicsMotionType.STATIC, false, scene);
+              anchorShape = new PhysicsShapeBox(
+                Vector3.Zero(),
+                Quaternion.Identity(),
+                new Vector3(0.01, 0.01, 0.01),
                 scene,
               );
               anchorBody.shape = anchorShape;
 
-              constraint = new BABYLON.Physics6DoFConstraint(
+              constraint = new Physics6DoFConstraint(
                 {
-                  pivotA: BABYLON.Vector3.Zero(),
-                  pivotB: BABYLON.Vector3.Zero(),
-                  axisA: BABYLON.Vector3.Right(),
-                  axisB: BABYLON.Vector3.Right(),
-                  perpAxisA: BABYLON.Vector3.Forward(),
-                  perpAxisB: BABYLON.Vector3.Forward(),
+                  pivotA: Vector3.Zero(),
+                  pivotB: Vector3.Zero(),
+                  axisA: Vector3.Right(),
+                  axisB: Vector3.Right(),
+                  perpAxisA: Vector3.Forward(),
+                  perpAxisB: Vector3.Forward(),
                   collision: false,
                 },
                 [
-                  { axis: BABYLON.PhysicsConstraintAxis.LINEAR_X, minLimit: 0, maxLimit: 0 },
+                  { axis: PhysicsConstraintAxis.LINEAR_X, minLimit: 0, maxLimit: 0 },
                   {
-                    axis: BABYLON.PhysicsConstraintAxis.LINEAR_Y,
+                    axis: PhysicsConstraintAxis.LINEAR_Y,
                     minLimit: -0.055,
                     maxLimit: 0.006,
                     stiffness: 300,
                     damping: 32,
                   },
-                  { axis: BABYLON.PhysicsConstraintAxis.LINEAR_Z, minLimit: 0, maxLimit: 0 },
-                  { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_X, minLimit: 0, maxLimit: 0 },
-                  { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Y, minLimit: 0, maxLimit: 0 },
-                  { axis: BABYLON.PhysicsConstraintAxis.ANGULAR_Z, minLimit: 0, maxLimit: 0 },
+                  { axis: PhysicsConstraintAxis.LINEAR_Z, minLimit: 0, maxLimit: 0 },
+                  { axis: PhysicsConstraintAxis.ANGULAR_X, minLimit: 0, maxLimit: 0 },
+                  { axis: PhysicsConstraintAxis.ANGULAR_Y, minLimit: 0, maxLimit: 0 },
+                  { axis: PhysicsConstraintAxis.ANGULAR_Z, minLimit: 0, maxLimit: 0 },
                 ],
                 scene,
               );
 
               body.addConstraint(anchorBody, constraint);
-              constraint.setAxisMotorType(
-                BABYLON.PhysicsConstraintAxis.LINEAR_Y,
-                BABYLON.PhysicsConstraintMotorType.POSITION,
-              );
-              constraint.setAxisMotorTarget(BABYLON.PhysicsConstraintAxis.LINEAR_Y, 0);
-              constraint.setAxisMotorMaxForce(BABYLON.PhysicsConstraintAxis.LINEAR_Y, 45);
+              constraint.setAxisMotorType(PhysicsConstraintAxis.LINEAR_Y, PhysicsConstraintMotorType.POSITION);
+              constraint.setAxisMotorTarget(PhysicsConstraintAxis.LINEAR_Y, 0);
+              constraint.setAxisMotorMaxForce(PhysicsConstraintAxis.LINEAR_Y, 45);
 
               bindingsRef.current.push({
                 body,

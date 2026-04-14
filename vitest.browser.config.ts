@@ -1,7 +1,24 @@
 import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
+import { createLogger } from 'vite';
 import { defineConfig } from 'vitest/config';
+
+// Suppress plugin-react-v4-vs-rolldown deprecation warnings (same fix as
+// vite.config.ts — they're cosmetic, behavior is identical).
+const silentLogger = createLogger();
+const origWarn = silentLogger.warn.bind(silentLogger);
+silentLogger.warn = (msg, ...rest) => {
+  if (
+    typeof msg === 'string' &&
+    (msg.includes('`esbuild` option was specified by "vite:react-babel"') ||
+      msg.includes('optimizeDeps.rollupOptions') ||
+      msg.includes('Both esbuild and oxc options were set'))
+  ) {
+    return;
+  }
+  origWarn(msg, ...rest);
+};
 
 /**
  * Vitest browser mode — runs component tests in a real Chromium browser via
@@ -11,6 +28,7 @@ import { defineConfig } from 'vitest/config';
  * render to canvas (isolation tests that complement the full-app E2E suite).
  */
 export default defineConfig({
+  customLogger: silentLogger,
   plugins: [
     // Run babel-plugin-reactylon so lowercase JSX tags (<hemisphericLight>) get
     // auto-registered to Babylon classes in the test bundle, same as the app.
@@ -84,7 +102,6 @@ export default defineConfig({
       '@babylonjs/core/Misc/environmentTextureTools',
       '@babylonjs/core/Misc/rgbdTextureTools',
       '@babylonjs/gui',
-      '@babylonjs/loaders',
       'gsap',
       'gsap/CustomEase',
       'koota',

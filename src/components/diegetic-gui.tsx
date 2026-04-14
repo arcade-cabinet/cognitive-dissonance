@@ -1,10 +1,8 @@
-import * as BABYLON from '@babylonjs/core';
+import { Color3, Mesh, MeshBuilder, StandardMaterial, Vector3 } from '@babylonjs/core';
+import { useTrait, useWorld } from 'koota/react';
 import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
-
-interface DiegeticGUIProps {
-  coherence: number;
-}
+import { Level } from '@/sim/world';
 
 /**
  * Diegetic coherence display — a glowing arc ring around the sphere track
@@ -14,20 +12,28 @@ interface DiegeticGUIProps {
  *      fills proportionally with coherence
  *
  * The arc is the only "HUD" — and it's etched into the machine itself.
+ *
+ * Reads coherence directly from the Koota world via useTrait — no prop
+ * drilling from the GameBoard root. The component subscribes only to
+ * Level changes (not Game/Seed/Audio), so it doesn't re-render on
+ * unrelated state churn.
  */
-export default function DiegeticGUI({ coherence }: DiegeticGUIProps) {
+export default function DiegeticGUI() {
   const scene = useScene();
-  const bgRingRef = useRef<BABYLON.Mesh | null>(null);
-  const bgMatRef = useRef<BABYLON.StandardMaterial | null>(null);
-  const fgArcRef = useRef<BABYLON.Mesh | null>(null);
-  const fgMatRef = useRef<BABYLON.StandardMaterial | null>(null);
+  const world = useWorld();
+  const level = useTrait(world, Level);
+  const coherence = level?.coherence ?? 25;
+  const bgRingRef = useRef<Mesh | null>(null);
+  const bgMatRef = useRef<StandardMaterial | null>(null);
+  const fgArcRef = useRef<Mesh | null>(null);
+  const fgMatRef = useRef<StandardMaterial | null>(null);
   const lastArcCoherence = useRef(-1);
 
   // Create background ring (full, dim, always visible)
   useEffect(() => {
     if (!scene) return;
 
-    const bgRing = BABYLON.MeshBuilder.CreateTorus(
+    const bgRing = MeshBuilder.CreateTorus(
       'coherenceBgRing',
       { diameter: 0.84, thickness: 0.02, tessellation: 64 },
       scene,
@@ -36,8 +42,8 @@ export default function DiegeticGUI({ coherence }: DiegeticGUIProps) {
     bgRing.rotation.x = Math.PI / 2;
     bgRingRef.current = bgRing;
 
-    const bgMat = new BABYLON.StandardMaterial('coherenceBgMat', scene);
-    bgMat.emissiveColor = new BABYLON.Color3(0.1, 0.15, 0.2);
+    const bgMat = new StandardMaterial('coherenceBgMat', scene);
+    bgMat.emissiveColor = new Color3(0.1, 0.15, 0.2);
     bgMat.alpha = 0.15;
     bgMat.disableLighting = true;
     bgRing.material = bgMat;
@@ -69,15 +75,15 @@ export default function DiegeticGUI({ coherence }: DiegeticGUIProps) {
     const arcFraction = Math.max(0.01, clampedCoherence / 100);
     const radius = 0.42; // half of diameter 0.84
     const segments = Math.max(4, Math.floor(64 * arcFraction));
-    const path: BABYLON.Vector3[] = [];
+    const path: Vector3[] = [];
     for (let i = 0; i <= segments; i++) {
       const angle = (i / segments) * arcFraction * Math.PI * 2;
-      path.push(new BABYLON.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius));
+      path.push(new Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius));
     }
 
-    const fgArc = BABYLON.MeshBuilder.CreateTube(
+    const fgArc = MeshBuilder.CreateTube(
       'coherenceFgArc',
-      { path, radius: 0.012, tessellation: 12, cap: BABYLON.Mesh.CAP_ALL },
+      { path, radius: 0.012, tessellation: 12, cap: Mesh.CAP_ALL },
       scene,
     );
     fgArc.position.y = -1.6 + 0.4;
@@ -85,18 +91,14 @@ export default function DiegeticGUI({ coherence }: DiegeticGUIProps) {
 
     // Create or reuse material
     if (!fgMatRef.current) {
-      const fgMat = new BABYLON.StandardMaterial('coherenceFgMat', scene);
+      const fgMat = new StandardMaterial('coherenceFgMat', scene);
       fgMat.disableLighting = true;
       fgMatRef.current = fgMat;
     }
 
     // Color shifts with coherence: low = red-orange, high = bright green-cyan
     const intensity = clampedCoherence / 100;
-    fgMatRef.current.emissiveColor = new BABYLON.Color3(
-      intensity < 0.5 ? 1.0 - intensity : 0,
-      intensity,
-      intensity * 0.6,
-    );
+    fgMatRef.current.emissiveColor = new Color3(intensity < 0.5 ? 1.0 - intensity : 0, intensity, intensity * 0.6);
     fgMatRef.current.alpha = 0.3 + intensity * 0.5;
     fgArc.material = fgMatRef.current;
   }, [scene, coherence]);

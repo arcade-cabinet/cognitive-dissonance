@@ -1,4 +1,4 @@
-import * as BABYLON from '@babylonjs/core';
+import { ArcRotateCamera, type Scene as BabylonScene, Color3, Color4, Vector3 } from '@babylonjs/core';
 import { Scene } from 'reactylon';
 import { Engine } from 'reactylon/web';
 import AISphere from '@/components/ai-sphere';
@@ -14,26 +14,20 @@ import SPSEnemies from '@/components/sps-enemies';
 import XRSession from '@/components/xr-session';
 
 interface GameSceneProps {
-  coherence: number;
   reducedMotion: boolean;
 }
 
-function SceneContent({ coherence, reducedMotion }: { coherence: number; reducedMotion: boolean }) {
+function SceneContent({ reducedMotion }: { reducedMotion: boolean }) {
   return (
     <>
       {/* Lighting */}
-      <hemisphericLight name="hemiLight" direction={new BABYLON.Vector3(0, 1, 0)} intensity={0.3} />
-      <pointLight
-        name="rimLight"
-        position={new BABYLON.Vector3(0, 2, 3)}
-        intensity={2}
-        diffuse={new BABYLON.Color3(0.3, 0.5, 0.8)}
-      />
+      <hemisphericLight name="hemiLight" direction={new Vector3(0, 1, 0)} intensity={0.3} />
+      <pointLight name="rimLight" position={new Vector3(0, 2, 3)} intensity={2} diffuse={new Color3(0.3, 0.5, 0.8)} />
       <pointLight
         name="keyLight"
-        position={new BABYLON.Vector3(3, 5, -4)}
+        position={new Vector3(3, 5, -4)}
         intensity={1.8}
-        diffuse={new BABYLON.Color3(0.9, 0.9, 1.0)}
+        diffuse={new Color3(0.9, 0.9, 1.0)}
       />
 
       {/* Camera is created procedurally in onSceneReady to ensure it's active before first render */}
@@ -46,11 +40,12 @@ function SceneContent({ coherence, reducedMotion }: { coherence: number; reduced
       <PatternStabilizer />
       <EnemySpawner />
 
-      {/* Polish systems */}
+      {/* Polish systems — DiegeticGUI reads coherence from Koota directly,
+          no prop drilling needed. */}
       <PostProcessCorruption reducedMotion={reducedMotion} />
       <SpatialAudio />
       <SPSEnemies />
-      <DiegeticGUI coherence={coherence} />
+      <DiegeticGUI />
       <AudioEngineSystem />
       <PhysicsKeys />
       <XRSession />
@@ -58,7 +53,7 @@ function SceneContent({ coherence, reducedMotion }: { coherence: number; reduced
   );
 }
 
-export default function GameScene({ coherence, reducedMotion }: GameSceneProps) {
+export default function GameScene({ reducedMotion }: GameSceneProps) {
   return (
     <Engine
       forceWebGL={true}
@@ -72,7 +67,7 @@ export default function GameScene({ coherence, reducedMotion }: GameSceneProps) 
     >
       <Scene
         onSceneReady={(scene) => {
-          scene.clearColor = new BABYLON.Color4(0.04, 0.04, 0.06, 1);
+          scene.clearColor = new Color4(0.04, 0.04, 0.06, 1);
 
           const engine = scene.getEngine();
           const canvas = engine.getRenderingCanvas();
@@ -89,12 +84,12 @@ export default function GameScene({ coherence, reducedMotion }: GameSceneProps) 
           };
 
           const initial = computeFraming();
-          const camera = new BABYLON.ArcRotateCamera(
+          const camera = new ArcRotateCamera(
             'camera',
             Math.PI / 4,
             initial.beta,
             initial.radius,
-            BABYLON.Vector3.Zero(),
+            Vector3.Zero(),
             scene,
           );
           camera.lowerRadiusLimit = 4;
@@ -127,7 +122,7 @@ export default function GameScene({ coherence, reducedMotion }: GameSceneProps) 
           // Only clear the reference if this scene still owns it (protects
           // against overlapping scene lifetimes during test teardown).
           if (typeof globalThis !== 'undefined' && process.env.NODE_ENV !== 'production') {
-            const g = globalThis as unknown as { __scene?: BABYLON.Scene };
+            const g = globalThis as unknown as { __scene?: BabylonScene };
             g.__scene = scene;
             scene.onDisposeObservable.addOnce(() => {
               if (g.__scene === scene) delete g.__scene;
@@ -135,7 +130,7 @@ export default function GameScene({ coherence, reducedMotion }: GameSceneProps) 
           }
         }}
       >
-        <SceneContent coherence={coherence} reducedMotion={reducedMotion} />
+        <SceneContent reducedMotion={reducedMotion} />
       </Scene>
     </Engine>
   );
