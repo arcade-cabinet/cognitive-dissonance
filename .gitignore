@@ -32,6 +32,12 @@ Thumbs.db
 # Playwright MCP
 .playwright-mcp/
 
+# Expo prebuild cache (from cap add runs — not real Expo usage)
+.expo/
+
+# Claude Code autonomous session cache
+.remember/
+
 # Vitest attachments & failure screenshots
 .vitest-attachments/
 **/__screenshots__/

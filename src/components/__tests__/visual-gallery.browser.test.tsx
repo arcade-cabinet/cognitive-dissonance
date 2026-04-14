@@ -24,6 +24,9 @@ describe('Visual gallery', () => {
     await new Promise((r) => setTimeout(r, 50));
     harness?.dispose();
     harness = null;
+    // Reset global phase so tests that flip to 'playing' don't leak into
+    // subsequent tests (prevents order-dependent failures).
+    useGameStore.getState().setPhase('title');
   });
 
   test('AISphere — isolation', async () => {
