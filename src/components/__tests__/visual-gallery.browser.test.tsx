@@ -78,9 +78,17 @@ describe('Visual gallery', () => {
         <SPSEnemies />
       </>,
     );
-    await harness.waitFrames(30);
 
-    // Verify full scene composition
+    // Wait for AISphere useEffect to fire and create meshes —
+    // Reactylon scene + multiple components + GSAP tweens can take a
+    // while to fully settle in slower CI environments.
+    await harness.waitFrames(60);
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      if (harness.scene.getMeshByName('aiSphereOuter')) break;
+      await harness.waitFrames(10);
+    }
+
     const names = harness.scene.meshes.map((m) => m.name);
     expect(names).toContain('aiSphereOuter');
     expect(names).toContain('platterBase');
