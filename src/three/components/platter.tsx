@@ -1,6 +1,6 @@
 import { useFrame } from '@react-three/fiber';
 import { useTrait, useWorld } from 'koota/react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { type Group, MathUtils } from 'three';
 import { Level } from '@/sim/world';
 import { createIndustrialPlatter, type IndustrialPlatter } from '../industrial-platter';
@@ -10,9 +10,10 @@ import { createIndustrialPlatter, type IndustrialPlatter } from '../industrial-p
  *
  * Uses `createIndustrialPlatter()` (ported from research/). Subscribes to
  * Koota's Level trait to drive rim emissive intensity from current tension.
- * Rotation + wobble are driven by level.rotation and level.wobble fields
- * (set to default values here until the Level trait schema is extended in
- * Phase 3).
+ *
+ * Rotation direction + speed come from level.rotation; wobble amplitude
+ * comes from level.wobble (tilt scales with tension^tensionCoupling so
+ * low tension is stable, crisis shakes hard).
  */
 export default function Platter() {
   const world = useWorld();
@@ -40,30 +41,29 @@ export default function Platter() {
     platterRef.current?.setTension(level?.tension ?? 0);
   }, [level?.tension]);
 
-  // Rotation speed + wobble amplitude (defaults — Phase 3 moves to Level trait)
-  const { rotationSpeed, wobbleAmp } = useMemo(
-    () => ({
-      rotationSpeed: 0.165, // rad/sec default from the old Babylon platter
-      wobbleAmp: 0.04,
-    }),
-    [],
-  );
-
   useFrame((_state, dt) => {
     if (!groupRef.current) return;
-    groupRef.current.rotation.y += rotationSpeed * dt;
-
-    // Tension-driven wobble — quadratic coupling so low tension stays still,
-    // crisis shakes hard.
+    const rotation = level?.rotation ?? { direction: 1, speedRad: 0.165 };
+    const wobble = level?.wobble ?? { maxTiltRad: 0.12, tensionCoupling: 2.0 };
     const tension = level?.tension ?? 0;
-    const amp = wobbleAmp * tension * tension;
-    const t = performance.now() / 1000;
-    groupRef.current.rotation.x = Math.sin(t * 1.7) * amp;
-    groupRef.current.rotation.z = Math.cos(t * 1.3) * amp;
 
-    // Clamp so extreme tension doesn't flip the platter visibly.
-    groupRef.current.rotation.x = MathUtils.clamp(groupRef.current.rotation.x, -0.12, 0.12);
-    groupRef.current.rotation.z = MathUtils.clamp(groupRef.current.rotation.z, -0.12, 0.12);
+    groupRef.current.rotation.y += rotation.direction * rotation.speedRad * dt;
+
+    // Tension-coupled wobble. coupling=2 → quadratic; coupling=1 → linear.
+    // Amplitude is capped by maxTiltRad so runaway tension can't flip the disc.
+    const couplingPower = Math.max(0.5, wobble.tensionCoupling);
+    const amp = wobble.maxTiltRad * 0.5 * tension ** couplingPower;
+    const t = performance.now() / 1000;
+    groupRef.current.rotation.x = MathUtils.clamp(
+      Math.sin(t * 1.7) * amp,
+      -wobble.maxTiltRad,
+      wobble.maxTiltRad,
+    );
+    groupRef.current.rotation.z = MathUtils.clamp(
+      Math.cos(t * 1.3) * amp,
+      -wobble.maxTiltRad,
+      wobble.maxTiltRad,
+    );
   });
 
   return <group ref={groupRef} position={[0, -1.6, 0]} />;
