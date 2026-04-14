@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect } from 'react';
 import { useAudioStore } from '@/store/audio-store';
 import { useLevelStore } from '@/store/level-store';

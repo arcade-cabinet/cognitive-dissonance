@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 import { useAudioStore } from '@/store/audio-store';

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
@@ -10,6 +11,15 @@ import { defineConfig } from 'vitest/config';
  * render to canvas (isolation tests that complement the full-app E2E suite).
  */
 export default defineConfig({
+  plugins: [
+    // Run babel-plugin-reactylon so lowercase JSX tags (<hemisphericLight>) get
+    // auto-registered to Babylon classes in the test bundle, same as the app.
+    react({
+      babel: {
+        plugins: ['babel-plugin-reactylon'],
+      },
+    }),
+  ],
   test: {
     include: ['src/**/*.browser.test.tsx', 'src/**/*.browser.test.ts'],
     exclude: ['node_modules/**', 'e2e/**'],
@@ -24,7 +34,9 @@ export default defineConfig({
       // must appear. Prevents masking unrelated TypeError null-derefs.
       const isBabylonTeardownRace =
         msg.includes("reading 'postProcessManager'") &&
-        /@babylonjs|EnvironmentHelper|environmentTextures|EnvironmentTexture/i.test(stack);
+        /@babylonjs|envTextureLoader|EnvironmentHelper|environmentTextures|EnvironmentTexture/i.test(
+          stack,
+        );
       if (isBabylonTeardownRace) return false;
       return true;
     },

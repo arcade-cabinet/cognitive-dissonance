@@ -1,5 +1,3 @@
-'use client';
-
 import * as BABYLON from '@babylonjs/core';
 import { Scene } from 'reactylon';
 import { Engine } from 'reactylon/web';

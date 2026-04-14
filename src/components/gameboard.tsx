@@ -1,7 +1,5 @@
-'use client';
-
-import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import GameScene from '@/components/game-scene';
 import ATCShader from '@/components/ui/atc-shader';
 import { loadHighScore, saveHighScore } from '@/lib/high-score';
 import { useAudioStore } from '@/store/audio-store';
@@ -9,8 +7,6 @@ import { useGameStore } from '@/store/game-store';
 import { useInputStore } from '@/store/input-store';
 import { useLevelStore } from '@/store/level-store';
 import { useSeedStore } from '@/store/seed-store';
-
-const GameScene = dynamic(() => import('@/components/game-scene'), { ssr: false });
 
 export default function GameBoard() {
   // ── Overlay states ──

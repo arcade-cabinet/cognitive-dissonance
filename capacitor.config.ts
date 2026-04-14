@@ -3,14 +3,13 @@ import type { CapacitorConfig } from '@capacitor/cli';
 /**
  * Capacitor config for Cognitive Dissonance.
  *
- * The web build (`pnpm build` with GITHUB_PAGES=true) produces a static
- * export in `out/`. Capacitor copies that into the native iOS/Android
- * projects via `npx cap sync`.
+ * The web build (`pnpm build`) produces a static export in `dist/` via Vite.
+ * Capacitor copies that into the native iOS/Android projects via `cap sync`.
  */
 const config: CapacitorConfig = {
   appId: 'com.arcadecabinet.cognitivedissonance',
   appName: 'Cognitive Dissonance',
-  webDir: 'out',
+  webDir: 'dist',
 
   // Backgrounding behavior — audio/WebGL keep running when app is backgrounded
   // (so a quick home-button tap doesn't kill an active run)

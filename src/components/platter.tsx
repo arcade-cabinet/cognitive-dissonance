@@ -1,5 +1,3 @@
-'use client';
-
 import * as BABYLON from '@babylonjs/core';
 import gsap from 'gsap';
 import { CustomEase } from 'gsap/CustomEase';

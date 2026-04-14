@@ -1,5 +1,3 @@
-'use client';
-
 import * as BABYLON from '@babylonjs/core';
 import gsap from 'gsap';
 import { useCallback, useEffect, useRef } from 'react';
