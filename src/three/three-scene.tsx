@@ -32,7 +32,8 @@ function ProceduralEnvironment() {
   const { gl, scene } = useThree();
   useEffect(() => {
     const pmrem = new PMREMGenerator(gl);
-    const room = new RoomEnvironment();
+    // RoomEnvironment is a factory function in three-stdlib, not a class.
+    const room = RoomEnvironment();
     const envMap = pmrem.fromScene(room, 0.04).texture;
     scene.environment = envMap;
     return () => {
