@@ -106,9 +106,14 @@ export default function GameScene({ coherence, reducedMotion }: GameSceneProps) 
           }
           scene.activeCamera = camera;
 
-          // Expose scene on window for E2E/browser test diagnostics
-          if (typeof window !== 'undefined') {
-            (window as unknown as { __scene: BABYLON.Scene }).__scene = scene;
+          // Expose scene for E2E/browser test diagnostics. Use globalThis
+          // (more portable than window for SSR boundaries) and only in dev
+          // to avoid leaking scene references in production bundles.
+          if (typeof globalThis !== 'undefined' && process.env.NODE_ENV !== 'production') {
+            (globalThis as unknown as { __scene: BABYLON.Scene }).__scene = scene;
+            scene.onDisposeObservable.addOnce(() => {
+              delete (globalThis as unknown as { __scene?: BABYLON.Scene }).__scene;
+            });
           }
         }}
       >

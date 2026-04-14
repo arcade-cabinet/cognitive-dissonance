@@ -85,8 +85,10 @@ export async function mountScene(children: ReactNode): Promise<SceneHarness> {
       }
     },
     dispose() {
+      const engine = scene.getEngine();
       root.unmount();
       scene.dispose();
+      engine.dispose(); // Prevents WebGL context leak across tests
       container.remove();
     },
   };

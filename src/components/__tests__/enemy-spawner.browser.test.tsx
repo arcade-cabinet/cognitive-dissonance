@@ -1,9 +1,9 @@
 /**
  * Visual isolation test for EnemySpawner.
  *
- * Verifies enemies do NOT spawn during title phase and DO spawn during
- * playing phase. This is the bug we found where enemies were spawning
- * pre-game and killing the sphere instantly.
+ * Verifies the phase-gating fix: enemies MUST NOT spawn during title phase
+ * (otherwise they shatter the sphere before the player sees the title),
+ * and MUST spawn once the phase transitions to 'playing'.
  */
 
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
@@ -49,5 +49,14 @@ describe('EnemySpawner', () => {
     // Enemy meshes are named `enemy{id}`
     const enemies = harness.scene.meshes.filter((m) => /^enemy\d+$/.test(m.name));
     expect(enemies.length).toBe(0);
+  });
+
+  test('spawns enemy meshes during playing phase', async () => {
+    harness = await mountScene(<EnemySpawner />);
+    useGameStore.getState().setPhase('playing');
+    await harness.waitFrames(150); // 2.5s — enough for initial spawn wave
+
+    const enemies = harness.scene.meshes.filter((m) => /^enemy\d+$/.test(m.name));
+    expect(enemies.length).toBeGreaterThan(0);
   });
 });
