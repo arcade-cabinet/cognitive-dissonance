@@ -43,7 +43,7 @@ jobs:
         run: xvfb-run --auto-servernum pnpm test:browser
         env:
           CI: "true"
-      - name: Run E2E (headed via xvfb)
+      - name: Run E2E (headed via xvfb on Linux runners)
         run: pnpm test:e2e
         env:
           CI: "true"
