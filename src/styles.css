@@ -56,8 +56,8 @@ body {
   }
 }
 
-/* Reactylon canvas — fills the game-root (inside safe areas) */
-#reactylon-canvas {
+/* R3F canvas — fills the game-root (inside safe areas) */
+.game-root canvas {
   width: 100%;
   height: 100%;
   display: block;

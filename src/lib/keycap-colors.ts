@@ -1,12 +1,11 @@
-import * as BABYLON from '@babylonjs/core';
+import { Color } from 'three';
 
 /**
  * Shared keycap-to-pattern color mapping.
  *
- * 12 keycap slots around the platter rim, each with a unique color
- * evenly spaced across the HSL hue wheel. Used by:
- *   - platter.tsx   → colors each decorative keycap
- *   - pattern-stabilizer.tsx → assigns a colorIndex to each pattern
+ * Legacy — retained so existing gameplay code that assigns pattern
+ * colorIndex values can still resolve a concrete RGB. New level schemas
+ * pass explicit hex strings directly via Level.inputSchema.
  *
  * The buried seed picks a colorIndex (0-11) for each spawned pattern.
  * Only the keycap with the matching index pulls that pattern back.
@@ -17,10 +16,10 @@ export const KEYCAP_COUNT = 12;
 export interface KeycapColor {
   /** HSL hue in degrees (0-360) */
   hue: number;
-  /** Babylon Color3 for mesh materials */
-  color3: BABYLON.Color3;
-  /** Babylon Color4 for particle systems (alpha = 1) */
-  color4: BABYLON.Color4;
+  /** three.js Color for mesh materials */
+  color: Color;
+  /** Hex string for CSS / shader uniforms / serialization */
+  hex: string;
 }
 
 /**
@@ -30,9 +29,10 @@ export interface KeycapColor {
 export function getKeycapColor(index: number): KeycapColor {
   const safeIndex = ((index % KEYCAP_COUNT) + KEYCAP_COUNT) % KEYCAP_COUNT;
   const hue = (safeIndex / KEYCAP_COUNT) * 360;
-  const color3 = BABYLON.Color3.FromHSV(hue, 0.85, 0.75);
-  const color4 = new BABYLON.Color4(color3.r, color3.g, color3.b, 1.0);
-  return { hue, color3, color4 };
+  // Three's Color uses HSL in 0-1; hsv→hsl with saturation=0.85, value=0.75
+  // approximates to HSL(hue, ~0.75, ~0.47).
+  const color = new Color().setHSL(hue / 360, 0.75, 0.47);
+  return { hue, color, hex: `#${color.getHexString()}` };
 }
 
 /** Pre-computed color array for hot-path usage in render loops. */
