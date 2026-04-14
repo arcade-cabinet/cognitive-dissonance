@@ -33,7 +33,7 @@ describe('Scene integration', () => {
       <>
         <AISphere reducedMotion={true} />
         <Platter />
-        <DiegeticGUI coherence={50} />
+        <DiegeticGUI />
       </>,
     );
     await harness.waitFrames(3);
@@ -73,7 +73,7 @@ describe('Scene integration', () => {
       <>
         <AISphere reducedMotion={true} />
         <Platter />
-        <DiegeticGUI coherence={50} />
+        <DiegeticGUI />
       </>,
     );
 

@@ -1,4 +1,4 @@
-import * as BABYLON from '@babylonjs/core';
+import { Effect, PostProcess } from '@babylonjs/core';
 import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 import { useLevelStore } from '@/store/level-store';
@@ -9,13 +9,13 @@ interface PostProcessCorruptionProps {
 
 export default function PostProcessCorruption({ reducedMotion }: PostProcessCorruptionProps) {
   const scene = useScene();
-  const effectRef = useRef<BABYLON.PostProcess | null>(null);
+  const effectRef = useRef<PostProcess | null>(null);
 
   useEffect(() => {
-    if (!scene || !scene.activeCamera) return;
+    if (!scene?.activeCamera) return;
 
     // Custom post-process for chromatic aberration + noise + vignette
-    BABYLON.Effect.ShadersStore['corruptionFragmentShader'] = `
+    Effect.ShadersStore['corruptionFragmentShader'] = `
       precision highp float;
       varying vec2 vUV;
       uniform sampler2D textureSampler;
@@ -48,7 +48,7 @@ export default function PostProcessCorruption({ reducedMotion }: PostProcessCorr
       }
     `;
 
-    const postProcess = new BABYLON.PostProcess(
+    const postProcess = new PostProcess(
       'corruptionEffect',
       'corruption',
       ['u_tension', 'u_time'],

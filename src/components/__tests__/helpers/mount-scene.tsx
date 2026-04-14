@@ -5,10 +5,12 @@
  */
 
 import * as BABYLON from '@babylonjs/core';
+import { WorldProvider } from 'koota/react';
 import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Scene } from 'reactylon';
 import { Engine } from 'reactylon/web';
+import { world } from '@/sim/world';
 
 export interface SceneHarness {
   container: HTMLElement;
@@ -38,26 +40,28 @@ export async function mountScene(children: ReactNode): Promise<SceneHarness> {
   const root = createRoot(container);
 
   root.render(
-    <Engine
-      forceWebGL={true}
-      engineOptions={{
-        antialias: false,
-        adaptToDeviceRatio: false,
-        audioEngine: false,
-        preserveDrawingBuffer: true,
-      }}
-    >
-      <Scene
-        onSceneReady={(s) => {
-          capturedScene = s;
-          s.clearColor = new BABYLON.Color4(0, 0, 0, 1);
-          const cam = new BABYLON.ArcRotateCamera('cam', Math.PI / 4, Math.PI / 3, 8, BABYLON.Vector3.Zero(), s);
-          s.activeCamera = cam;
+    <WorldProvider world={world}>
+      <Engine
+        forceWebGL={true}
+        engineOptions={{
+          antialias: false,
+          adaptToDeviceRatio: false,
+          audioEngine: false,
+          preserveDrawingBuffer: true,
         }}
       >
-        {children}
-      </Scene>
-    </Engine>,
+        <Scene
+          onSceneReady={(s) => {
+            capturedScene = s;
+            s.clearColor = new BABYLON.Color4(0, 0, 0, 1);
+            const cam = new BABYLON.ArcRotateCamera('cam', Math.PI / 4, Math.PI / 3, 8, BABYLON.Vector3.Zero(), s);
+            s.activeCamera = cam;
+          }}
+        >
+          {children}
+        </Scene>
+      </Engine>
+    </WorldProvider>,
   );
 
   // Wait for engine to mount and scene to be ready. If setup fails, clean up

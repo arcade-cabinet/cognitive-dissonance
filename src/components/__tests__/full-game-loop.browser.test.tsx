@@ -41,7 +41,7 @@ describe('Full game loop', () => {
         <Platter />
         <PatternStabilizer />
         <EnemySpawner />
-        <DiegeticGUI coherence={25} />
+        <DiegeticGUI />
       </>,
     );
 
@@ -101,7 +101,7 @@ describe('Full game loop', () => {
   });
 
   test('coherence updates on pattern stabilization event', async () => {
-    harness = await mountScene(<DiegeticGUI coherence={25} />);
+    harness = await mountScene(<DiegeticGUI />);
     useGameStore.getState().setPhase('playing');
     await harness.waitFrames(3);
 
@@ -111,7 +111,7 @@ describe('Full game loop', () => {
   });
 
   test('peak coherence tracks the highest ever', async () => {
-    harness = await mountScene(<DiegeticGUI coherence={25} />);
+    harness = await mountScene(<DiegeticGUI />);
     await harness.waitFrames(3);
 
     useLevelStore.getState().addCoherence(50); // 25 → 75

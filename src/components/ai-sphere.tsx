@@ -1,4 +1,16 @@
-import * as BABYLON from '@babylonjs/core';
+import {
+  Color3,
+  Color4,
+  DynamicTexture,
+  Material,
+  type Mesh,
+  MeshBuilder,
+  ParticleSystem,
+  PBRMaterial,
+  type Scene,
+  type ShaderMaterial,
+  Vector3,
+} from '@babylonjs/core';
 import gsap from 'gsap';
 import { useCallback, useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
@@ -17,10 +29,10 @@ interface AISphereProps {
 
 export default function AISphere({ reducedMotion }: AISphereProps) {
   const scene = useScene();
-  const outerSphereRef = useRef<BABYLON.Mesh | null>(null);
-  const innerSphereRef = useRef<BABYLON.Mesh | null>(null);
-  const glassMatRef = useRef<BABYLON.PBRMaterial | null>(null);
-  const innerMatRef = useRef<BABYLON.ShaderMaterial | null>(null);
+  const outerSphereRef = useRef<Mesh | null>(null);
+  const innerSphereRef = useRef<Mesh | null>(null);
+  const glassMatRef = useRef<PBRMaterial | null>(null);
+  const innerMatRef = useRef<ShaderMaterial | null>(null);
   const explodedRef = useRef(false);
   /** Guards against re-triggering clarity while the pulse animation plays */
   const clarityActiveRef = useRef(false);
@@ -41,25 +53,25 @@ export default function AISphere({ reducedMotion }: AISphereProps) {
    * Called on initial mount and on restart after shatter.
    */
   const buildSpheres = useCallback(
-    (scn: BABYLON.Scene) => {
+    (scn: Scene) => {
       // Outer glass sphere
-      const outerSphere = BABYLON.MeshBuilder.CreateSphere('aiSphereOuter', { diameter: 0.52, segments: 64 }, scn);
+      const outerSphere = MeshBuilder.CreateSphere('aiSphereOuter', { diameter: 0.52, segments: 64 }, scn);
       outerSphere.position.y = 0.4;
       outerSphereRef.current = outerSphere;
 
-      const glassMat = new BABYLON.PBRMaterial('glassMat', scn);
-      glassMat.albedoColor = new BABYLON.Color3(0.02, 0.04, 0.09);
+      const glassMat = new PBRMaterial('glassMat', scn);
+      glassMat.albedoColor = new Color3(0.02, 0.04, 0.09);
       glassMat.roughness = 0.02;
       glassMat.metallic = 0.05;
       glassMat.subSurface.isRefractionEnabled = true;
       glassMat.subSurface.indexOfRefraction = 1.52;
       glassMat.alpha = 0.3;
-      glassMat.transparencyMode = BABYLON.Material.MATERIAL_ALPHABLEND;
+      glassMat.transparencyMode = Material.MATERIAL_ALPHABLEND;
       outerSphere.material = glassMat;
       glassMatRef.current = glassMat;
 
       // Inner celestial nebula sphere
-      const innerSphere = BABYLON.MeshBuilder.CreateSphere('aiSphereInner', { diameter: 0.49, segments: 64 }, scn);
+      const innerSphere = MeshBuilder.CreateSphere('aiSphereInner', { diameter: 0.49, segments: 64 }, scn);
       innerSphere.position.y = 0.4;
       innerSphereRef.current = innerSphere;
 
@@ -101,10 +113,10 @@ export default function AISphere({ reducedMotion }: AISphereProps) {
           repeat: 1,
           ease: 'sine.inOut',
           onStart: () => {
-            glassMat.emissiveColor = new BABYLON.Color3(0.1, 0.4, 1.0);
+            glassMat.emissiveColor = new Color3(0.1, 0.4, 1.0);
           },
           onComplete: () => {
-            glassMat.emissiveColor = BABYLON.Color3.Black();
+            glassMat.emissiveColor = Color3.Black();
             glassMat.emissiveIntensity = 0;
           },
         },
@@ -184,7 +196,7 @@ export default function AISphere({ reducedMotion }: AISphereProps) {
 
         // Blue emissive pulse on glass
         if (glassMatRef.current) {
-          glassMatRef.current.emissiveColor = new BABYLON.Color3(0.1, 0.4, 1.0);
+          glassMatRef.current.emissiveColor = new Color3(0.1, 0.4, 1.0);
           gsap.fromTo(
             glassMatRef.current,
             { emissiveIntensity: 0 },
@@ -196,7 +208,7 @@ export default function AISphere({ reducedMotion }: AISphereProps) {
               ease: 'sine.inOut',
               onComplete: () => {
                 if (glassMatRef.current) {
-                  glassMatRef.current.emissiveColor = BABYLON.Color3.Black();
+                  glassMatRef.current.emissiveColor = Color3.Black();
                   glassMatRef.current.emissiveIntensity = 0;
                 }
                 // After the moment passes, entropy resumes
@@ -214,8 +226,8 @@ export default function AISphere({ reducedMotion }: AISphereProps) {
         if (innerMatRef.current) {
           innerMatRef.current.setFloat('u_cloud_density', 2.0);
           innerMatRef.current.setFloat('u_glow_intensity', 3.0);
-          innerMatRef.current.setColor3('u_color1', new BABYLON.Color3(0.03, 0.4, 1.0));
-          innerMatRef.current.setColor3('u_color2', new BABYLON.Color3(0.1, 0.8, 1.0));
+          innerMatRef.current.setColor3('u_color1', new Color3(0.03, 0.4, 1.0));
+          innerMatRef.current.setColor3('u_color2', new Color3(0.1, 0.8, 1.0));
         }
 
         // Dispatch event for gameboard overlay
@@ -230,8 +242,8 @@ export default function AISphere({ reducedMotion }: AISphereProps) {
           mat.setFloat('u_time', t);
           mat.setFloat('u_cloud_density', 2.5 + cur * 3.5);
           mat.setFloat('u_glow_intensity', 1.5 + cur * 2.5);
-          mat.setColor3('u_color1', new BABYLON.Color3(lerp(0.03, 0.9, cur), lerp(0.4, 0.2, cur), lerp(1.0, 0.1, cur)));
-          mat.setColor3('u_color2', new BABYLON.Color3(lerp(0.1, 1.0, cur), lerp(0.8, 0.4, cur), lerp(1.0, 0.2, cur)));
+          mat.setColor3('u_color1', new Color3(lerp(0.03, 0.9, cur), lerp(0.4, 0.2, cur), lerp(1.0, 0.1, cur)));
+          mat.setColor3('u_color2', new Color3(lerp(0.1, 1.0, cur), lerp(0.8, 0.4, cur), lerp(1.0, 0.2, cur)));
         }
 
         // Glass degradation
@@ -267,10 +279,10 @@ export default function AISphere({ reducedMotion }: AISphereProps) {
         // Remove this observer to prevent running on disposed meshes
         scene.onBeforeRenderObservable.remove(observer);
 
-        const emitPos = outerSphereRef.current?.position.clone() ?? BABYLON.Vector3.Zero();
+        const emitPos = outerSphereRef.current?.position.clone() ?? Vector3.Zero();
 
         // Create procedural particle texture (white circle on transparent)
-        const particleTex = new BABYLON.DynamicTexture('shatterTex', 64, scene, false);
+        const particleTex = new DynamicTexture('shatterTex', 64, scene, false);
         const texCtx = particleTex.getContext();
         texCtx.fillStyle = '#ffffff';
         texCtx.beginPath();
@@ -278,20 +290,20 @@ export default function AISphere({ reducedMotion }: AISphereProps) {
         texCtx.fill();
         particleTex.update();
 
-        const shatterParticles = new BABYLON.ParticleSystem('shatter', 1600, scene);
+        const shatterParticles = new ParticleSystem('shatter', 1600, scene);
         shatterParticles.particleTexture = particleTex;
         shatterParticles.emitter = emitPos;
         shatterParticles.minSize = 0.012;
         shatterParticles.maxSize = 0.11;
-        shatterParticles.color1 = new BABYLON.Color4(0.9, 0.3, 0.3, 1);
-        shatterParticles.color2 = new BABYLON.Color4(1.0, 0.6, 0.4, 1);
+        shatterParticles.color1 = new Color4(0.9, 0.3, 0.3, 1);
+        shatterParticles.color2 = new Color4(1.0, 0.6, 0.4, 1);
         shatterParticles.emitRate = 1200;
         shatterParticles.minLifeTime = 0.6;
         shatterParticles.maxLifeTime = 3.2;
-        shatterParticles.direction1 = new BABYLON.Vector3(-8, 4, -8);
-        shatterParticles.direction2 = new BABYLON.Vector3(8, 12, 8);
-        shatterParticles.gravity = new BABYLON.Vector3(0, -15, 0);
-        shatterParticles.createPointEmitter(new BABYLON.Vector3(-0.1, -0.1, -0.1), new BABYLON.Vector3(0.1, 0.1, 0.1));
+        shatterParticles.direction1 = new Vector3(-8, 4, -8);
+        shatterParticles.direction2 = new Vector3(8, 12, 8);
+        shatterParticles.gravity = new Vector3(0, -15, 0);
+        shatterParticles.createPointEmitter(new Vector3(-0.1, -0.1, -0.1), new Vector3(0.1, 0.1, 0.1));
         shatterParticles.start();
         shatterParticles.targetStopDuration = 2.8;
 

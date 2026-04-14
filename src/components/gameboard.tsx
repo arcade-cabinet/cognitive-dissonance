@@ -1,12 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import GameScene from '@/components/game-scene';
+import { useTrait, useWorld } from 'koota/react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import ATCShader from '@/components/ui/atc-shader';
 import { loadHighScore, saveHighScore } from '@/lib/high-score';
+import { Level } from '@/sim/world';
 import { useAudioStore } from '@/store/audio-store';
 import { useGameStore } from '@/store/game-store';
 import { useInputStore } from '@/store/input-store';
 import { useLevelStore } from '@/store/level-store';
 import { useSeedStore } from '@/store/seed-store';
+
+// Lazy-load GameScene so the Babylon chunk (~1.5MB gz) doesn't block the
+// initial paint. The "INITIALIZING CORE" overlay covers the load.
+const GameScene = lazy(() => import('@/components/game-scene'));
 
 export default function GameBoard() {
   // ── Overlay states ──
@@ -86,8 +91,11 @@ export default function GameBoard() {
   const [srAnnouncement, setSrAnnouncement] = useState('');
   const lastAnnouncedTension = useRef(0);
 
-  const tension = useLevelStore((s) => s.tension);
-  const coherence = useLevelStore((s) => s.coherence);
+  // Read tension reactively from Koota — same selector behavior as the
+  // shim, just one fewer translation layer.
+  const world = useWorld();
+  const level = useTrait(world, Level);
+  const tension = level?.tension ?? 0;
   const initialize = useAudioStore((s) => s.initialize);
   const _phase = useGameStore((s) => s.phase);
 
@@ -345,9 +353,12 @@ export default function GameBoard() {
         </div>
       )}
 
-      {/* 3D Game Layer */}
+      {/* 3D Game Layer — Suspense fallback is null because the loading
+          overlay above (z-40) covers everything until the scene is ready. */}
       <div className="absolute inset-0 z-10" style={{ touchAction: 'none' }}>
-        <GameScene coherence={coherence} reducedMotion={reducedMotion} />
+        <Suspense fallback={null}>
+          <GameScene reducedMotion={reducedMotion} />
+        </Suspense>
       </div>
     </div>
   );

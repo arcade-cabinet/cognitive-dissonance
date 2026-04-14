@@ -1,4 +1,4 @@
-import * as BABYLON from '@babylonjs/core';
+import { Mesh, MeshBuilder, type ShaderMaterial, Vector3 } from '@babylonjs/core';
 import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 import * as YUKA from 'yuka';
@@ -12,8 +12,8 @@ import { useLevelStore } from '@/store/level-store';
 import { useSeedStore } from '@/store/seed-store';
 
 interface Enemy {
-  mesh: BABYLON.Mesh;
-  material: BABYLON.ShaderMaterial;
+  mesh: Mesh;
+  material: ShaderMaterial;
   speed: number;
   isBoss: boolean;
   health: number;
@@ -58,15 +58,11 @@ export default function EnemySpawner() {
         const startZ = -2 + rng() * 4;
 
         const eid = enemyIdCounter.current++;
-        const plane = BABYLON.MeshBuilder.CreatePlane(
-          `enemy${eid}`,
-          { size: isBossWave && i === 0 ? 2.0 : 1.2 },
-          scene,
-        );
-        plane.position = new BABYLON.Vector3(startX, startY, startZ);
-        plane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+        const plane = MeshBuilder.CreatePlane(`enemy${eid}`, { size: isBossWave && i === 0 ? 2.0 : 1.2 }, scene);
+        plane.position = new Vector3(startX, startY, startZ);
+        plane.billboardMode = Mesh.BILLBOARDMODE_ALL;
 
-        let mat: BABYLON.ShaderMaterial;
+        let mat: ShaderMaterial;
         if (isBossWave && i === 0) {
           mat = createCrystallineCubeMaterial(scene);
           mat.setFloat('u_complexity', 5 + curTension * 5);
@@ -155,9 +151,9 @@ export default function EnemySpawner() {
             for (let s = 0; s < 2; s++) {
               const offset = s === 0 ? 0.3 : -0.3;
               const childId = enemyIdCounter.current++;
-              const childPlane = BABYLON.MeshBuilder.CreatePlane(`splitChild${childId}`, { size: 0.6 }, scene);
-              childPlane.position = new BABYLON.Vector3(splitPos.x + offset, splitPos.y, splitPos.z + offset);
-              childPlane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+              const childPlane = MeshBuilder.CreatePlane(`splitChild${childId}`, { size: 0.6 }, scene);
+              childPlane.position = new Vector3(splitPos.x + offset, splitPos.y, splitPos.z + offset);
+              childPlane.billboardMode = Mesh.BILLBOARDMODE_ALL;
 
               const childMat = createNeonRaymarcherMaterial(scene);
               childMat.setFloat('u_amount', 2);
