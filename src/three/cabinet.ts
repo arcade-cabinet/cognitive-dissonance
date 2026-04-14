@@ -134,6 +134,24 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     outerRadius: 0.6,
     position: new Vector3(0, 0.4, 0),
   });
+  // AI sphere collider — kinematic (stays fixed in space) so rain bounces
+  // off it. We flag it as an active-event collider so contacts trigger
+  // callbacks the render loop reads.
+  const sphereBody = physics.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0.4, 0));
+  const sphereCollider = physics.createCollider(
+    RAPIER.ColliderDesc.ball(0.6)
+      .setRestitution(0.45)
+      .setFriction(0.3)
+      .setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS)
+      .setContactForceEventThreshold(1.0),
+    sphereBody,
+  );
+  const sphereColliderHandle = sphereCollider.handle;
+  // Rapier's event queue — drain each step and count contacts that hit the
+  // sphere collider above. We throttle the tension bump so a stream of
+  // rain doesn't saturate tension instantly; ~0.02/impact, capped.
+  const eventQueue = new RAPIER.EventQueue(true);
+  let pendingSphereImpacts = 0;
   const skyRain = createSkyRain(scene, physics, {
     count: 160,
     // Recycle particles that bounce/roll off the platter. Platter top sits
@@ -208,13 +226,32 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     const maxSubsteps = 5;
     let steps = 0;
     while (physicsAccumulator >= physics.timestep && steps < maxSubsteps) {
-      physics.step();
+      physics.step(eventQueue);
+      // Drain contact-force events — anything touching the sphere collider
+      // counts as an impact for the tension bump downstream.
+      eventQueue.drainContactForceEvents((e) => {
+        if (e.collider1() === sphereColliderHandle || e.collider2() === sphereColliderHandle) {
+          pendingSphereImpacts++;
+        }
+      });
       physicsAccumulator -= physics.timestep;
       steps++;
     }
     if (physicsAccumulator > physics.timestep * maxSubsteps) {
       // We're falling way behind; drop the backlog rather than spiral.
       physicsAccumulator = 0;
+    }
+
+    // Apply accumulated sphere impacts. Each impact nudges tension up
+    // slightly — watching a rain cube hit the glass should *feel* like it
+    // matters. Cap per-frame application so a pile-up doesn't saturate.
+    if (pendingSphereImpacts > 0) {
+      const bump = Math.min(pendingSphereImpacts, 5) * 0.018;
+      kootaWorld.set(Level, (prev) => ({
+        ...prev,
+        tension: Math.min(1, prev.tension + bump),
+      }));
+      pendingSphereImpacts = 0;
     }
 
     // Nebula interior animation (skipped under reduced-motion).
