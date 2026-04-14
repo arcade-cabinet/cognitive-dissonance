@@ -1,19 +1,85 @@
 @import "tailwindcss";
 
+/*
+ * Cross-platform responsive scaling.
+ *
+ * Uses `100dvh` (dynamic viewport height) for mobile browsers that hide/show
+ * the address bar — avoids the footer bouncing around when scrolling. Falls
+ * back to 100vh on browsers without dvh support.
+ *
+ * `safe-area-inset-*` env vars expose notch/home-indicator padding on iOS.
+ * On Android (Capacitor), they're zero unless display-cutout is enabled.
+ */
+
 html,
 body {
   width: 100%;
-  height: 100%;
+  height: 100vh;
   margin: 0;
   padding: 0;
   overflow: hidden;
+  overscroll-behavior: none;
   background: #000;
   color: #fff;
   font-family: "Courier New", Courier, monospace;
+
+  /* Prevent iOS double-tap zoom / pinch on the game surface */
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
+@supports (height: 100dvh) {
+  html,
+  body {
+    height: 100dvh;
+  }
+}
+
+/* Game root container — fills viewport, respects safe areas via padding */
+.game-root {
+  width: 100%;
+  height: 100vh;
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+  box-sizing: border-box;
+  position: relative;
+}
+
+@supports (height: 100dvh) {
+  .game-root {
+    height: 100dvh;
+  }
+}
+
+/* Reactylon canvas — fills the game-root (inside safe areas) */
 #reactylon-canvas {
   width: 100%;
   height: 100%;
+  display: block;
   touch-action: none;
+}
+
+/*
+ * Orientation-specific tuning (use .cd-title class on overlay headings to opt in).
+ */
+.game-root .cd-title {
+  font-size: clamp(32px, 11vw, 92px);
+  letter-spacing: clamp(4px, 1.2vw, 12px);
+}
+
+.game-root .cd-subtitle {
+  font-size: clamp(14px, 3.5vw, 24px);
+}
+
+/* Tablet/landscape — normal game layout */
+@media (min-width: 600px) {
+  .game-root .cd-title {
+    font-size: 92px;
+    letter-spacing: 12px;
+  }
 }

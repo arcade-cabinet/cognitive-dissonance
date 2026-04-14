@@ -29,9 +29,6 @@ Thumbs.db
 *.swp
 *.swo
 
-# Expo
-.expo/
-
 # Playwright MCP
 .playwright-mcp/
 
@@ -44,7 +41,8 @@ playtest-*.png
 prototype-*.png
 game-*.png
 
-# Android
+# Capacitor native (generated, re-synced from web build)
+# Re-enable specific files once Capacitor is set up
 android/app/build/
 android/.gradle/
 local.properties
@@ -52,23 +50,13 @@ local.properties
 *.hprof
 .cxx/
 *.keystore
-!android/app/debug.keystore
-
-# iOS
-ios/Pods/
-ios/build/
+ios/App/Pods/
+ios/App/build/
 **/.xcode.env.local
 xcuserdata/
 DerivedData/
 *.xcuserstate
-
-# Ruby / CocoaPods
 /vendor/bundle/
-
-# Metro
-.metro-health-check*
-
-# Bundle artifacts
 *.jsbundle
 
 # Logs

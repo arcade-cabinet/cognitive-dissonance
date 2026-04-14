@@ -10,6 +10,13 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  // Cover the notch/home-indicator safe areas; we handle safe-area-inset CSS
+  // vars manually in components that need them (game canvas is full-bleed).
+  viewportFit: 'cover',
+  // Lock to black so the initial flash matches scene clear color
+  themeColor: '#000000',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

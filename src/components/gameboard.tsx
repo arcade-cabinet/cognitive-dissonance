@@ -44,6 +44,33 @@ export default function GameBoard() {
     return () => mq.removeEventListener('change', handleChange);
   }, []);
 
+  // ── Capacitor native init (iOS/Android only) ──
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { Capacitor } = await import('@capacitor/core');
+      if (!Capacitor.isNativePlatform() || cancelled) return;
+
+      // Hide splash screen once React has mounted
+      try {
+        const { SplashScreen } = await import('@capacitor/splash-screen');
+        await SplashScreen.hide({ fadeOutDuration: 400 });
+      } catch {
+        // Plugin not available in dev-web; ignore
+      }
+
+      // Set status bar style to match game aesthetic
+      try {
+        const { StatusBar, Style } = await import('@capacitor/status-bar');
+        await StatusBar.setStyle({ style: Style.Dark });
+        await StatusBar.setBackgroundColor({ color: '#000000' });
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // ── Screen reader live region ──
   const [srAnnouncement, setSrAnnouncement] = useState('');
   const lastAnnouncedTension = useRef(0);
@@ -218,7 +245,7 @@ export default function GameBoard() {
   }, []);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-black">
+    <div className="game-root relative overflow-hidden bg-black">
       {/* ATC Shader Background */}
       <ATCShader className="z-0" />
 
