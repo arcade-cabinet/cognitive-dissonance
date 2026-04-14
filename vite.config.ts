@@ -3,13 +3,11 @@ import react from '@vitejs/plugin-react';
 import { createLogger, defineConfig } from 'vite';
 
 /**
- * Vite config for Cognitive Dissonance.
+ * Vite config for Cognitive Dissonance (v4 — R3F stack).
  *
- * Uses @vitejs/plugin-react v4 with Babel — we need `babel-plugin-reactylon`
- * to register Babylon.js classes for lowercase JSX tags (<hemisphericLight>,
- * <arcRotateCamera>, etc.). plugin-react v6 dropped the babel.plugins option
- * (now SWC-only), so we stay on v4 until babel-plugin-reactylon ships an
- * SWC-compatible variant.
+ * Uses @vitejs/plugin-react v4. No custom Babel plugins needed — R3F's
+ * reconciler handles lowercase JSX tags internally; we just need the standard
+ * React JSX transform.
  *
  * GitHub Pages deploy: set `GITHUB_PAGES=true` so `base` becomes
  * `/cognitive-dissonance/`. Default build serves from root.
@@ -39,16 +37,7 @@ silentLogger.warn = (msg, ...rest) => {
 export default defineConfig({
   base: isGitHubPages ? `/${repoName}/` : '/',
   customLogger: silentLogger,
-  plugins: [
-    // @vitejs/plugin-react v4 uses Babel and exposes babel.plugins, which is
-    // what babel-plugin-reactylon needs to auto-register Babylon.js classes
-    // for lowercase JSX tags (<hemisphericLight>, <arcRotateCamera>, …).
-    react({
-      babel: {
-        plugins: ['babel-plugin-reactylon'],
-      },
-    }),
-  ],
+  plugins: [react()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
@@ -66,11 +55,18 @@ export default defineConfig({
     target: 'es2022',
     outDir: 'dist',
     sourcemap: false,
-    chunkSizeWarningLimit: 1500, // Babylon is large; we ship it as a single chunk
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/@babylonjs/')) return 'babylon';
+          if (id.includes('node_modules/three')) return 'three';
+          if (
+            id.includes('node_modules/@react-three') ||
+            id.includes('node_modules/three-stdlib') ||
+            id.includes('node_modules/postprocessing')
+          ) {
+            return 'r3f';
+          }
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) return 'react';
           if (id.includes('node_modules/tone')) return 'audio';
         },
@@ -79,18 +75,16 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: [
-      '@babylonjs/core',
-      // Reactylon imports @babylonjs/gui internally for its 3D GUI manager;
-      // even if we don't use GUI features in our JSX, the package needs to
-      // resolve at module-init time.
-      '@babylonjs/gui',
+      '@react-three/drei',
+      '@react-three/fiber',
       'gsap',
       'koota',
+      'postprocessing',
       'react',
       'react-dom',
-      'reactylon',
-      'reactylon/web',
       'seedrandom',
+      'three',
+      'three-stdlib',
       'tone',
       'yuka',
     ],
