@@ -1,3 +1,10 @@
+---
+title: Architecture
+updated: 2026-04-13
+status: current
+domain: technical
+---
+
 # Architecture — Cognitive Dissonance v2
 
 > **For design rationale**: See `DESIGN.md`

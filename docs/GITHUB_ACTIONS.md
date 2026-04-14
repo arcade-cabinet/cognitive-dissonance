@@ -1,3 +1,10 @@
+---
+title: GitHub Actions Workflow
+updated: 2026-04-13
+status: current
+domain: ops
+---
+
 # GitHub Actions Workflow Documentation
 
 This document describes the optimized GitHub Actions workflows and how to use them.
