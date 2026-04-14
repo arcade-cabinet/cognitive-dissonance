@@ -114,6 +114,11 @@ export default function GameBoard() {
 
   // ── Loading → Title sequence with proper cleanup ──
   useEffect(() => {
+    // Only run the boot sequence on initial title phase. If reducedMotion
+    // toggles mid-game (rare but possible), don't restart the title flow —
+    // gameplay should continue uninterrupted.
+    if (useGameStore.getState().phase !== 'title') return;
+
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     const startPlaying = () => useGameStore.getState().setPhase('playing');

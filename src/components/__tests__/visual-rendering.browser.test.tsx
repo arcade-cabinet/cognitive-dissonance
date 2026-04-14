@@ -62,10 +62,11 @@ function sampleBrightness(canvas: HTMLCanvasElement): {
   const w = canvas.width;
   const h = canvas.height;
   const samples = 16;
+  // Hoist the pixel buffer out of the nested loop — 225 allocations otherwise.
+  const px = new Uint8Array(4);
   let maxB = 0;
   for (let x = 1; x < samples; x++) {
     for (let y = 1; y < samples; y++) {
-      const px = new Uint8Array(4);
       const sx = Math.floor((x / samples) * w);
       const sy = Math.floor((y / samples) * h);
       gl.readPixels(sx, sy, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);

@@ -16,7 +16,12 @@
     </style>
 
 
+    <!-- Android 12+ Splash Screen API. `postSplashScreenTheme` is the theme
+         the app switches to once the splash screen dismisses; without it,
+         the launch theme persists and the app stays in splash mode. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/colorBlackBackground</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

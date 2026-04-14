@@ -60,7 +60,7 @@ describe('Full game loop', () => {
 
     // 3. Force shatter: set tension to 1.0 (triggers sphere shatter)
     useLevelStore.getState().setTension(1.0);
-    window.dispatchEvent(new CustomEvent('gameOver'));
+    globalThis.dispatchEvent(new CustomEvent('gameOver'));
     await harness.waitFrames(5);
 
     // 4. Verify gameover state — done via explicit phase change by gameboard

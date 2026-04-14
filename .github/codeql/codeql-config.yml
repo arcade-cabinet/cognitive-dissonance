@@ -1,16 +1,17 @@
 name: "Cognitive Dissonance CodeQL Config"
 
-# Exclude Android (Java/Kotlin) and iOS (Swift) from analysis.
-# This is a web game (Next.js 16 + Babylon.js). The android/ and ios/
-# directories are React Native scaffolding that needs full SDK setup
-# which is unavailable in CodeQL's autobuild environment.
+# Exclude Capacitor-generated native platform code from JS/TS analysis.
+# The android/ and ios/ directories hold the Capacitor wrapper projects;
+# they get analyzed via the `Analyze (java-kotlin)` job separately. The
+# build/ and dist/ outputs are generated artifacts. Tests and e2e specs
+# are excluded — they exercise security-sensitive paths intentionally
+# (eg. localStorage with malformed JSON) which would produce noise.
 
 paths-ignore:
   - android/**
   - ios/**
   - node_modules/**
-  - out/**
-  - .next/**
+  - dist/**
   - coverage/**
   - playwright-report/**
   - test-results/**

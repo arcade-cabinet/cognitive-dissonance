@@ -229,6 +229,9 @@ export default function EnemySpawner() {
     });
 
     const unsub = useSeedStore.subscribe(() => {
+      // New seed → discard current enemies. Only spawn a fresh wave if
+      // the game is actively playing; otherwise we'd populate the scene
+      // during title/loading and nothing would tick (phase-gated above).
       enemies.current.forEach((e) => {
         yukaManager.current.remove(e.yukaVehicle);
         e.mesh.dispose();
@@ -237,7 +240,9 @@ export default function EnemySpawner() {
       });
       enemies.current = [];
       scheduleWave();
-      spawnWave();
+      if (useGameStore.getState().phase === 'playing') {
+        spawnWave();
+      }
     });
 
     return () => {

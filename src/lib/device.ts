@@ -48,9 +48,14 @@ export async function detectDevice(): Promise<DeviceProfile> {
     else platform = 'web'; // electron/other native shells fall back to web
   }
 
-  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
-  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-  const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  // Cache window once — avoid repeated typeof checks. globalThis.window is
+  // undefined in non-browser runtimes (server, workers); the fallback values
+  // are sane defaults for SSR-hydration paths the game doesn't currently use
+  // but might in the future.
+  const w = typeof globalThis.window === 'undefined' ? null : globalThis.window;
+  const viewportWidth = w?.innerWidth ?? 1280;
+  const viewportHeight = w?.innerHeight ?? 800;
+  const pixelRatio = w?.devicePixelRatio || 1;
   const aspectRatio = viewportWidth / viewportHeight;
   const isPortrait = viewportHeight > viewportWidth;
 
@@ -70,7 +75,7 @@ export async function detectDevice(): Promise<DeviceProfile> {
   }
 
   const isMobile = formFactor !== 'desktop' || isNative;
-  const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || (navigator.maxTouchPoints ?? 0) > 0);
+  const isTouch = w !== null && ('ontouchstart' in w || (w.navigator.maxTouchPoints ?? 0) > 0);
 
   cachedProfile = {
     platform,
