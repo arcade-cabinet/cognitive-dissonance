@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { Color } from 'three';
 import AISphere from './components/ai-sphere';
 import CorruptionPass from './components/corruption-pass';
+import EmergentControls from './components/emergent-controls';
 import Platter from './components/platter';
 import SkyRain from './components/sky-rain';
 
@@ -51,6 +52,9 @@ export default function ThreeScene({ reducedMotion }: ThreeSceneProps) {
       <Platter />
       <AISphere reducedMotion={reducedMotion} />
       <SkyRain />
+
+      {/* Level-parameterized input controls — emerge through rim slits */}
+      <EmergentControls />
 
       {/* Postprocessing lives last so every effect wraps everything above. */}
       <CorruptionPass />

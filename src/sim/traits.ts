@@ -29,13 +29,62 @@ export const Game = trait({
   restartToken: 0,
 });
 
-/** Level progression, coherence, tension. Replaces useLevelStore. */
-export const Level = trait({
+/**
+ * Control kind emerging through the platter rim.
+ *
+ * The cabinet engine's input set is level-parameterized: each level
+ * declares a schema and the rim materialises matching controls.
+ */
+export type ControlKind = 'keycap' | 'handle' | 'slider';
+
+export interface ControlSpec {
+  kind: ControlKind;
+  /** Hex color on the emissive face — pattern palette / pair ids / etc. */
+  color: string;
+  /** Optional label rendered on the cap face. */
+  label?: string;
+  /** Paired controls (push/pull handles) share a pairId. */
+  pairId?: string;
+}
+
+/**
+ * Default pattern-match schema — 12 colored keycaps that mirror the original
+ * pattern-stabilization gameplay. Any level can override this field.
+ */
+const DEFAULT_PATTERN_SCHEMA: ControlSpec[] = [
+  '#f87171',
+  '#fbbf24',
+  '#facc15',
+  '#a3e635',
+  '#34d399',
+  '#22d3ee',
+  '#60a5fa',
+  '#818cf8',
+  '#c084fc',
+  '#f472b6',
+  '#fb7185',
+  '#fcd34d',
+].map((color) => ({ kind: 'keycap', color }) as ControlSpec);
+
+/**
+ * Level progression, coherence, tension, and CABINET ENGINE parameters.
+ *
+ * Each level declares:
+ *  - inputSchema — what emerges from the rim slits
+ *  - rotation — platter spin direction + speed (rad/sec)
+ *  - wobble — destabilization amplitude (rad, scaled by tension^2 at runtime)
+ *
+ * Replaces useLevelStore.
+ */
+export const Level = trait(() => ({
   currentLevel: 1,
   coherence: 25,
   peakCoherence: 25,
   tension: 0.12,
-});
+  inputSchema: DEFAULT_PATTERN_SCHEMA as ControlSpec[],
+  rotation: { direction: 1 as 1 | -1, speedRad: 0.165 },
+  wobble: { maxTiltRad: 0.12, tensionCoupling: 2.0 },
+}));
 
 /** Deterministic seed + RNG. Replaces useSeedStore.
  *  Callback-based (AoS) because seedrandom creates a stateful closure. */
