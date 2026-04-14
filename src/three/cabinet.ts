@@ -189,10 +189,13 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
   window.addEventListener('gameOver', onGameOver);
 
   const initialSchema = kootaWorld.get(Level)?.inputSchema ?? [];
+  // Parent controls to the platter so they inherit rotation + wobble.
+  // rimY is now local to the platter's origin (was world-space when scene-parented).
   let emergentControls = createEmergentControls(scene, {
     schema: initialSchema,
     rimRadius: 1.45,
-    rimY: platter.group.position.y + 0.2,
+    rimY: 0.2,
+    parent: platter.group,
   });
   let emergeFn: ((elapsed: number) => boolean) | null = emergentControls.emerge(1.6, 0.12);
   let emergeStart = performance.now() / 1000;
@@ -220,7 +223,8 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     emergentControls = createEmergentControls(scene, {
       schema,
       rimRadius: 1.45,
-      rimY: platter.group.position.y + 0.2,
+      rimY: 0.2,
+      parent: platter.group,
     });
     emergeFn = emergentControls.emerge(1.6, 0.12);
     emergeStart = performance.now() / 1000;

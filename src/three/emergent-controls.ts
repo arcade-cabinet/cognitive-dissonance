@@ -30,6 +30,7 @@ import {
   MathUtils,
   type Mesh,
   MeshStandardMaterial,
+  type Object3D,
   type Scene,
   Vector3,
 } from 'three';
@@ -50,12 +51,20 @@ export interface EmergentControlsOptions {
   schema: ControlSpec[];
   /** Platter rim radius — controls sit along this circle. */
   rimRadius?: number;
-  /** Y position of the rim surface (slits open here). */
+  /** Y position of the rim surface (slits open here). Local to `parent`. */
   rimY?: number;
   /** Angular span in radians the controls fan across (default: full circle). */
   arcRadians?: number;
   /** Start angle for the arc. */
   arcStart?: number;
+  /**
+   * Parent for the rig group. Defaults to the scene. Pass the platter group
+   * to make controls inherit platter rotation + wobble — pointer raycasting
+   * follows automatically because three's intersect uses world matrices.
+   * When parented to the platter, `rimY` is interpreted relative to the
+   * platter's local origin.
+   */
+  parent?: Object3D;
 }
 
 export interface EmergedControl {
@@ -89,10 +98,7 @@ export interface EmergentControls {
 const HOUSING_DEPTH = 0.18; // how far below rim the control hides
 const CONTROL_TRAVEL = 0.08; // physical press travel when user pushes
 
-function makeControlMesh(
-  spec: ControlSpec,
-  scene: Scene,
-): { mesh: Mesh; housing: Mesh; material: MeshStandardMaterial } {
+function makeControlMesh(spec: ControlSpec): { mesh: Mesh; housing: Mesh; material: MeshStandardMaterial } {
   const emissive = new THREE.Color(spec.color);
   const albedo = emissive.clone().multiplyScalar(0.3).addScalar(0.08);
 
@@ -130,16 +136,18 @@ function makeControlMesh(
   const housing = new THREE.Mesh(new BoxGeometry(0.14, HOUSING_DEPTH * 2, 0.14), housingMat);
   housing.position.y = -HOUSING_DEPTH;
 
-  scene.add(mesh); // mesh is later parented into the rim group
   return { mesh, housing, material };
 }
 
 export function createEmergentControls(scene: Scene, opts: EmergentControlsOptions): EmergentControls {
-  const { schema, rimRadius = 1.45, rimY = 0.2, arcRadians = Math.PI * 2, arcStart = 0 } = opts;
+  const { schema, rimRadius = 1.45, rimY = 0.2, arcRadians = Math.PI * 2, arcStart = 0, parent } = opts;
 
   const group = new THREE.Group();
   group.position.y = rimY;
-  scene.add(group);
+  // When parented to a moving rig (e.g. the platter group), the controls
+  // inherit its rotation and wobble — pointer raycasting follows because
+  // three's intersect walks each mesh's world matrix.
+  (parent ?? scene).add(group);
 
   const controls: EmergedControl[] = [];
   const n = schema.length;
@@ -149,7 +157,7 @@ export function createEmergentControls(scene: Scene, opts: EmergentControlsOptio
     // Even angular distribution across the requested arc.
     const t = n === 1 ? 0.5 : i / (n - 1);
     const angle = arcStart + t * arcRadians;
-    const { mesh, housing, material } = makeControlMesh(spec, scene);
+    const { mesh, housing, material } = makeControlMesh(spec);
 
     // Place on rim circle; start fully recessed (y = -HOUSING_DEPTH).
     const xz = new Vector3(Math.cos(angle) * rimRadius, 0, Math.sin(angle) * rimRadius);
@@ -200,7 +208,9 @@ export function createEmergentControls(scene: Scene, opts: EmergentControlsOptio
     emerge,
     setPressed,
     dispose() {
-      scene.remove(group);
+      // Detach from whichever parent (scene or platter group) we were
+      // attached to — see `parent` option.
+      group.removeFromParent();
       for (const c of controls) {
         (c.mesh.geometry as THREE.BufferGeometry).dispose();
         c.material.dispose();
