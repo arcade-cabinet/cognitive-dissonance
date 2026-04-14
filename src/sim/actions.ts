@@ -73,12 +73,13 @@ export function setTension(value: number): void {
 }
 
 export function resetLevel(): void {
-  world.set(Level, {
+  world.set(Level, (prev) => ({
+    ...prev,
     currentLevel: 1,
     coherence: 25,
     peakCoherence: 25,
     tension: 0.12,
-  });
+  }));
 }
 
 // ─── Seed / RNG ──────────────────────────────────────────────────────────────

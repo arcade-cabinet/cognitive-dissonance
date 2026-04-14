@@ -1,13 +1,17 @@
 import seedrandom from 'seedrandom';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useSeedStore } from '@/store/seed-store';
+import { Seed, world } from '@/sim/world';
 import { generateFromSeed } from '../seed-factory';
 
 describe('seed-factory', () => {
   beforeEach(() => {
     // Set a known seed for deterministic testing
-    const rng = seedrandom('test-seed-42');
-    useSeedStore.setState({ seedString: 'test-seed-42', rng, lastSeedUsed: 'test-seed-42' });
+    world.set(Seed, (prev) => ({
+      ...prev,
+      seedString: 'test-seed-42',
+      rng: seedrandom('test-seed-42'),
+      lastSeedUsed: 'test-seed-42',
+    }));
   });
 
   it('returns valid enemyConfig with required fields', () => {
@@ -24,7 +28,7 @@ describe('seed-factory', () => {
     const first = generateFromSeed();
 
     // Reset rng to same seed
-    useSeedStore.setState({ rng: seedrandom('test-seed-42') });
+    world.set(Seed, (prev) => ({ ...prev, rng: seedrandom('test-seed-42') }));
     const second = generateFromSeed();
 
     expect(first.enemyConfig.amount).toBe(second.enemyConfig.amount);

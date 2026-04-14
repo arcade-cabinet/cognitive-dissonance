@@ -5,13 +5,37 @@ status: current
 domain: product
 ---
 
-# Design Vision — Cognitive Dissonance v2
+# Design Vision — Cognitive Dissonance v4
 
 > Design vision and visual language for Cognitive Dissonance.
 
 ## Core Vision
 
 You are holding a fragile glass AI mind together as its own thoughts try to escape.
+
+## The Cabinet Engine (Architectural North Star)
+
+Cognitive Dissonance is not *a game* — it is a **cabinet engine**. The chassis is fixed: heavy industrial platter, recessed glass AI sphere at centre, machined rim with input slits, overhead sky that rains digital debris. That chassis never changes.
+
+What changes is **what emerges through the rim slits**. Each level declares an *input schema* and the cabinet materialises matching controls:
+
+- Pattern-match level → N colored keycaps
+- Push/pull level → paired push-me / pull-me handles
+- Sequence level → numbered keys
+- Hybrid → any combination
+
+The platter-plus-emergent-controls substrate means any arcade-style mini-game can be expressed as a level. The glass sphere / nebula / tension / sky-rain are shared state across every game. **One cabinet, many games.**
+
+### The Emergence Animation IS the Landing
+
+There is no landing page, no menu, no "New Game / Continue" dialog. The cabinet itself is the menu:
+
+- Boot shows a brief "INITIALIZING CORE" text flash while WebGL warms up (<2s)
+- Platter fades in, keycaps rise through rim slits in a staggered mechanical sequence
+- *Which* controls emerge tells the player what this level is before the first input is possible
+- Pressing any keycap starts the run; the centre keycap pauses
+
+The game uses no UI framework. The entire UX is the three.js scene (one Scene, procedurally populated) plus a single boot overlay that cross-fades out. Browser mouse/keyboard/touch events drive Koota state directly. Diegetic labels on the rim and keycap faces use three-text (SDF glyphs that stay crisp under post-process corruption).
 
 ## Visual Composition
 
