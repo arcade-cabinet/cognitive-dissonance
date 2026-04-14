@@ -44,7 +44,7 @@ export default defineConfig({
       // must appear. Prevents masking unrelated TypeError null-derefs.
       const isBabylonTeardownRace =
         msg.includes("reading 'postProcessManager'") &&
-        /@babylonjs|envTextureLoader|EnvironmentHelper|environmentTextures|EnvironmentTexture/i.test(
+        /@babylonjs|envTextureLoader|rgbdTextureTools|EnvironmentHelper|environmentTextures|EnvironmentTexture|Effect\.executeWhenCompiled/i.test(
           stack,
         );
       if (isBabylonTeardownRace) return false;
@@ -78,9 +78,11 @@ export default defineConfig({
     // the vitest browser server.
     include: [
       '@babylonjs/core',
-      // babel-plugin-reactylon imports deep-path classes on demand; this one
-      // gets discovered mid-test-run otherwise and invalidates the cache.
+      // babel-plugin-reactylon imports deep-path classes on demand; these get
+      // discovered mid-test-run otherwise and invalidate the optimizer cache.
       '@babylonjs/core/Buffers/buffer.align',
+      '@babylonjs/core/Misc/environmentTextureTools',
+      '@babylonjs/core/Misc/rgbdTextureTools',
       '@babylonjs/gui',
       '@babylonjs/loaders',
       'gsap',
