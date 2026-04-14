@@ -23,6 +23,16 @@ export default defineConfig({
   test: {
     include: ['src/**/*.browser.test.tsx', 'src/**/*.browser.test.ts'],
     exclude: ['node_modules/**', 'e2e/**'],
+    // CI SwiftShader is slower than local ANGLE; give the Vite transform/
+    // optimize step headroom before declaring import timeouts.
+    testTimeout: 30_000,
+    hookTimeout: 60_000,
+    // Serialize test files — vitest browser mode otherwise triggers concurrent
+    // on-demand dep optimization that invalidates in-flight module fetches
+    // and causes random "Failed to fetch dynamically imported module" errors
+    // in CI (first cold run). Local reruns pass because the optimizer cache
+    // is warm; CI has no warm cache, so we need determinism here.
+    fileParallelism: false,
     // Suppress unhandled rejections from Babylon.js async texture loaders
     // (race between scene disposal and env texture async completion).
     // Very narrow match — only suppress the specific env-texture teardown race
@@ -63,13 +73,21 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
+    // Pre-bundle every heavy dep the test files import transitively, so the
+    // first test request doesn't serialize N cold module graph fetches over
+    // the vitest browser server.
     include: [
       '@babylonjs/core',
+      // babel-plugin-reactylon imports deep-path classes on demand; this one
+      // gets discovered mid-test-run otherwise and invalidates the cache.
+      '@babylonjs/core/Buffers/buffer.align',
+      '@babylonjs/gui',
+      '@babylonjs/loaders',
       'gsap',
       'gsap/CustomEase',
       'koota',
-      'react-dom/client',
       'react',
+      'react-dom/client',
       'react/jsx-dev-runtime',
       'reactylon',
       'reactylon/web',
