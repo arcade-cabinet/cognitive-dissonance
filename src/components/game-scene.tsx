@@ -76,12 +76,24 @@ export default function GameScene({ coherence, reducedMotion }: GameSceneProps) 
         onSceneReady={(scene) => {
           scene.clearColor = new BABYLON.Color4(0.04, 0.04, 0.06, 1);
 
-          // Create camera procedurally so it's active before first render commit
+          // Responsive camera: phone portrait needs more distance + top-down
+          // angle to fit the full platter, desktop/tablet landscape use the
+          // default 3/4 angle.
+          const engine = scene.getEngine();
+          const canvas = engine.getRenderingCanvas();
+          const w = canvas?.clientWidth ?? 1280;
+          const h = canvas?.clientHeight ?? 800;
+          const isPortrait = h > w;
+          const isNarrow = w < 600;
+
+          const radius = isPortrait && isNarrow ? 11 : 8;
+          const beta = isPortrait && isNarrow ? Math.PI / 2.5 : Math.PI / 3;
+
           const camera = new BABYLON.ArcRotateCamera(
             'camera',
             Math.PI / 4,
-            Math.PI / 3,
-            8,
+            beta,
+            radius,
             BABYLON.Vector3.Zero(),
             scene,
           );
@@ -89,7 +101,6 @@ export default function GameScene({ coherence, reducedMotion }: GameSceneProps) 
           camera.upperRadiusLimit = 18;
           camera.lowerBetaLimit = 0.1;
           camera.upperBetaLimit = Math.PI / 2.2;
-          const canvas = scene.getEngine().getRenderingCanvas();
           if (canvas) {
             camera.attachControl(canvas, true);
           }
