@@ -30,12 +30,13 @@ import {
   WebGLRenderer,
 } from 'three';
 import { RoomEnvironment } from 'three-stdlib';
-import { Input, Level } from '@/sim/world';
+import { Game, Input, Level } from '@/sim/world';
 import { type AICore, createAICore } from './ai-core';
 import { createEmergentControls, type EmergentControls } from './emergent-controls';
 import { createIndustrialPlatter, type IndustrialPlatter } from './industrial-platter';
 import { createPatternTrails, type PatternTrails } from './pattern-trails';
 import { CorruptionEffect } from './post-process-corruption';
+import { createShatter, type Shatter } from './shatter';
 import { createSkyRain, type SkyRain } from './sky-rain';
 
 export interface CabinetOptions {
@@ -53,6 +54,7 @@ export interface Cabinet {
   aiCore: AICore;
   skyRain: SkyRain;
   patternTrails: PatternTrails;
+  shatter: Shatter;
   /**
    * Current emergent-controls rig. Accessor (not bare property) because the
    * internal reference is swapped when Level.inputSchema changes — callers
@@ -94,9 +96,18 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
   const scene = new Scene();
   scene.background = new Color(0x0a0a0f);
 
-  const camera = new PerspectiveCamera(45, w / h, 0.1, 100);
-  camera.position.set(0, 1.8, 4.8);
-  camera.lookAt(0, -0.2, 0);
+  // Camera framing: classic arcade-cabinet three-quarter view. Low enough
+  // that the near half of the rim reads as a tall band (with etched text
+  // legible), elevated enough that you still see the top surface of the
+  // disc and the emerging keycaps. The sphere dominates the upper half
+  // of the frame.
+  //   - ~1.9m above the platter top surface
+  //   - ~5.2m back (more breathing room)
+  //   - Aimed slightly below the sphere so the rim text + platter top are
+  //     both visible with the sphere dominating the upper half.
+  const camera = new PerspectiveCamera(38, w / h, 0.1, 100);
+  camera.position.set(0, 1.9, 5.2);
+  camera.lookAt(0, 0.1, 0);
 
   // PMREM environment — procedural, no network.
   const pmrem = new PMREMGenerator(renderer);
@@ -159,6 +170,28 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     floorY: -2.0,
   });
   const patternTrails = createPatternTrails(scene, kootaWorld);
+  const shatter = createShatter(scene, physics, { origin: new Vector3(0, 0.4, 0) });
+
+  // Listen for the gameOver event (dispatched by the tension driver). When
+  // coherence hits zero we detonate the shatter pool and hide the intact
+  // AI core so the shards are visibly replacing the glass sphere.
+  let isShattered = false;
+  function onGameOver(): void {
+    if (isShattered) return;
+    isShattered = true;
+    aiCore.outerMesh.visible = false;
+    aiCore.innerMesh.visible = false;
+    shatter.explode();
+  }
+  // Bundled with `gameover` phase change in the sim; the DOM event fires
+  // slightly earlier than the world state update (same frame). We listen
+  // to the DOM event for immediate reaction.
+  window.addEventListener('gameOver', onGameOver);
+
+  // Reserved: track the last observed phase so we can react to transitions
+  // (e.g. play a whoosh sound when entering 'playing' from 'gameover').
+  // Currently unused — the shatter restore logic polls phase directly.
+  let _lastPhase: string | undefined = kootaWorld.get(Game)?.phase;
 
   const initialSchema = kootaWorld.get(Level)?.inputSchema ?? [];
   let emergentControls = createEmergentControls(scene, {
@@ -264,6 +297,21 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     // Pattern trails — read Koota pattern entities and draw.
     patternTrails.update();
 
+    // Shatter — only pushes body transforms when exploded. If the sim
+    // restart handler has moved us back to 'playing' after a shatter,
+    // restore the intact sphere. We check every frame instead of relying
+    // on a transition edge so programmatic resets via __fireGameOver that
+    // never set phase=gameover still recover cleanly.
+    shatter.update();
+    const phaseNow = kootaWorld.get(Game)?.phase;
+    _lastPhase = phaseNow;
+    if (phaseNow === 'playing' && isShattered) {
+      isShattered = false;
+      shatter.reset();
+      aiCore.outerMesh.visible = true;
+      aiCore.innerMesh.visible = true;
+    }
+
     // Emergent controls staggered emerge.
     if (emergeFn) {
       const elapsed = tNow - emergeStart;
@@ -291,6 +339,8 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
   }
 
   function dispose(): void {
+    window.removeEventListener('gameOver', onGameOver);
+    shatter.dispose();
     patternTrails.dispose();
     emergentControls.dispose();
     skyRain.dispose();
@@ -313,6 +363,7 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     aiCore,
     skyRain,
     patternTrails,
+    shatter,
     getEmergentControls: () => emergentControls,
     corruption,
     render,
