@@ -56,9 +56,6 @@ importers:
       three-stdlib:
         specifier: ^2.36.1
         version: 2.36.1(three@0.183.2)
-      three-text:
-        specifier: ^0.6.1
-        version: 0.6.1(react@19.2.5)(three@0.183.2)
       tone:
         specifier: ^15.1.22
         version: 15.1.22
@@ -747,10 +744,6 @@ packages:
     resolution: {integrity: sha512-VZznLgtwhn+Mact9tfiwx64fA9erHH/MCXEUfB/0bX/6Fz6ny5EGTXYltMocqg4xFAQZtnO3DHWWXi8RiuN7cQ==}
     engines: {node: 18 || 20 || >=22}
 
-  brotli-lib@0.0.7:
-    resolution: {integrity: sha512-ph4vAFd0gGa9nl94BeFLnjsWt3XfpRD6dPoUWPLrj3GO6qcx2pb7S/2O2zwxt2+a4Co5+cMBuPgj/N0zUo+pvw==}
-    engines: {node: '>=12'}
-
   buffer-crc32@0.2.13:
     resolution: {integrity: sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ==}
 
@@ -889,9 +882,6 @@ packages:
   gsap@3.15.0:
     resolution: {integrity: sha512-dMW4CWBTUK1AEEDeZc1g4xpPGIrSf9fJF960qbTZmN/QwZIWY5wgliS6JWl9/25fpTGJrMRtSjGtOmPnfjZB+A==}
 
-  harfbuzzjs@0.4.15:
-    resolution: {integrity: sha512-p1edvnlc+vpRe2kz7OKzcscf0gyFiDZpco+miDxAiiZ67cu1oNlbuOkmP/A/i1l/w938VrkF2FdZ8scNcnkPrQ==}
-
   has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
     engines: {node: '>=8'}
@@ -978,9 +968,6 @@ packages:
         optional: true
       react:
         optional: true
-
-  libtess-ts@0.0.1:
-    resolution: {integrity: sha512-LRLqhwT7Dtq2oaRlYE3zN0DTo0tZ4kcavr0aXM+cR/IHh6uyiowbBHAqKCttiUOu/jKxOZXgvM7y+waMaPrAJQ==}
 
   lightningcss-android-arm64@1.32.0:
     resolution: {integrity: sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg==}
@@ -1297,21 +1284,6 @@ packages:
     peerDependencies:
       three: '>=0.128.0'
 
-  three-text@0.6.1:
-    resolution: {integrity: sha512-r0J/m5qvxoDOpgvHIADhgu4UU0je2YhQtzzXgYAZrC/K//48xFzNvq1Sp4P8o71jkk5qUVaJmolx2IqCyGG1Zw==}
-    peerDependencies:
-      '@react-three/fiber': '>=8.0.0'
-      react: '>=17.0.0'
-      react-dom: '>=17.0.0'
-      three: '>=0.160.0'
-    peerDependenciesMeta:
-      '@react-three/fiber':
-        optional: true
-      react:
-        optional: true
-      react-dom:
-        optional: true
-
   three@0.183.2:
     resolution: {integrity: sha512-di3BsL2FEQ1PA7Hcvn4fyJOlxRRgFYBpMTcyOgkwJIaDOdJMebEFPA+t98EvjuljDx4hNulAGwF6KIjtwI5jgQ==}
 
@@ -1499,10 +1471,6 @@ packages:
     resolution: {integrity: sha512-hUrmaWBdVDcxvYqnyh09zunKzROWjbZTiNy8dBEjkS7ehEDQibXJ7XvlmtbwuTclUiIyN+CyXQD4Vmko8fNm8w==}
     engines: {node: '>=8'}
     hasBin: true
-
-  woff-lib@0.0.3:
-    resolution: {integrity: sha512-GHPHOEUL7A8EXRID4LWiMvEHc7Mag6SN43ly0+QIlrtHxslI09LOOPDAnenN19fO8mv1iguYDKsoGMzJmYMtNQ==}
-    engines: {node: '>=16'}
 
   wrap-ansi@7.0.0:
     resolution: {integrity: sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==}
@@ -2152,8 +2120,6 @@ snapshots:
     dependencies:
       balanced-match: 4.0.4
 
-  brotli-lib@0.0.7: {}
-
   buffer-crc32@0.2.13: {}
 
   chai@6.2.2: {}
@@ -2267,8 +2233,6 @@ snapshots:
 
   gsap@3.15.0: {}
 
-  harfbuzzjs@0.4.15: {}
-
   has-flag@4.0.0: {}
 
   html-encoding-sniffer@6.0.0:
@@ -2352,8 +2316,6 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.14
       react: 19.2.5
-
-  libtess-ts@0.0.1: {}
 
   lightningcss-android-arm64@1.32.0:
     optional: true
@@ -2651,15 +2613,6 @@ snapshots:
       potpack: 1.0.2
       three: 0.183.2
 
-  three-text@0.6.1(react@19.2.5)(three@0.183.2):
-    dependencies:
-      harfbuzzjs: 0.4.15
-      libtess-ts: 0.0.1
-      three: 0.183.2
-      woff-lib: 0.0.3
-    optionalDependencies:
-      react: 19.2.5
-
   three@0.183.2: {}
 
   through2@4.0.2:
@@ -2784,10 +2737,6 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
-
-  woff-lib@0.0.3:
-    dependencies:
-      brotli-lib: 0.0.7
 
   wrap-ansi@7.0.0:
     dependencies:

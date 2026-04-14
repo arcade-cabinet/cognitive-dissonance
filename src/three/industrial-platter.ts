@@ -15,12 +15,58 @@
  */
 
 import * as THREE from 'three';
-import { CylinderGeometry, type Group, type Mesh, MeshPhysicalMaterial, type Scene, Vector3 } from 'three';
+import {
+  CanvasTexture,
+  CylinderGeometry,
+  type Group,
+  type Mesh,
+  MeshPhysicalMaterial,
+  RepeatWrapping,
+  type Scene,
+  Vector3,
+} from 'three';
 
 export interface PlatterOptions {
   position?: Vector3;
   /** 0-1 tension drives rim emissive intensity and recess glow shift. */
   tension?: number;
+  /** Diegetic rim text, repeats around the circumference. */
+  rimText?: string;
+}
+
+/**
+ * Paint a rim-text canvas. Wide strip so the text repeats around the rim
+ * cylinder. Stark white-on-black so the emissive map reads cleanly when
+ * the rim material modulates it with its emissive color + intensity.
+ */
+function makeRimTextTexture(text: string): CanvasTexture {
+  const width = 2048;
+  const height = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 56px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Separator glyph + spaces so the phrase reads as repeating etching.
+    const unit = `  ${text}  ·  `;
+    // Render 4 copies across the canvas so seams hide when the texture
+    // wraps — each copy sits at 1/4 offsets.
+    for (let i = 0; i < 4; i++) {
+      ctx.fillText(unit, (width * (i + 0.5)) / 4, height / 2);
+    }
+  }
+  const tex = new CanvasTexture(canvas);
+  tex.wrapS = RepeatWrapping;
+  tex.wrapT = RepeatWrapping;
+  tex.anisotropy = 4;
+  tex.needsUpdate = true;
+  return tex;
 }
 
 export interface IndustrialPlatter {
@@ -35,11 +81,8 @@ export interface IndustrialPlatter {
   dispose(): void;
 }
 
-const RIM_CALM = new THREE.Color(0x001a33);
-const RIM_CRISIS = new THREE.Color(0x992211);
-
 export function createIndustrialPlatter(scene: Scene, opts: PlatterOptions = {}): IndustrialPlatter {
-  const { position = new Vector3(0, 0, 0), tension = 0 } = opts;
+  const { position = new Vector3(0, 0, 0), tension = 0, rimText = 'MAINTAIN COHERENCE' } = opts;
 
   const group = new THREE.Group();
   group.position.copy(position);
@@ -59,18 +102,23 @@ export function createIndustrialPlatter(scene: Scene, opts: PlatterOptions = {})
   const base = new THREE.Mesh(baseGeom, baseMaterial);
   group.add(base);
 
-  // Rim — slightly raised outer band with emissive groove
-  const rimGeom = new CylinderGeometry(1.6, 1.6, 0.2, 128, 1, true); // open cylinder (side only)
+  // Rim — slightly raised outer band with emissive groove + etched text.
+  // Rim is tall enough to read the text legibly from the default camera.
+  const rimGeom = new CylinderGeometry(1.6, 1.6, 0.28, 128, 1, true); // open cylinder (side only)
+  const rimTextTex = makeRimTextTexture(rimText);
   const rimMaterial = new MeshPhysicalMaterial({
     color: 0x0f0f12,
     metalness: 0.96,
     roughness: 0.18,
-    emissive: RIM_CALM.clone(),
-    emissiveIntensity: 0.3,
+    // White emissive so the text map's white pixels render white-hot; the
+    // setTension() tint pushes the color + intensity at high tension.
+    emissive: 0xffffff,
+    emissiveIntensity: 0.35,
+    emissiveMap: rimTextTex,
     side: THREE.DoubleSide,
   });
   const rim = new THREE.Mesh(rimGeom, rimMaterial);
-  rim.position.y = 0.15;
+  rim.position.y = 0.19;
   group.add(rim);
 
   // Track — inner recess the sphere sits in
@@ -85,11 +133,16 @@ export function createIndustrialPlatter(scene: Scene, opts: PlatterOptions = {})
   track.position.y = 0.4;
   group.add(track);
 
+  // Calm uses a soft white so the text reads neutral; crisis swings it red.
+  const _rimCalm = new THREE.Color(0xccddff);
+  const _rimCrisis = new THREE.Color(0xff3322);
+
   function setTension(t: number): void {
     const c = Math.max(0, Math.min(1, t));
-    rimMaterial.emissive.copy(RIM_CALM).lerp(RIM_CRISIS, c);
-    rimMaterial.emissiveIntensity = 0.05 + c * 0.8;
-    // Metal gets slightly rougher under stress — thermal stress / wear
+    rimMaterial.emissive.copy(_rimCalm).lerp(_rimCrisis, c);
+    // Brighten overall emissive with tension so rim glows hotter.
+    rimMaterial.emissiveIntensity = 0.35 + c * 1.8;
+    // Metal gets slightly rougher under stress — thermal stress / wear.
     baseMaterial.roughness = 0.28 + c * 0.12;
   }
 
@@ -109,6 +162,7 @@ export function createIndustrialPlatter(scene: Scene, opts: PlatterOptions = {})
       baseGeom.dispose();
       rimGeom.dispose();
       trackGeom.dispose();
+      rimTextTex.dispose();
       baseMaterial.dispose();
       rimMaterial.dispose();
       trackMaterial.dispose();

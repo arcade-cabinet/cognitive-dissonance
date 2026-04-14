@@ -41,7 +41,6 @@
     "seedrandom": "^3.0.5",
     "three": "^0.183.2",
     "three-stdlib": "^2.36.1",
-    "three-text": "^0.6.1",
     "tone": "^15.1.22",
     "yuka": "^0.7.8"
   },
