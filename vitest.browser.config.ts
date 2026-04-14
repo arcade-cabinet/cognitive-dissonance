@@ -27,13 +27,11 @@ export default defineConfig({
       // biome-ignore lint/suspicious/noExplicitAny: type duplication from pnpm dedup
       provider: playwright({
         launchOptions: {
-          // Software WebGL via SwiftShader (for CI/xvfb where hardware GL is unavailable)
-          // + ANGLE as fallback. Matches flags used by Playwright's own test runner.
-          args: [
-            '--use-gl=swiftshader',
-            '--enable-unsafe-swiftshader',
-            '--disable-gpu-sandbox',
-          ],
+          // WebGL: SwiftShader (software) in CI/headless Linux, ANGLE on Mac/Windows.
+          // Both are Chromium-bundled software renderers — no hardware needed.
+          args: process.env.CI
+            ? ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--disable-gpu-sandbox']
+            : ['--use-gl=angle'],
         },
         // biome-ignore lint/suspicious/noExplicitAny: pnpm type dedup
       }) as any,
