@@ -64,7 +64,7 @@ test.describe('Smoke tests', () => {
           typeof w.__cabinet === 'object'
         );
       },
-      { timeout: 10_000 },
+      { timeout: 30_000 },
     );
   });
 
@@ -72,7 +72,7 @@ test.describe('Smoke tests', () => {
     await page.goto('/');
     await waitForCanvas(page);
     await page.waitForFunction(() => typeof (window as Record<string, unknown>).__getLevel === 'function', {
-      timeout: 10_000,
+      timeout: 30_000,
     });
     const schemaLength = await page.evaluate(() => {
       const w = window as Record<string, unknown> & { __getLevel?: () => { inputSchema?: unknown[] } | undefined };

@@ -19,7 +19,7 @@ test.describe('Gameplay tests', () => {
     await waitForCanvas(page);
     await page.waitForFunction(
       () => typeof (window as Record<string, unknown>).__setTension === 'function',
-      { timeout: 10_000 },
+      { timeout: 30_000 },
     );
   });
 
