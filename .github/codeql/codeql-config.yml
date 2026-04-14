@@ -1,0 +1,22 @@
+name: "Cognitive Dissonance CodeQL Config"
+
+# Exclude Android (Java/Kotlin) and iOS (Swift) from analysis.
+# This is a web game (Next.js 16 + Babylon.js). The android/ and ios/
+# directories are React Native scaffolding that needs full SDK setup
+# which is unavailable in CodeQL's autobuild environment.
+
+paths-ignore:
+  - android/**
+  - ios/**
+  - node_modules/**
+  - out/**
+  - .next/**
+  - coverage/**
+  - playwright-report/**
+  - test-results/**
+  - .vitest-attachments/**
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.browser.test.ts"
+  - "**/*.browser.test.tsx"
+  - e2e/**
