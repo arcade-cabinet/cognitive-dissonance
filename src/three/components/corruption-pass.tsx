@@ -9,10 +9,11 @@ import { CorruptionEffect } from '../post-process-corruption';
  * CorruptionPass — full-screen chromatic aberration / noise / vignette /
  * scanlines effect layered on top of the rendered scene.
  *
- * Implements R3F's render-take-over pattern: we own an EffectComposer and
- * replace R3F's default renderer invocation via setFrameloop + custom
- * render fn. The composer renders the scene THEN applies the corruption
- * effect.
+ * Pattern: useFrame at priority 1 takes over R3F's rendering. An
+ * EffectComposer owns the pipeline (RenderPass renders the scene into an
+ * internal target, then EffectPass applies corruption). Until the composer
+ * initializes on the next effect flush, we fall back to a direct
+ * renderer.render(scene, camera) so the first frame isn't black.
  *
  * Tension from Koota drives the effect intensity.
  */
@@ -30,6 +31,8 @@ export default function CorruptionPass() {
     const effect = new CorruptionEffect({ tension: 0, time: 0 });
     composer.addPass(new EffectPass(camera, effect));
 
+    composer.setSize(size.width, size.height);
+
     composerRef.current = composer;
     effectRef.current = effect;
 
@@ -38,26 +41,27 @@ export default function CorruptionPass() {
       composerRef.current = null;
       effectRef.current = null;
     };
-  }, [gl, scene, camera]);
+  }, [gl, scene, camera, size.width, size.height]);
 
-  // Keep composer size in sync with the canvas
-  useEffect(() => {
-    composerRef.current?.setSize(size.width, size.height);
-  }, [size.width, size.height]);
-
-  // Drive tension into the effect uniform
+  // Drive tension into the effect uniform whenever it changes.
   useEffect(() => {
     if (effectRef.current) {
       effectRef.current.tension = level?.tension ?? 0;
     }
   }, [level?.tension]);
 
-  // Render through the composer every frame, at priority 1 so it runs after
-  // all the scene updates. Returning non-zero priority means R3F hands over
-  // render control to us.
+  // Priority 1 means R3F hands rendering to us. If the composer isn't ready
+  // yet (first frame before the init effect runs), fall back to a direct
+  // render so the screen isn't black.
   useFrame((_state, dt) => {
-    if (effectRef.current) effectRef.current.time += dt;
-    composerRef.current?.render(dt);
+    const composer = composerRef.current;
+    const effect = effectRef.current;
+    if (effect) effect.time += dt;
+    if (composer) {
+      composer.render(dt);
+    } else {
+      gl.render(scene, camera);
+    }
   }, 1);
 
   return null;

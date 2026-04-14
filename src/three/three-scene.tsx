@@ -1,7 +1,8 @@
-import { Environment, PerspectiveCamera } from '@react-three/drei';
-import { Canvas } from '@react-three/fiber';
-import { Suspense } from 'react';
-import { Color } from 'three';
+import { PerspectiveCamera } from '@react-three/drei';
+import { Canvas, useThree } from '@react-three/fiber';
+import { useEffect } from 'react';
+import { Color, PMREMGenerator } from 'three';
+import { RoomEnvironment } from 'three-stdlib';
 import AISphere from './components/ai-sphere';
 import CorruptionPass from './components/corruption-pass';
 import EmergentControls from './components/emergent-controls';
@@ -10,6 +11,37 @@ import SkyRain from './components/sky-rain';
 
 interface ThreeSceneProps {
   reducedMotion: boolean;
+}
+
+/**
+ * Procedural environment — no network fetches. drei's <Environment preset=">
+ * uses remote HDR assets which CSP blocks; this generates a PMREM cubemap
+ * from RoomEnvironment at mount time.
+ */
+/** Aim the camera at the AI sphere (just above platter surface). */
+function CameraAim() {
+  const { camera } = useThree();
+  useEffect(() => {
+    camera.lookAt(0, -0.2, 0);
+    camera.updateProjectionMatrix();
+  }, [camera]);
+  return null;
+}
+
+function ProceduralEnvironment() {
+  const { gl, scene } = useThree();
+  useEffect(() => {
+    const pmrem = new PMREMGenerator(gl);
+    const room = new RoomEnvironment();
+    const envMap = pmrem.fromScene(room, 0.04).texture;
+    scene.environment = envMap;
+    return () => {
+      scene.environment = null;
+      envMap.dispose();
+      pmrem.dispose();
+    };
+  }, [gl, scene]);
+  return null;
 }
 
 /**
@@ -36,12 +68,11 @@ export default function ThreeScene({ reducedMotion }: ThreeSceneProps) {
         scene.background = new Color(0x0a0a0f);
       }}
     >
-      <PerspectiveCamera makeDefault fov={45} position={[4, 3, 5]} near={0.1} far={100} />
+      <PerspectiveCamera makeDefault fov={45} position={[0, 1.8, 4.8]} near={0.1} far={100} />
+      <CameraAim />
 
       {/* PMREM environment — feeds reflections on glass + platter. */}
-      <Suspense fallback={null}>
-        <Environment preset="studio" environmentIntensity={0.6} />
-      </Suspense>
+      <ProceduralEnvironment />
 
       {/* Key + fill + rim lights match the Babylon setup. */}
       <hemisphereLight args={[0xbbccff, 0x080810, 0.35]} />
