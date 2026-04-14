@@ -39,7 +39,12 @@ export default defineConfig({
     }),
   ],
   test: {
-    include: ['src/**/*.browser.test.tsx', 'src/**/*.browser.test.ts'],
+    include: [
+      'src/**/*.browser.test.tsx',
+      'src/**/*.browser.test.ts',
+      // Visual isolation research: standalone Three.js shader captures.
+      'research/**/*.browser.test.ts',
+    ],
     exclude: ['node_modules/**', 'e2e/**'],
     // CI SwiftShader is slower than local ANGLE; give the Vite transform/
     // optimize step headroom before declaring import timeouts.
@@ -111,6 +116,8 @@ export default defineConfig({
       'reactylon',
       'reactylon/web',
       'seedrandom',
+      'three',
+      'postprocessing',
       'yuka',
     ],
   },

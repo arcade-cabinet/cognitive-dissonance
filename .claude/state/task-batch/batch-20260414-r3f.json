@@ -1,0 +1,18 @@
+{
+  "batch_id": "batch-20260414-r3f",
+  "input_path": "docs/MIGRATION_PLAN_R3F.md",
+  "started_at": "2026-04-14T13:45:00Z",
+  "last_updated_at": "2026-04-14T13:45:00Z",
+  "current_task_id": "54",
+  "completed": [],
+  "pending": [
+    { "id": "54", "description": "Phase 0: Scaffold R3F branch + deps", "dependencies": [], "retry_count": 0 },
+    { "id": "55", "description": "Phase 1: Port cabinet chassis to R3F", "dependencies": ["54"], "retry_count": 0 },
+    { "id": "56", "description": "Phase 2: Emergent controls rig", "dependencies": ["55"], "retry_count": 0 },
+    { "id": "57", "description": "Phase 3: Gameplay adjustments", "dependencies": ["56"], "retry_count": 0 },
+    { "id": "58", "description": "Phase 4: Remove Babylon entirely", "dependencies": ["57"], "retry_count": 0 },
+    { "id": "59", "description": "Phase 5: Test + ship v4.0.0", "dependencies": ["58"], "retry_count": 0 }
+  ],
+  "failed": [],
+  "config": { "stop_on_failure": false, "max_retries": 3 }
+}

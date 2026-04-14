@@ -13,6 +13,21 @@ domain: product
 
 You are holding a fragile glass AI mind together as its own thoughts try to escape.
 
+## The Cabinet Engine (Architectural North Star)
+
+Cognitive Dissonance is not *a game* — it is a **cabinet engine**. The chassis is fixed: heavy industrial platter, recessed glass AI sphere at centre, machined rim with input slits, overhead sky that rains digital debris. That chassis never changes.
+
+What changes is **what emerges through the rim slits**. Each level declares an *input schema* — a list of control types the level needs — and the cabinet materialises those controls with a mechanical emergence animation:
+
+- **Pattern-match level** → N colored keycaps (colors == pattern palette)
+- **Push / pull level** → paired push-me / pull-me handles
+- **Sequence level** → numbered keys
+- **Hybrid level** → any mix of the above
+
+The platter-plus-emergent-controls substrate means any arcade-style mini-game can be expressed as a level: pattern matching, rhythm, sequence memory, tug-of-war, precision timing — all rendered with the same diegetic vocabulary. The glass sphere / nebula / tension / sky-rain are shared state across every game. **One cabinet, many games.**
+
+This is why: visuals-are-critical (the chassis must feel *real* and *heavy* across every game mode), the rim-emergence animation is a signature moment (it's the cabinet telling you what this level *is*), and control types must be parameterised from day one (never hard-coded to "12 colored keycaps").
+
 ## Visual Composition
 
 The player sees a heavy industrial black metal platter lying flat, with a transparent glass sphere sitting in a recessed circular track at center. Inside the sphere, a celestial nebula shader evolves from calm blue through yellows/greens to violent reds as tension rises. Around the platter rim, mechanical keycaps emerge through garage-door slits with satisfying GSAP animations.
