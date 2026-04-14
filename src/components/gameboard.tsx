@@ -44,6 +44,21 @@ export default function GameBoard() {
     return () => mq.removeEventListener('change', handleChange);
   }, []);
 
+  // ── Expose zustand stores for E2E / dev diagnostics (never in production) ──
+  useEffect(() => {
+    if (typeof window === 'undefined' || process.env.NODE_ENV === 'production') return;
+    (window as unknown as { __stores: Record<string, unknown> }).__stores = {
+      game: useGameStore,
+      level: useLevelStore,
+      audio: useAudioStore,
+      input: useInputStore,
+      seed: useSeedStore,
+    };
+    return () => {
+      delete (window as unknown as { __stores?: Record<string, unknown> }).__stores;
+    };
+  }, []);
+
   // ── Capacitor native init (iOS/Android only) ──
   useEffect(() => {
     let cancelled = false;
