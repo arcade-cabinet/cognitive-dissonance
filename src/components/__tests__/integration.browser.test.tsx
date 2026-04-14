@@ -78,8 +78,9 @@ describe('Scene integration', () => {
     );
 
     // Render 30 frames manually - if anything throws, this fails
+    const scene = harness.scene;
     expect(() => {
-      for (let i = 0; i < 30; i++) harness!.scene.render();
+      for (let i = 0; i < 30; i++) scene.render();
     }).not.toThrow();
   });
 });

@@ -36,7 +36,7 @@ describe('Visual rendering', () => {
   });
 
   test('Empty scene renders only clear color (black)', async () => {
-    harness = await mountScene(<></>);
+    harness = await mountScene(null);
     await harness.waitFrames(5);
     harness.scene.render();
 

@@ -7,7 +7,7 @@
  * screenshot as a reference image via context.expect.soft.toMatchSnapshot.
  */
 
-import { afterEach, describe, test, expect } from 'vitest';
+import { afterEach, describe, expect, test } from 'vitest';
 import AISphere from '@/components/ai-sphere';
 import DiegeticGUI from '@/components/diegetic-gui';
 import EnemySpawner from '@/components/enemy-spawner';
