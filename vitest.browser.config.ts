@@ -26,6 +26,11 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 60_000,
     fileParallelism: false,
+    // In CI we skip the research/ isolation tests (darwin baselines don't
+    // match linux SwiftShader output). Once src/three/ component tests are
+    // authored this flag can come off; for now a zero-test run shouldn't
+    // fail the build.
+    passWithNoTests: true,
     browser: {
       enabled: true,
       headless: true,
