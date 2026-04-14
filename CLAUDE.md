@@ -38,63 +38,63 @@ pnpm cap:sync:android  # Build web + sync to android/
 
 ## Key Architecture Decisions
 
-- **Vite 8**: Bundler, dev server, static export. Client-side only — no SSR,
-  no routes. Migrated from Next.js 16 in v3 because Next's overhead wasn't
-  earning its keep.
-- **Babylon.js 8 + Reactylon 3.5**: Declarative React bindings for Babylon.
-- **babel-plugin-reactylon**: Auto-registers Babylon classes for lowercase
-  JSX tags. Runs inside `@vitejs/plugin-react` v4's Babel pass.
-- **Imperative mesh creation**: All 3D objects created in `useEffect`, not
-  JSX (except lights + camera).
-- **Render loop**: `scene.onBeforeRenderObservable.add(fn)` with cleanup in
-  the effect's teardown. Never driven by React render cycle.
-- **GSAP for animations**: `gsap.to(mesh.position, {...})` works natively
-  with Babylon's Vector3.
-- **CSP-safe shaders**: All GLSL in `BABYLON.Effect.ShadersStore` as static
-  string literals. CSP permits `wasm-unsafe-eval` (Havok physics) + `unsafe-eval`
-  (Koota JIT trait accessors).
-- **Koota ECS for state**: Single world holds global singleton traits (Game,
-  Level, Seed, Input, Audio) + entity traits (IsSphere/IsEnemy/IsPattern +
-  Position/Enemy/Pattern data). Replaces both Zustand and Miniplex in v3.
-- **Store shim layer**: `src/store/*-store.ts` preserves the Zustand call-site
-  API but routes through Koota. Keeps migration non-invasive.
-- **Tone.js exclusive**: Babylon audioEngine disabled, Tone.js handles all
-  sound.
-- **Biome 2.4**: Linting + formatting (replaced ESLint — single binary, zero
-  plugin deps).
+- **Cabinet engine framing** — see [STANDARDS.md](./STANDARDS.md) and
+  [docs/LORE.md](./docs/LORE.md). One chassis (platter, sphere, rain,
+  corruption); per-level variation through `Level.inputSchema` + a system in
+  `src/sim/systems/`. Never new render paths per game.
+- **Vite 8**: Bundler, dev server, static export to `dist/`. Client-side only —
+  no SSR, no routes.
+- **Raw three.js 0.183**: No UI framework wrapper. The cabinet renders to a
+  single canvas; the cabinet IS the menu.
+- **Render loop**: `requestAnimationFrame` calls `cabinet.render(dt)` from
+  `src/main.ts`. Never driven by any framework render cycle.
+- **Rapier3D physics**: WASM emitted via `vite-plugin-wasm`. Fixed 60Hz step
+  with substep accumulator (max 5 substeps/frame). Sphere is a kinematic
+  collider with `CONTACT_FORCE_EVENTS` so rain impacts can drive tension.
+- **GSAP for animations**: CustomEase for mechanical motion (keycaps, platter).
+- **CSP-safe shaders**: All GLSL lives as static string literals registered
+  with three's `ShaderMaterial`. CSP permits `wasm-unsafe-eval` (rapier) and
+  `unsafe-eval` (Koota JIT trait accessors).
+- **Koota ECS**: Single world owns both global singleton traits (Game, Level,
+  Seed, Input, Audio) and entity traits (IsSphere/IsEnemy/IsPattern +
+  Position/Enemy/Pattern data). Replaces Zustand and Miniplex.
+- **Tone.js exclusive**: All audio. First-gesture initialised from `boot/audio.ts`.
+- **Biome 2.4**: Linting + formatting.
 - **Capacitor 8.3**: Native iOS + Android by wrapping the Vite web build in
   a WebView. Not React Native.
 
 ## Conventions
 
-- Tailwind CSS 4 for 2D overlays
 - System monospace fonts (Courier New) — no external font dependencies
-- Lowercase Reactylon JSX tags: `<hemisphericLight>`, `<arcRotateCamera>`,
-  `<pointLight>`
-- `pnpm` package manager (no `packageManager` pin in package.json — CI
-  installs latest via `pnpm/action-setup@v6.0.0`'s `version: latest`)
-- All game code under `src/`; sim layer under `src/sim/`
+- `pnpm` package manager
+- All game code under `src/`; cabinet under `src/three/`; sim under `src/sim/`
 
 ## File Structure
 
 ```
-index.html       Vite HTML entry
+index.html       Vite HTML entry — single canvas, no DOM UI
 src/
-  main.tsx       React root (createRoot + GameBoard)
-  styles.css     Tailwind + global styles
-  components/    All game components (3D + 2D)
-  sim/           Koota world, traits, actions
+  main.ts        Entry — creates canvas, world, cabinet, rAF loop
+  three/         Cabinet pieces
+    cabinet.ts          orchestrator (scene/camera/physics/renderer/composer)
+    industrial-platter.ts
+    ai-core.ts          glass sphere + nebula shader
+    sky-rain.ts         rapier-driven debris pool
+    shatter.ts          48-shard glass pool for game-over
+    emergent-controls.ts level-parameterized control rig
+    pattern-trails.ts    visualises Pattern entities
+    post-process-corruption.ts
+  sim/           Koota world, traits, systems
     world.ts     createWorld() + Game/Level/Seed/Input/Audio singletons
-    traits.ts    All trait definitions (singleton + entity)
-    actions.ts   Discrete mutations (setPhase, setTension, generateNewSeed, ...)
-  store/         Koota-backed shims preserving Zustand API shape
-  game/          Miniplex-compat shim over Koota (world.add/remove)
-  lib/           Utilities + shader definitions (GLSL)
-  types/         TypeScript declarations
+    traits.ts    All trait definitions
+    actions.ts   Discrete mutations
+    systems/     pattern-stabilizer (30Hz), tension-driver (per-frame)
+  boot/          First-gesture audio + input + game-over listeners
+  lib/           Shader sources, RNG, math helpers
 e2e/             Playwright E2E tests (smoke, gameplay, governor)
 android/         Capacitor Android project (synced from dist/)
 ios/             Capacitor iOS project (synced from dist/)
-docs/            Architecture, design, deployment, state
+docs/            Architecture, design, lore, deployment, state
 ```
 
 ## Testing

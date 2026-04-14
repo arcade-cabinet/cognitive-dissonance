@@ -1,6 +1,6 @@
 ---
 title: Standards
-updated: 2026-04-13
+updated: 2026-04-14
 status: current
 domain: quality
 ---
@@ -10,6 +10,24 @@ domain: quality
 Non-negotiable rules for this codebase. Enforced by CI (Biome lint, TypeScript,
 Vitest, Playwright) and by reviewer judgment. A PR that violates any of these
 does not merge.
+
+## The Cabinet Engine (Architectural North Star)
+
+Cognitive Dissonance is **a cabinet engine, not a single game.** The chassis is
+fixed: industrial platter, recessed glass AI sphere, machined rim with input
+slits, postprocessed corruption sky. That chassis never changes.
+
+What changes per level is the **input schema** (`Level.inputSchema`) declared
+on the Koota world — and the cabinet materialises matching controls through
+the rim. One cabinet, many games. See [docs/LORE.md](./docs/LORE.md) for the
+full framing and [docs/DESIGN.md](./docs/DESIGN.md) for visual rules.
+
+This framing is load-bearing for every architectural choice:
+- Three.js + rapier are the chassis runtime — never coupled to a level.
+- New gameplay = a new `inputSchema` + a new system in `src/sim/systems/`.
+  Never a new render path, never a new scene, never a new entry point.
+- The platter, AI sphere, sky rain, corruption shader are **shared state**
+  consumed by every level. Don't fork them per-game.
 
 ## Code quality
 
@@ -49,30 +67,31 @@ The game's aesthetic is **diegetic, industrial, deliberate.** No exceptions.
 
 ## Architecture
 
-- **All 3D creation is imperative.** Declarative JSX for lights and cameras
-  only. Meshes, materials, particle systems, and shader materials are created
-  in `useEffect`, registered to the scene, and disposed in the cleanup
-  function. Reactylon's reconciler is not trusted with complex lifecycles.
-- **Render loop integration is via `scene.registerBeforeRender(fn)` /
-  `unregisterBeforeRender(fn)`.** Never via React's render cycle. The game
-  runs at engine framerate, independent of React commits.
-- **State in Zustand stores.** Game logic reads from stores inside the render
-  loop via `useGameStore.getState()` (the synchronous snapshot) — never via
-  hooks, which would couple frame updates to React commits.
-- **CSP-safe shaders.** All GLSL source lives in `BABYLON.Effect.ShadersStore`
-  as static string literals at module import time. No dynamic
-  `eval`-equivalents, no runtime shader construction from user input.
-- **Turbopack dev, Webpack prod.** Do not regress this — Babel (for
-  `babel-plugin-reactylon`) runs on user code in both modes; Next.js internals
-  always use SWC. Benchmarked dev startup: 440ms.
+- **Zero UI framework.** No React, no Vue, no Reactylon. The cabinet renders
+  via raw three.js into a single canvas; the cabinet IS the menu.
+  `src/three/cabinet.ts` owns the scene graph; `src/main.ts` owns the canvas
+  and the rAF loop.
+- **Render loop is rAF-driven.** `requestAnimationFrame` calls
+  `cabinet.render(dt)` which steps physics, advances Koota systems, and
+  composes the postprocessing pipeline. No React commit cycle to interfere.
+- **Physics is rapier3d.** Fixed 60Hz step with substep accumulator (max 5
+  substeps per frame). Kinematic colliders for the AI sphere; dynamic for sky
+  rain and shatter shards. WASM is emitted to `dist/assets/` via
+  `vite-plugin-wasm`.
+- **State is Koota ECS.** Singleton traits (`Game`, `Level`, `Input`, `Audio`,
+  `Seed`) on the world entity replace Zustand. Entity traits (`IsSphere`,
+  `Pattern`, `Position`, etc.) drive per-entity systems. Renderers query;
+  systems mutate.
+- **Shaders are static GLSL string literals.** Defined at module import time
+  in `src/lib/shaders/*` and registered with three's `ShaderMaterial`. No
+  runtime shader construction from user input — CSP must permit only
+  `wasm-unsafe-eval` (rapier) and `unsafe-eval` (Koota JIT trait accessors).
 
 ## Native (Capacitor)
 
-- **Capacitor wraps the web build.** Not React Native, not Cordova. The
-  `out/` directory from `next build` is the entire native app; Capacitor's
-  WebView loads `index.html` and the Capacitor plugins bridge to native APIs.
-- **Web build must produce `out/` with `output: 'export'`** when
-  `GITHUB_PAGES=true`. Static export is required for Capacitor to package it.
+- **Capacitor wraps the Vite static build.** The `dist/` directory from
+  `vite build` is the entire native app; Capacitor's WebView loads
+  `index.html` and the Capacitor plugins bridge to native APIs.
 - **Don't import native-only plugins unconditionally.** Use
   `Capacitor.isNativePlatform()` to gate Device/Haptics/StatusBar calls so the
   same bundle runs on web without crashing.
