@@ -9,9 +9,9 @@ import { useInputStore } from '@/store/input-store';
 import { useLevelStore } from '@/store/level-store';
 import { useSeedStore } from '@/store/seed-store';
 
-// Lazy-load GameScene so the Babylon chunk (~1.5MB gz) doesn't block the
-// initial paint. The "INITIALIZING CORE" overlay covers the load.
-const GameScene = lazy(() => import('@/components/game-scene'));
+// Lazy-load ThreeScene so the three+R3F chunk doesn't block the initial
+// paint. The "INITIALIZING CORE" overlay covers the load.
+const GameScene = lazy(() => import('@/three/three-scene'));
 
 export default function GameBoard() {
   // ── Overlay states ──
