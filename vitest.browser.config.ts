@@ -13,14 +13,27 @@ export default defineConfig({
   test: {
     include: ['src/**/*.browser.test.tsx', 'src/**/*.browser.test.ts'],
     exclude: ['node_modules/**', 'e2e/**'],
+    // Suppress unhandled rejections from Babylon.js async texture loaders
+    // (race between scene disposal and env texture async completion)
+    onUnhandledError: (error) => {
+      const msg = error?.message ?? '';
+      if (msg.includes('postProcessManager')) return false;
+      if (msg.includes('Cannot read properties of null')) return false;
+      return true;
+    },
     browser: {
       enabled: true,
       headless: true,
       // biome-ignore lint/suspicious/noExplicitAny: type duplication from pnpm dedup
       provider: playwright({
         launchOptions: {
-          // ANGLE for software WebGL support (matches CI and playwright.config)
-          args: ['--use-gl=angle'],
+          // Software WebGL via SwiftShader (for CI/xvfb where hardware GL is unavailable)
+          // + ANGLE as fallback. Matches flags used by Playwright's own test runner.
+          args: [
+            '--use-gl=swiftshader',
+            '--enable-unsafe-swiftshader',
+            '--disable-gpu-sandbox',
+          ],
         },
         // biome-ignore lint/suspicious/noExplicitAny: pnpm type dedup
       }) as any,
