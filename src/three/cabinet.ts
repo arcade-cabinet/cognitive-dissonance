@@ -188,11 +188,6 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
   // to the DOM event for immediate reaction.
   window.addEventListener('gameOver', onGameOver);
 
-  // Reserved: track the last observed phase so we can react to transitions
-  // (e.g. play a whoosh sound when entering 'playing' from 'gameover').
-  // Currently unused — the shatter restore logic polls phase directly.
-  let _lastPhase: string | undefined = kootaWorld.get(Game)?.phase;
-
   const initialSchema = kootaWorld.get(Level)?.inputSchema ?? [];
   let emergentControls = createEmergentControls(scene, {
     schema: initialSchema,
@@ -304,7 +299,6 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     // never set phase=gameover still recover cleanly.
     shatter.update();
     const phaseNow = kootaWorld.get(Game)?.phase;
-    _lastPhase = phaseNow;
     if (phaseNow === 'playing' && isShattered) {
       isShattered = false;
       shatter.reset();

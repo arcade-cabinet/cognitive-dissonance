@@ -50,11 +50,15 @@ const TMP_QUAT = new Quaternion();
 const TMP_SCALE = new Vector3();
 const PARK_Y = -100;
 const SHARD_COLOR = new Color(0.35, 0.6, 1.0); // cold glass-blue
+const HIDDEN_COLOR = new Color(0, 0, 0);
+// Park matrix for hidden shards — composed once, reused across reset() calls.
+const PARK_MATRIX = new Matrix4().makeTranslation(0, PARK_Y, 0);
 
 export function createShatter(scene: Scene, physics: RAPIER.World, opts: ShatterOptions = {}): Shatter {
   const { origin = new Vector3(0, 0.4, 0), count = 48, burstSpeed = 5.5 } = opts;
 
-  const geometry = new BoxGeometry(0.08, 0.08, 0.08);
+  // Unit cube — per-shard `size` is applied via TMP_SCALE so visual matches collider.
+  const geometry = new BoxGeometry(1, 1, 1);
   const material = new MeshPhysicalMaterial({
     color: 0xaaccff,
     metalness: 0.1,
@@ -81,6 +85,9 @@ export function createShatter(scene: Scene, physics: RAPIER.World, opts: Shatter
 
   const shards: Shard[] = [];
   for (let i = 0; i < count; i++) {
+    // Pre-pick shard size so the collider half-extent matches the rendered scale.
+    const size = MathUtils.lerp(0.05, 0.12, Math.random());
+    const half = size * 0.5;
     const bodyDesc = RAPIER.RigidBodyDesc.dynamic()
       .setTranslation(0, PARK_Y, 0)
       .setGravityScale(0)
@@ -89,24 +96,18 @@ export function createShatter(scene: Scene, physics: RAPIER.World, opts: Shatter
       .setCanSleep(true);
     const body = physics.createRigidBody(bodyDesc);
     body.sleep();
-    const colliderDesc = RAPIER.ColliderDesc.cuboid(0.04, 0.04, 0.04)
+    const colliderDesc = RAPIER.ColliderDesc.cuboid(half, half, half)
       .setRestitution(0.5)
       .setFriction(0.4)
       .setDensity(0.3); // glass is light
     const collider = physics.createCollider(colliderDesc, body);
-    shards.push({ body, collider, color: SHARD_COLOR.clone(), size: 0.08 });
+    shards.push({ body, collider, color: SHARD_COLOR.clone(), size });
   }
 
   let exploded = false;
 
-  function writeInstance(i: number, visible: boolean): void {
+  function writeMatrix(i: number): void {
     const s = shards[i];
-    if (!visible) {
-      TMP_MATRIX.makeTranslation(0, PARK_Y, 0);
-      mesh.setMatrixAt(i, TMP_MATRIX);
-      mesh.setColorAt(i, new Color(0, 0, 0));
-      return;
-    }
     const pos = s.body.translation();
     const rot = s.body.rotation();
     TMP_POS.set(pos.x, pos.y, pos.z);
@@ -114,7 +115,11 @@ export function createShatter(scene: Scene, physics: RAPIER.World, opts: Shatter
     TMP_SCALE.setScalar(s.size);
     TMP_MATRIX.compose(TMP_POS, TMP_QUAT, TMP_SCALE);
     mesh.setMatrixAt(i, TMP_MATRIX);
-    mesh.setColorAt(i, s.color);
+  }
+
+  function parkInstance(i: number): void {
+    mesh.setMatrixAt(i, PARK_MATRIX);
+    mesh.setColorAt(i, HIDDEN_COLOR);
   }
 
   function explode(): void {
@@ -150,10 +155,10 @@ export function createShatter(scene: Scene, physics: RAPIER.World, opts: Shatter
         },
         true,
       );
-      s.size = MathUtils.lerp(0.05, 0.12, Math.random());
       s.body.setGravityScale(1, true);
       s.body.wakeUp();
-      writeInstance(i, true);
+      mesh.setColorAt(i, s.color);
+      writeMatrix(i);
     }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
@@ -168,16 +173,21 @@ export function createShatter(scene: Scene, physics: RAPIER.World, opts: Shatter
       s.body.setAngvel({ x: 0, y: 0, z: 0 }, false);
       s.body.setGravityScale(0, false);
       s.body.sleep();
-      writeInstance(i, false);
+      parkInstance(i);
     }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }
 
+  // Park all instances immediately so initial frames don't render uninitialized
+  // matrices as spurious unit cubes at the origin.
+  reset();
+
   function update(): void {
     if (!exploded) return;
+    // Colors are static after explode(); only rewrite matrices.
     for (let i = 0; i < count; i++) {
-      writeInstance(i, true);
+      writeMatrix(i);
     }
     mesh.instanceMatrix.needsUpdate = true;
   }
