@@ -119,10 +119,12 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
   physics.timestep = 1 / 60;
   physics.numSolverIterations = 4;
 
-  // Ground plane just below the platter so runaway bodies hit something
-  // and we can cull them (instead of falling forever through the void).
-  const floorBody = physics.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, -3, 0));
-  physics.createCollider(RAPIER.ColliderDesc.cuboid(20, 0.1, 20).setRestitution(0.05), floorBody);
+  // Platter-top surface collider. Sky rain lands on the disc and tumbles
+  // off; the sky rain cull check kicks in a half-meter below so particles
+  // that bounce off the edge have a grace zone before recycle.
+  const platterColliderY = -1.45; // matches IndustrialPlatter top-of-disc.
+  const floorBody = physics.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, platterColliderY, 0));
+  physics.createCollider(RAPIER.ColliderDesc.cylinder(0.16, 1.5).setRestitution(0.25).setFriction(0.6), floorBody);
 
   // ── Cabinet pieces ─────────────────────────────────────────────────────
   const platter = createIndustrialPlatter(scene, {
@@ -132,7 +134,12 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     outerRadius: 0.6,
     position: new Vector3(0, 0.4, 0),
   });
-  const skyRain = createSkyRain(scene, { count: 160 });
+  const skyRain = createSkyRain(scene, physics, {
+    count: 160,
+    // Recycle particles that bounce/roll off the platter. Platter top sits
+    // at -1.45; give a half-meter grace before culling.
+    floorY: -2.0,
+  });
   const patternTrails = createPatternTrails(scene, kootaWorld);
 
   const initialSchema = kootaWorld.get(Level)?.inputSchema ?? [];
