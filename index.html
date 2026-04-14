@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="bg-black">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-    <meta name="theme-color" content="#0a0a18" />
-    <meta name="description" content="Cognitive Dissonance: Defeat the hallucinations raining down on your AI before its head explodes." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Hold the fragile glass AI mind together as its own thoughts try to escape." />
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -18,8 +18,12 @@
     <!-- Note: Generate apple-touch-icon.png from icon.svg at 180x180px. See docs/APPLE_TOUCH_ICON.md -->
 
     <title>Cognitive Dissonance</title>
-    <!-- Security: Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:">
+    <!-- Security: Content Security Policy. Babylon.js needs wasm-unsafe-eval
+         for Havok physics compilation. Koota ECS uses JIT-compiled trait
+         accessors (performance-critical), so unsafe-eval is required.
+         Inline styles are used by Reactylon-generated canvas layout.
+         Data: images are Babylon's built-in texture defaults. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:">
   </head>
   <body>
     <div id="root"></div>

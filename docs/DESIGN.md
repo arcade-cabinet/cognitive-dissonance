@@ -1,3 +1,10 @@
+---
+title: Design Vision
+updated: 2026-04-13
+status: current
+domain: product
+---
+
 # Design Vision — Cognitive Dissonance v2
 
 > Design vision and visual language for Cognitive Dissonance.

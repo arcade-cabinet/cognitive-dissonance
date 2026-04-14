@@ -1,3 +1,10 @@
+---
+title: Apple Touch Icon
+updated: 2026-04-13
+status: current
+domain: ops
+---
+
 # Apple Touch Icon
 
 The `apple-touch-icon.png` is automatically generated from `icon.svg` using the Sharp library.

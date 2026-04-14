@@ -1,0 +1,23 @@
+name: "Cognitive Dissonance CodeQL Config"
+
+# Exclude Capacitor-generated native platform code from JS/TS analysis.
+# The android/ and ios/ directories hold the Capacitor wrapper projects;
+# they get analyzed via the `Analyze (java-kotlin)` job separately. The
+# build/ and dist/ outputs are generated artifacts. Tests and e2e specs
+# are excluded — they exercise security-sensitive paths intentionally
+# (eg. localStorage with malformed JSON) which would produce noise.
+
+paths-ignore:
+  - android/**
+  - ios/**
+  - node_modules/**
+  - dist/**
+  - coverage/**
+  - playwright-report/**
+  - test-results/**
+  - .vitest-attachments/**
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.browser.test.ts"
+  - "**/*.browser.test.tsx"
+  - e2e/**

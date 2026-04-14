@@ -1,5 +1,3 @@
-'use client';
-
 import * as BABYLON from '@babylonjs/core';
 import { Scene } from 'reactylon';
 import { Engine } from 'reactylon/web';
@@ -38,19 +36,7 @@ function SceneContent({ coherence, reducedMotion }: { coherence: number; reduced
         diffuse={new BABYLON.Color3(0.9, 0.9, 1.0)}
       />
 
-      {/* Camera */}
-      <arcRotateCamera
-        name="camera"
-        alpha={Math.PI / 4}
-        beta={Math.PI / 3}
-        radius={8}
-        target={BABYLON.Vector3.Zero()}
-        lowerRadiusLimit={4}
-        upperRadiusLimit={18}
-        lowerBetaLimit={0.1}
-        upperBetaLimit={Math.PI / 2.2}
-        setActiveOnSceneIfNoneActive
-      />
+      {/* Camera is created procedurally in onSceneReady to ensure it's active before first render */}
 
       {/* Core 3D elements (created imperatively) */}
       <AISphere reducedMotion={reducedMotion} />
@@ -87,6 +73,66 @@ export default function GameScene({ coherence, reducedMotion }: GameSceneProps) 
       <Scene
         onSceneReady={(scene) => {
           scene.clearColor = new BABYLON.Color4(0.04, 0.04, 0.06, 1);
+
+          const engine = scene.getEngine();
+          const canvas = engine.getRenderingCanvas();
+
+          const computeFraming = (): { radius: number; beta: number } => {
+            const w = canvas?.clientWidth ?? 1280;
+            const h = canvas?.clientHeight ?? 800;
+            const isPortrait = h > w;
+            const isNarrow = w < 600;
+            return {
+              radius: isPortrait && isNarrow ? 11 : 8,
+              beta: isPortrait && isNarrow ? Math.PI / 2.5 : Math.PI / 3,
+            };
+          };
+
+          const initial = computeFraming();
+          const camera = new BABYLON.ArcRotateCamera(
+            'camera',
+            Math.PI / 4,
+            initial.beta,
+            initial.radius,
+            BABYLON.Vector3.Zero(),
+            scene,
+          );
+          camera.lowerRadiusLimit = 4;
+          camera.upperRadiusLimit = 18;
+          camera.lowerBetaLimit = 0.1;
+          camera.upperBetaLimit = Math.PI / 2.2;
+          if (canvas) {
+            camera.attachControl(canvas, true);
+          }
+          scene.activeCamera = camera;
+
+          // Recompute framing on resize/rotation so phone portrait ↔ landscape
+          // doesn't leave the camera over-zoomed or clipped.
+          const onResize = () => {
+            const { radius, beta } = computeFraming();
+            camera.radius = radius;
+            camera.beta = beta;
+          };
+          const resizeObserver =
+            typeof window !== 'undefined' && window.ResizeObserver && canvas ? new ResizeObserver(onResize) : null;
+          if (resizeObserver && canvas) resizeObserver.observe(canvas);
+          if (typeof window !== 'undefined') window.addEventListener('orientationchange', onResize);
+
+          scene.onDisposeObservable.addOnce(() => {
+            if (resizeObserver) resizeObserver.disconnect();
+            if (typeof window !== 'undefined') window.removeEventListener('orientationchange', onResize);
+          });
+
+          // Expose scene for E2E/browser test diagnostics only in dev.
+          // Only clear the reference if this scene still owns it (protects
+          // against overlapping scene lifetimes during test teardown).
+          if (typeof globalThis !== 'undefined' && process.env.NODE_ENV !== 'production') {
+            const g = globalThis as unknown as { __scene?: BABYLON.Scene };
+            g.__scene = scene;
+            scene.onDisposeObservable.addOnce(() => {
+              if (g.__scene === scene) delete g.__scene;
+            });
+          }
         }}
       >
         <SceneContent coherence={coherence} reducedMotion={reducedMotion} />

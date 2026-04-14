@@ -25,7 +25,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm start --port 3000',
+    // Vite preview serves the static build produced by `pnpm build`.
+    // `pnpm test:e2e` runs `pnpm build` first, so dist/ exists.
+    command: 'pnpm exec vite preview --port 3000 --strictPort',
     port: 3000,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -1,5 +1,3 @@
-'use client';
-
 import type * as BABYLON from '@babylonjs/core';
 import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';

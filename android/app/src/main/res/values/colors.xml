@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cognitive Dissonance — matte black aesthetic.
+         The sphere is the focal point; the frame is meant to disappear. -->
+    <color name="colorPrimary">#000000</color>
+    <color name="colorPrimaryDark">#000000</color>
+    <color name="colorAccent">#4A8CC4</color>
+    <color name="colorBlackBackground">#000000</color>
+</resources>

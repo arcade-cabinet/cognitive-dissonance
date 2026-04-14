@@ -1,0 +1,102 @@
+---
+title: Standards
+updated: 2026-04-13
+status: current
+domain: quality
+---
+
+# Standards
+
+Non-negotiable rules for this codebase. Enforced by CI (Biome lint, TypeScript,
+Vitest, Playwright) and by reviewer judgment. A PR that violates any of these
+does not merge.
+
+## Code quality
+
+- **Max 300 LOC per file**, any language. Decompose by responsibility, not by
+  aesthetic preference. Enforced in review.
+- **Zero lint warnings, zero type errors.** `pnpm lint && pnpm exec tsc
+  --noEmit` must pass clean before push. No TypeScript `any` except when typing
+  unavoidable external surfaces (e.g., pnpm-dedupe'd Playwright provider).
+- **Tests required for new gameplay systems.** A new spawner, shader, or state
+  transition lands with either a unit test (pure logic) or a Vitest browser
+  component test (renders WebGL). Pure rendering polish (shader tweaks, gsap
+  tuning) is exempt — visual QA covers that.
+- **No stubs, no TODOs, no `pass` bodies.** If you can't finish a system in one
+  PR, decompose differently; don't merge placeholders.
+
+## Visual design
+
+The game's aesthetic is **diegetic, industrial, deliberate.** No exceptions.
+
+- **No HUD.** All state — tension, coherence, keycap status, spawn queue — is
+  conveyed via the fragile glass sphere and the heavy black metal platter.
+  There is no 2D overlay, no corner minimap, no health bar.
+- **Fonts: system monospace only** (Courier New fallback chain). No Google
+  Fonts, no custom webfonts, no font loading flash.
+- **Palette: two axes.**
+  - Calm: cool blues (#2a4a6e → #4a8cc4). Coherent sphere, idle platter.
+  - Crisis: angry reds (#8e2a2a → #c84a4a). Degrading sphere, boss spawns.
+  - Neutral: matte black (#000) for the cabinet, warm off-black (#0a0806) for
+    the platter.
+- **Animation curves:** GSAP CustomEase exclusively for mechanical movements
+  (garage-door keycaps, platter rotation). No generic ease-in-out cubics —
+  they feel synthetic, not machined.
+- **Lighting:** three-point setup. Key light warm-white from 3/4 angle, rim
+  light cool blue from behind, fill hemispheric low-intensity. No ambient
+  boost, no tone-mapped HDR — the scene is meant to feel physical, not
+  cinematic.
+
+## Architecture
+
+- **All 3D creation is imperative.** Declarative JSX for lights and cameras
+  only. Meshes, materials, particle systems, and shader materials are created
+  in `useEffect`, registered to the scene, and disposed in the cleanup
+  function. Reactylon's reconciler is not trusted with complex lifecycles.
+- **Render loop integration is via `scene.registerBeforeRender(fn)` /
+  `unregisterBeforeRender(fn)`.** Never via React's render cycle. The game
+  runs at engine framerate, independent of React commits.
+- **State in Zustand stores.** Game logic reads from stores inside the render
+  loop via `useGameStore.getState()` (the synchronous snapshot) — never via
+  hooks, which would couple frame updates to React commits.
+- **CSP-safe shaders.** All GLSL source lives in `BABYLON.Effect.ShadersStore`
+  as static string literals at module import time. No dynamic
+  `eval`-equivalents, no runtime shader construction from user input.
+- **Turbopack dev, Webpack prod.** Do not regress this — Babel (for
+  `babel-plugin-reactylon`) runs on user code in both modes; Next.js internals
+  always use SWC. Benchmarked dev startup: 440ms.
+
+## Native (Capacitor)
+
+- **Capacitor wraps the web build.** Not React Native, not Cordova. The
+  `out/` directory from `next build` is the entire native app; Capacitor's
+  WebView loads `index.html` and the Capacitor plugins bridge to native APIs.
+- **Web build must produce `out/` with `output: 'export'`** when
+  `GITHUB_PAGES=true`. Static export is required for Capacitor to package it.
+- **Don't import native-only plugins unconditionally.** Use
+  `Capacitor.isNativePlatform()` to gate Device/Haptics/StatusBar calls so the
+  same bundle runs on web without crashing.
+
+## Git / CI
+
+- **Conventional Commits.** `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`,
+  `perf:`, `test:`, `ci:`, `build:`. Squash-merge PRs.
+- **All GitHub Actions pinned to exact commit SHAs**, with `# vX.Y.Z` trailing
+  comment. Floating major-version refs (`@v6`) are forbidden — Dependabot
+  updates pinned SHAs in a predictable, reviewable way.
+- **Branch protection on `main`:** `CI Success` required to merge.
+  Dependabot's auto-merge respects this. No force-push.
+- **Lockfile is authoritative.** CI uses `pnpm install --frozen-lockfile`.
+  If your change needs a dep, run `pnpm install` locally and commit
+  `pnpm-lock.yaml` in the same change.
+
+## Accessibility
+
+- **Do not disable browser zoom** (no `maximumScale: 1` / `userScalable:
+  false`). Low-vision players need zoom; game scaling is handled separately
+  via device detection and responsive CSS.
+- **Reduced motion is respected.** The `reducedMotion` prop threads from
+  `prefers-reduced-motion` down to AISphere and PostProcessCorruption; both
+  components visibly dampen animation when it's set.
+- **Keyboard-only play must work.** All stabilization inputs are keycap keys;
+  touch and pointer inputs augment but do not replace them.

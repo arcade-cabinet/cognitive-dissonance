@@ -1,3 +1,10 @@
+---
+title: Automated Workflows
+updated: 2026-04-13
+status: current
+domain: ops
+---
+
 # Automated Workflows Documentation
 
 This document describes the automated workflows for dependency updates and releases in the Cognitive Dissonance project.

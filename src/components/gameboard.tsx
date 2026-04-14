@@ -1,7 +1,5 @@
-'use client';
-
-import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import GameScene from '@/components/game-scene';
 import ATCShader from '@/components/ui/atc-shader';
 import { loadHighScore, saveHighScore } from '@/lib/high-score';
 import { useAudioStore } from '@/store/audio-store';
@@ -9,8 +7,6 @@ import { useGameStore } from '@/store/game-store';
 import { useInputStore } from '@/store/input-store';
 import { useLevelStore } from '@/store/level-store';
 import { useSeedStore } from '@/store/seed-store';
-
-const GameScene = dynamic(() => import('@/components/game-scene'), { ssr: false });
 
 export default function GameBoard() {
   // ── Overlay states ──
@@ -42,6 +38,48 @@ export default function GameBoard() {
 
     mq.addEventListener('change', handleChange);
     return () => mq.removeEventListener('change', handleChange);
+  }, []);
+
+  // ── Expose zustand stores for E2E / dev diagnostics (never in production) ──
+  useEffect(() => {
+    if (typeof window === 'undefined' || process.env.NODE_ENV === 'production') return;
+    (window as unknown as { __stores: Record<string, unknown> }).__stores = {
+      game: useGameStore,
+      level: useLevelStore,
+      audio: useAudioStore,
+      input: useInputStore,
+      seed: useSeedStore,
+    };
+    return () => {
+      delete (window as unknown as { __stores?: Record<string, unknown> }).__stores;
+    };
+  }, []);
+
+  // ── Capacitor native init (iOS/Android only) ──
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { Capacitor } = await import('@capacitor/core');
+      if (!Capacitor.isNativePlatform() || cancelled) return;
+
+      // Hide splash screen once React has mounted
+      try {
+        const { SplashScreen } = await import('@capacitor/splash-screen');
+        await SplashScreen.hide({ fadeOutDuration: 400 });
+      } catch {
+        // Plugin not available in dev-web; ignore
+      }
+
+      // Set status bar style to match game aesthetic
+      try {
+        const { StatusBar, Style } = await import('@capacitor/status-bar');
+        await StatusBar.setStyle({ style: Style.Dark });
+        await StatusBar.setBackgroundColor({ color: '#000000' });
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // ── Screen reader live region ──
@@ -76,7 +114,14 @@ export default function GameBoard() {
 
   // ── Loading → Title sequence with proper cleanup ──
   useEffect(() => {
+    // Only run the boot sequence on initial title phase. If reducedMotion
+    // toggles mid-game (rare but possible), don't restart the title flow —
+    // gameplay should continue uninterrupted.
+    if (useGameStore.getState().phase !== 'title') return;
+
     const timers: ReturnType<typeof setTimeout>[] = [];
+
+    const startPlaying = () => useGameStore.getState().setPhase('playing');
 
     if (reducedMotion) {
       setShowLoading(false);
@@ -86,7 +131,12 @@ export default function GameBoard() {
       timers.push(
         setTimeout(() => {
           setTitleOpacity(0);
-          timers.push(setTimeout(() => setShowTitle(false), 120));
+          timers.push(
+            setTimeout(() => {
+              setShowTitle(false);
+              startPlaying();
+            }, 120),
+          );
         }, 500),
       );
     } else {
@@ -102,7 +152,12 @@ export default function GameBoard() {
               timers.push(
                 setTimeout(() => {
                   setTitleOpacity(0);
-                  timers.push(setTimeout(() => setShowTitle(false), 900));
+                  timers.push(
+                    setTimeout(() => {
+                      setShowTitle(false);
+                      startPlaying();
+                    }, 900),
+                  );
                 }, 2400),
               );
             }, 600),
@@ -206,7 +261,7 @@ export default function GameBoard() {
   }, []);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-black">
+    <div className="game-root relative overflow-hidden bg-black">
       {/* ATC Shader Background */}
       <ATCShader className="z-0" />
 

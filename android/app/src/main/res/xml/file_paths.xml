@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider paths. Scoped to a `shared/` subdir so we don't expose
+     all of external storage and the entire cache to other apps. The game
+     doesn't currently share files, but the FileProvider is declared in
+     the manifest because Capacitor plugins sometimes need it. -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <external-path name="my_images" path="shared/" />
+    <cache-path name="my_cache_images" path="shared/" />
+</paths>

@@ -1,11 +1,10 @@
-'use client';
-
 import * as BABYLON from '@babylonjs/core';
 import { useEffect, useRef } from 'react';
 import { useScene } from 'reactylon';
 import { world } from '@/game/world';
 import { runFixedSteps, spawnIntervalSeconds } from '@/lib/fixed-step';
 import { KEYCAP_COLORS, KEYCAP_COUNT } from '@/lib/keycap-colors';
+import { useGameStore } from '@/store/game-store';
 import { useInputStore } from '@/store/input-store';
 import { useLevelStore } from '@/store/level-store';
 import { useSeedStore } from '@/store/seed-store';
@@ -137,6 +136,12 @@ export default function PatternStabilizer() {
     };
 
     const observer = scene.onBeforeRenderObservable.add(() => {
+      // Gate on playing phase — no patterns spawning during title/gameover.
+      // Reset accumulator so a long title phase doesn't trigger burst ticks on resume.
+      if (useGameStore.getState().phase !== 'playing') {
+        fixedState.accumulator = 0;
+        return;
+      }
       const dt = scene.getEngine().getDeltaTime() / 1000;
       runFixedSteps(fixedState, dt, fixedStep, tick);
     });

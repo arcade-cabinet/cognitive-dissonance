@@ -1,5 +1,3 @@
-'use client';
-
 import * as BABYLON from '@babylonjs/core';
 import gsap from 'gsap';
 import { useCallback, useEffect, useRef } from 'react';
@@ -157,6 +155,10 @@ export default function AISphere({ reducedMotion }: AISphereProps) {
 
     const observer = scene.onBeforeRenderObservable.add(() => {
       if (explodedRef.current) return; // Don't process after shatter
+
+      // Don't run tension/shatter logic outside of playing phase — during
+      // title/loading the sphere should be calm and static.
+      if (useGameStore.getState().phase !== 'playing') return;
 
       const cur = useLevelStore.getState().tension;
       const coherence = useLevelStore.getState().coherence;
