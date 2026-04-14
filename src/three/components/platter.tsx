@@ -54,16 +54,8 @@ export default function Platter() {
     const couplingPower = Math.max(0.5, wobble.tensionCoupling);
     const amp = wobble.maxTiltRad * 0.5 * tension ** couplingPower;
     const t = performance.now() / 1000;
-    groupRef.current.rotation.x = MathUtils.clamp(
-      Math.sin(t * 1.7) * amp,
-      -wobble.maxTiltRad,
-      wobble.maxTiltRad,
-    );
-    groupRef.current.rotation.z = MathUtils.clamp(
-      Math.cos(t * 1.3) * amp,
-      -wobble.maxTiltRad,
-      wobble.maxTiltRad,
-    );
+    groupRef.current.rotation.x = MathUtils.clamp(Math.sin(t * 1.7) * amp, -wobble.maxTiltRad, wobble.maxTiltRad);
+    groupRef.current.rotation.z = MathUtils.clamp(Math.cos(t * 1.3) * amp, -wobble.maxTiltRad, wobble.maxTiltRad);
   });
 
   return <group ref={groupRef} position={[0, -1.6, 0]} />;

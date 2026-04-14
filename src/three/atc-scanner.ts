@@ -12,8 +12,8 @@
  * by u_res to match the gl_FragCoord-based math in the original.
  */
 
-import { type Mesh, PlaneGeometry, type Scene, ShaderMaterial, Vector2, Vector3 } from 'three';
 import * as THREE from 'three';
+import { type Mesh, PlaneGeometry, type Scene, ShaderMaterial, Vector2, Vector3 } from 'three';
 
 const VERTEX_SHADER = /* glsl */ `
   precision highp float;
@@ -84,10 +84,7 @@ export interface ATCScanner {
 }
 
 /** Default uniform values — 512×512 viewport. */
-export const DEFAULT_ATC_SCANNER_UNIFORMS = (
-  width = 512,
-  height = 512,
-): ATCScannerUniforms => ({
+export const DEFAULT_ATC_SCANNER_UNIFORMS = (width = 512, height = 512): ATCScannerUniforms => ({
   u_res: { value: new Vector2(width, height) },
   u_time: { value: 0 },
 });

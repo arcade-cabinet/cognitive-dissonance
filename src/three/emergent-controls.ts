@@ -22,9 +22,9 @@
  * are designed.
  */
 
+import * as THREE from 'three';
 import {
   BoxGeometry,
-  type Color,
   CylinderGeometry,
   type Group,
   MathUtils,
@@ -33,7 +33,6 @@ import {
   type Scene,
   Vector3,
 } from 'three';
-import * as THREE from 'three';
 
 export type ControlKind = 'keycap' | 'handle' | 'slider';
 
@@ -135,17 +134,8 @@ function makeControlMesh(
   return { mesh, housing, material };
 }
 
-export function createEmergentControls(
-  scene: Scene,
-  opts: EmergentControlsOptions,
-): EmergentControls {
-  const {
-    schema,
-    rimRadius = 1.45,
-    rimY = 0.2,
-    arcRadians = Math.PI * 2,
-    arcStart = 0,
-  } = opts;
+export function createEmergentControls(scene: Scene, opts: EmergentControlsOptions): EmergentControls {
+  const { schema, rimRadius = 1.45, rimY = 0.2, arcRadians = Math.PI * 2, arcStart = 0 } = opts;
 
   const group = new THREE.Group();
   group.position.y = rimY;

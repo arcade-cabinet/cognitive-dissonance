@@ -25,31 +25,28 @@ describe('keycap-colors', () => {
     }
   });
 
-  it('Color3 values have r, g, b in 0-1 range', () => {
+  it('color rgb values are in 0-1 range', () => {
     for (const kc of KEYCAP_COLORS) {
-      expect(kc.color3.r).toBeGreaterThanOrEqual(0);
-      expect(kc.color3.r).toBeLessThanOrEqual(1);
-      expect(kc.color3.g).toBeGreaterThanOrEqual(0);
-      expect(kc.color3.g).toBeLessThanOrEqual(1);
-      expect(kc.color3.b).toBeGreaterThanOrEqual(0);
-      expect(kc.color3.b).toBeLessThanOrEqual(1);
+      expect(kc.color.r).toBeGreaterThanOrEqual(0);
+      expect(kc.color.r).toBeLessThanOrEqual(1);
+      expect(kc.color.g).toBeGreaterThanOrEqual(0);
+      expect(kc.color.g).toBeLessThanOrEqual(1);
+      expect(kc.color.b).toBeGreaterThanOrEqual(0);
+      expect(kc.color.b).toBeLessThanOrEqual(1);
     }
   });
 
   it('getKeycapColor(0) matches KEYCAP_COLORS[0]', () => {
     const computed = getKeycapColor(0);
     expect(computed.hue).toBe(KEYCAP_COLORS[0].hue);
-    expect(computed.color3.r).toBeCloseTo(KEYCAP_COLORS[0].color3.r, 5);
-    expect(computed.color3.g).toBeCloseTo(KEYCAP_COLORS[0].color3.g, 5);
-    expect(computed.color3.b).toBeCloseTo(KEYCAP_COLORS[0].color3.b, 5);
+    expect(computed.color.r).toBeCloseTo(KEYCAP_COLORS[0].color.r, 5);
+    expect(computed.color.g).toBeCloseTo(KEYCAP_COLORS[0].color.g, 5);
+    expect(computed.color.b).toBeCloseTo(KEYCAP_COLORS[0].color.b, 5);
   });
 
-  it('Color4 has matching rgb with alpha 1', () => {
+  it('hex strings are well-formed', () => {
     for (const kc of KEYCAP_COLORS) {
-      expect(kc.color4.r).toBeCloseTo(kc.color3.r, 5);
-      expect(kc.color4.g).toBeCloseTo(kc.color3.g, 5);
-      expect(kc.color4.b).toBeCloseTo(kc.color3.b, 5);
-      expect(kc.color4.a).toBe(1.0);
+      expect(kc.hex).toMatch(/^#[0-9a-f]{6}$/);
     }
   });
 });

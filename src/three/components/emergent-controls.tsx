@@ -3,7 +3,7 @@ import { useTrait, useWorld } from 'koota/react';
 import { useEffect, useRef } from 'react';
 import type { Group } from 'three';
 import { Level } from '@/sim/world';
-import { createEmergentControls, type EmergentControls as ControlsRig } from '../emergent-controls';
+import { type EmergentControls as ControlsRig, createEmergentControls } from '../emergent-controls';
 
 interface EmergentControlsProps {
   /** Platter rim radius to orbit along (matches industrial-platter's rim). */

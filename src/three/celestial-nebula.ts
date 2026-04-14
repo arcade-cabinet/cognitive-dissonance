@@ -8,15 +8,8 @@
  * vs Babylon's ShaderMaterial + Effect.ShadersStore).
  */
 
-import {
-  Color,
-  type Mesh,
-  type Scene,
-  ShaderMaterial,
-  SphereGeometry,
-  Vector3,
-} from 'three';
 import * as THREE from 'three';
+import { Color, type Mesh, type Scene, ShaderMaterial, SphereGeometry, Vector3 } from 'three';
 
 const VERTEX_SHADER = /* glsl */ `
   precision highp float;

@@ -64,13 +64,7 @@ const CALM_COLOR = new Color(0.2, 0.8, 1.0); // cyan
 const CRISIS_COLOR = new Color(1.0, 0.3, 0.25); // red shard
 
 export function createSkyRain(scene: Scene, opts: SkyRainOptions = {}): SkyRain {
-  const {
-    count = 160,
-    spreadRadius = 3.0,
-    spawnY = 5.0,
-    floorY = 0.4,
-    tension = 0,
-  } = opts;
+  const { count = 160, spreadRadius = 3.0, spawnY = 5.0, floorY = 0.4, tension = 0 } = opts;
 
   const geometry = new BoxGeometry(0.35, 0.35, 0.35);
   const material = new MeshStandardMaterial({
@@ -101,8 +95,6 @@ export function createSkyRain(scene: Scene, opts: SkyRainOptions = {}): SkyRain 
     writeInstance(mesh, i, particles[i]);
   }
 
-  let lastTension = tension;
-
   function wakeParticle(i: number, curTension: number): void {
     const p = particles[i];
     const angle = Math.random() * Math.PI * 2;
@@ -111,11 +103,7 @@ export function createSkyRain(scene: Scene, opts: SkyRainOptions = {}): SkyRain 
     const fallSpeed = 2.0 + curTension * 4.5;
     // Slight horizontal drift — stronger at high tension = turbulence
     const driftMag = curTension * 0.6;
-    p.velocity.set(
-      (Math.random() - 0.5) * driftMag,
-      -fallSpeed,
-      (Math.random() - 0.5) * driftMag,
-    );
+    p.velocity.set((Math.random() - 0.5) * driftMag, -fallSpeed, (Math.random() - 0.5) * driftMag);
     p.angularVel.set((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2);
     p.rotation.set(0, 0, 0, 1);
     p.size = MathUtils.lerp(0.2, 0.5, Math.random());
@@ -127,7 +115,6 @@ export function createSkyRain(scene: Scene, opts: SkyRainOptions = {}): SkyRain 
 
   function update(deltaSeconds: number, curTension: number): void {
     const t = MathUtils.clamp(curTension, 0, 1);
-    lastTension = t;
 
     // Spawn rate scales with tension. Expected spawns per frame at 60fps:
     //   t=0.0 → 0/s, t=0.5 → 9/s, t=1.0 → 18/s
