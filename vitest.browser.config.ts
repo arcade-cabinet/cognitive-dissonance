@@ -67,7 +67,7 @@ export default defineConfig({
       '@babylonjs/core',
       'gsap',
       'gsap/CustomEase',
-      'miniplex',
+      'koota',
       'react-dom/client',
       'react',
       'react/jsx-dev-runtime',
@@ -75,7 +75,6 @@ export default defineConfig({
       'reactylon/web',
       'seedrandom',
       'yuka',
-      'zustand',
     ],
   },
 });

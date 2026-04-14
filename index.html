@@ -19,9 +19,11 @@
 
     <title>Cognitive Dissonance</title>
     <!-- Security: Content Security Policy. Babylon.js needs wasm-unsafe-eval
-         for Havok physics compilation, and data: images for built-in texture
-         defaults. Inline styles are used by Reactylon-generated canvas layout. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:">
+         for Havok physics compilation. Koota ECS uses JIT-compiled trait
+         accessors (performance-critical), so unsafe-eval is required.
+         Inline styles are used by Reactylon-generated canvas layout.
+         Data: images are Babylon's built-in texture defaults. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:">
   </head>
   <body>
     <div id="root"></div>
