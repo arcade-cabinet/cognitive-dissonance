@@ -12,7 +12,9 @@ import { mountScene, type SceneHarness } from './helpers/mount-scene';
 describe('AISphere', () => {
   let harness: SceneHarness | null = null;
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Allow async PBR env texture loads to complete before disposal
+    await new Promise((r) => setTimeout(r, 50));
     harness?.dispose();
     harness = null;
   });
