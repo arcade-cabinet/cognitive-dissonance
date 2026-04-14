@@ -14,15 +14,8 @@
  *   - track: inner recess the sphere rests in
  */
 
-import {
-  CylinderGeometry,
-  type Group,
-  type Mesh,
-  MeshPhysicalMaterial,
-  type Scene,
-  Vector3,
-} from 'three';
 import * as THREE from 'three';
+import { CylinderGeometry, type Group, type Mesh, MeshPhysicalMaterial, type Scene, Vector3 } from 'three';
 
 export interface PlatterOptions {
   position?: Vector3;
@@ -45,10 +38,7 @@ export interface IndustrialPlatter {
 const RIM_CALM = new THREE.Color(0x001a33);
 const RIM_CRISIS = new THREE.Color(0x992211);
 
-export function createIndustrialPlatter(
-  scene: Scene,
-  opts: PlatterOptions = {},
-): IndustrialPlatter {
+export function createIndustrialPlatter(scene: Scene, opts: PlatterOptions = {}): IndustrialPlatter {
   const { position = new Vector3(0, 0, 0), tension = 0 } = opts;
 
   const group = new THREE.Group();

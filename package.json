@@ -34,7 +34,7 @@
     "@capacitor/screen-orientation": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",
-    "@dimforge/rapier3d-compat": "^0.19.3",
+    "@dimforge/rapier3d": "^0.19.3",
     "gsap": "^3.14.2",
     "koota": "^0.6.6",
     "postprocessing": "^6.39.0",
@@ -61,6 +61,7 @@
     "tailwindcss": "^4.2.1",
     "typescript": "^6.0.2",
     "vite": "^8.0.8",
+    "vite-plugin-wasm": "^3.6.0",
     "vitest": "^4.0.18"
   },
   "engines": {

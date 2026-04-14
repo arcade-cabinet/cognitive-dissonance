@@ -1,97 +1,79 @@
 import { test, expect } from '@playwright/test';
-import { waitForCanvas, waitForTitleFade } from './helpers/game-helpers';
+import { waitForCanvas } from './helpers/game-helpers';
+
+/**
+ * Gameplay tests — v4 edition.
+ *
+ * v4 is zero-framework: the cabinet IS the UI. There is no title overlay,
+ * no game-over overlay, no diegetic menu. The only DOM element outside
+ * the canvas is the boot "INITIALIZING CORE" overlay that fades on first
+ * frame.
+ *
+ * These tests assert the v4 bridge drives Level/Input correctly and the
+ * cabinet remains responsive to state mutations.
+ */
 
 test.describe('Gameplay tests', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await waitForCanvas(page);
+    await page.waitForFunction(
+      () => typeof (window as Record<string, unknown>).__setTension === 'function',
+      { timeout: 10_000 },
+    );
   });
 
-  test('3D scene is visible after title fade', async ({ page }) => {
-    await waitForTitleFade(page);
-    const canvas = page.locator('#reactylon-canvas, canvas').first();
+  test('canvas stays visible through tension changes', async ({ page }) => {
+    const canvas = page.locator('canvas').first();
+    await expect(canvas).toBeVisible();
+
+    await page.evaluate(() => {
+      const w = window as Record<string, unknown> & { __setTension?: (v: number) => void };
+      w.__setTension?.(0.5);
+    });
+    await page.waitForTimeout(300);
+    await expect(canvas).toBeVisible();
+
+    await page.evaluate(() => {
+      const w = window as Record<string, unknown> & { __setTension?: (v: number) => void };
+      w.__setTension?.(0.95);
+    });
+    await page.waitForTimeout(300);
     await expect(canvas).toBeVisible();
   });
 
-  test('game-over overlay shows "COGNITION SHATTERED" on high tension', async ({ page }) => {
-    await waitForTitleFade(page);
-
-    await page.evaluate(() => {
-      window.dispatchEvent(new CustomEvent('gameOver'));
+  test('setTension propagates to Level trait', async ({ page }) => {
+    const applied = await page.evaluate(() => {
+      const w = window as Record<string, unknown> & {
+        __setTension?: (v: number) => void;
+        __getLevel?: () => { tension?: number } | undefined;
+      };
+      w.__setTension?.(0.7);
+      return w.__getLevel?.()?.tension;
     });
-
-    const gameOverOverlay = page.locator('[data-testid="gameover-overlay"]');
-    await expect(gameOverOverlay).toBeVisible({ timeout: 5_000 });
-    await expect(gameOverOverlay.getByRole('heading', { name: 'SHATTERED' })).toBeVisible();
+    // tension is clamped to [0,1] in the setter
+    expect(applied).toBeGreaterThan(0.69);
+    expect(applied).toBeLessThan(0.71);
   });
 
-  test('clicking game-over overlay triggers restart', async ({ page }) => {
-    await waitForTitleFade(page);
+  test('gameOver event fires without crashing the cabinet', async ({ page }) => {
+    const canvas = page.locator('canvas').first();
 
     await page.evaluate(() => {
-      window.dispatchEvent(new CustomEvent('gameOver'));
+      const w = window as Record<string, unknown> & { __fireGameOver?: () => void };
+      w.__fireGameOver?.();
     });
 
-    const gameOverOverlay = page.locator('[data-testid="gameover-overlay"]');
-    await expect(gameOverOverlay).toBeVisible({ timeout: 5_000 });
+    await page.waitForTimeout(1_000);
 
-    // Click to restart
-    await page.getByText('Click anywhere to dream again').click();
-
-    await expect(gameOverOverlay).not.toBeVisible({ timeout: 5_000 });
-  });
-
-  test('tension can be set via Zustand store bridge', async ({ page }) => {
-    await waitForTitleFade(page);
-    await page.waitForTimeout(500);
-
-    const result = await page.evaluate(() => {
-      const w = window as Record<string, unknown>;
-      const levelStore = w.__zustand_level as { getState: () => { tension: number; setTension: (v: number) => void } };
-      if (!levelStore) return null;
-      levelStore.getState().setTension(0.5);
-      return levelStore.getState().tension;
-    });
-
-    expect(result).toBe(0.5);
-  });
-
-  test('full game flow: title → play → game over → restart → stable', async ({ page }) => {
-    // Loading screen appears
-    await expect(page.getByText('INITIALIZING CORE')).toBeVisible({ timeout: 3_000 });
-
-    // Title appears after loading
-    await expect(page.locator('[data-testid="title-overlay"]')).toBeVisible({ timeout: 8_000 });
-
-    // Title fades
-    await waitForTitleFade(page);
-
-    // Game runs for a bit
-    await page.waitForTimeout(2_000);
-
-    // Force game over
-    await page.evaluate(() => {
-      window.dispatchEvent(new CustomEvent('gameOver'));
-    });
-
-    const gameOverOverlay = page.locator('[data-testid="gameover-overlay"]');
-    await expect(gameOverOverlay).toBeVisible({ timeout: 5_000 });
-
-    // High score info visible
-    await expect(gameOverOverlay.getByText('Peak coherence')).toBeVisible();
-
-    // Share button visible
-    await expect(gameOverOverlay.getByText('Share this dream')).toBeVisible();
-
-    // Restart
-    await page.getByText('Click anywhere to dream again').click();
-    await expect(gameOverOverlay).not.toBeVisible({ timeout: 5_000 });
-
-    // Canvas still alive
-    const canvas = page.locator('#reactylon-canvas, canvas').first();
+    // Canvas must still be visible and rendering (WebGL context alive).
     await expect(canvas).toBeVisible();
-
-    await page.waitForTimeout(2_000);
-    await expect(canvas).toBeVisible();
+    const stillRendering = await page.evaluate(() => {
+      const c = document.querySelector('canvas') as HTMLCanvasElement | null;
+      if (!c) return false;
+      const gl = c.getContext('webgl2') ?? c.getContext('webgl');
+      return gl !== null && !gl.isContextLost();
+    });
+    expect(stillRendering).toBe(true);
   });
 });

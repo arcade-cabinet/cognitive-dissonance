@@ -31,10 +31,30 @@ export interface InputOptions {
  * Longer schemas overflow to q w e r t y u i o p [ ] (indices 12..23).
  */
 const KEY_ORDER = [
-  'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6',
-  'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal',
-  'KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY',
-  'KeyU', 'KeyI', 'KeyO', 'KeyP', 'BracketLeft', 'BracketRight',
+  'Digit1',
+  'Digit2',
+  'Digit3',
+  'Digit4',
+  'Digit5',
+  'Digit6',
+  'Digit7',
+  'Digit8',
+  'Digit9',
+  'Digit0',
+  'Minus',
+  'Equal',
+  'KeyQ',
+  'KeyW',
+  'KeyE',
+  'KeyR',
+  'KeyT',
+  'KeyY',
+  'KeyU',
+  'KeyI',
+  'KeyO',
+  'KeyP',
+  'BracketLeft',
+  'BracketRight',
 ];
 
 export function mountInputListeners(opts: InputOptions): () => void {

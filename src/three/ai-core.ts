@@ -12,7 +12,7 @@
  */
 
 import { Color, type Mesh, type Scene, Vector3 } from 'three';
-import { createCelestialNebula, type CelestialNebula } from './celestial-nebula';
+import { type CelestialNebula, createCelestialNebula } from './celestial-nebula';
 import { createGlassSphere, type GlassSphere } from './glass-sphere';
 
 export interface AICoreOptions {

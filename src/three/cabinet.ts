@@ -14,7 +14,8 @@
  * Framework-agnostic. Consumed by src/main.ts which owns the canvas.
  */
 
-import RAPIER from '@dimforge/rapier3d-compat';
+import RAPIER from '@dimforge/rapier3d';
+import type { World as KootaWorld } from 'koota';
 import { EffectComposer, EffectPass, RenderPass } from 'postprocessing';
 import {
   Color,
@@ -29,9 +30,8 @@ import {
   WebGLRenderer,
 } from 'three';
 import { RoomEnvironment } from 'three-stdlib';
-import type { World as KootaWorld } from 'koota';
 import { Level } from '@/sim/world';
-import { createAICore, type AICore } from './ai-core';
+import { type AICore, createAICore } from './ai-core';
 import { createEmergentControls, type EmergentControls } from './emergent-controls';
 import { createIndustrialPlatter, type IndustrialPlatter } from './industrial-platter';
 import { CorruptionEffect } from './post-process-corruption';
@@ -65,14 +65,12 @@ export interface Cabinet {
 /**
  * Builds every cabinet piece and returns a render function.
  *
- * Async because rapier's WASM module must resolve before we can construct
- * the physics world. The compat variant embeds the WASM as base64 so
- * there's no separate .wasm asset to resolve — init() unpacks it.
+ * Async because rapier's WASM module resolves at import time via
+ * vite-plugin-wasm (see vite.config.ts). The top-level-await plugin
+ * lets the WASM binding be ready by the time we touch RAPIER.* APIs.
  */
 export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
   const { canvas, world: kootaWorld, reducedMotion = false } = opts;
-
-  await RAPIER.init();
 
   // ── Three renderer / scene / camera ────────────────────────────────────
   const renderer = new WebGLRenderer({
@@ -116,13 +114,8 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
 
   // Ground plane just below the platter so runaway bodies hit something
   // and we can cull them (instead of falling forever through the void).
-  const floorBody = physics.createRigidBody(
-    RAPIER.RigidBodyDesc.fixed().setTranslation(0, -3, 0),
-  );
-  physics.createCollider(
-    RAPIER.ColliderDesc.cuboid(20, 0.1, 20).setRestitution(0.05),
-    floorBody,
-  );
+  const floorBody = physics.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, -3, 0));
+  physics.createCollider(RAPIER.ColliderDesc.cuboid(20, 0.1, 20).setRestitution(0.05), floorBody);
 
   // ── Cabinet pieces ─────────────────────────────────────────────────────
   const platter = createIndustrialPlatter(scene, {
@@ -191,16 +184,8 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     const couplingPower = Math.max(0.5, wobble.tensionCoupling);
     const amp = wobble.maxTiltRad * 0.5 * tension ** couplingPower;
     const tNow = performance.now() / 1000;
-    platter.group.rotation.x = MathUtils.clamp(
-      Math.sin(tNow * 1.7) * amp,
-      -wobble.maxTiltRad,
-      wobble.maxTiltRad,
-    );
-    platter.group.rotation.z = MathUtils.clamp(
-      Math.cos(tNow * 1.3) * amp,
-      -wobble.maxTiltRad,
-      wobble.maxTiltRad,
-    );
+    platter.group.rotation.x = MathUtils.clamp(Math.sin(tNow * 1.7) * amp, -wobble.maxTiltRad, wobble.maxTiltRad);
+    platter.group.rotation.z = MathUtils.clamp(Math.cos(tNow * 1.3) * amp, -wobble.maxTiltRad, wobble.maxTiltRad);
 
     // Step physics at a fixed 60Hz regardless of render fps.
     // dt from rAF fluctuates; accumulate it and fire discrete substeps.

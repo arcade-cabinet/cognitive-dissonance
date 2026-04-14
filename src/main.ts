@@ -46,10 +46,13 @@ async function mount(): Promise<void> {
   const unmountInput = mountInputListeners({ world, canvas });
 
   // ── Resize
-  const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {
-    resizeCanvas(canvas, root);
-    cabinet.resize(canvas.clientWidth, canvas.clientHeight);
-  }) : null;
+  const ro =
+    typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+          resizeCanvas(canvas, root);
+          cabinet.resize(canvas.clientWidth, canvas.clientHeight);
+        })
+      : null;
   ro?.observe(root);
   window.addEventListener('orientationchange', () => {
     resizeCanvas(canvas, root);
@@ -71,20 +74,25 @@ async function mount(): Promise<void> {
   }
   requestAnimationFrame(frame);
 
-  // ── Expose for E2E bridge (dev only)
-  if (import.meta.env.DEV) {
-    interface Bridge {
-      __world?: typeof world;
-      __cabinet?: typeof cabinet;
-      __setTension?: typeof setTension;
-      __getLevel?: () => ReturnType<typeof world.get<typeof Level>>;
-    }
-    const bridge = window as Window & Bridge;
-    bridge.__world = world;
-    bridge.__cabinet = cabinet;
-    bridge.__setTension = setTension;
-    bridge.__getLevel = () => world.get(Level);
+  // ── E2E + dev-tools bridge on window.
+  // Exposed unconditionally because this is a client-side-only game — there's
+  // no sensitive state to hide. Keeps Playwright tests working against both
+  // `pnpm dev` and `pnpm preview` (which doesn't set import.meta.env.DEV).
+  interface Bridge {
+    __world?: typeof world;
+    __cabinet?: typeof cabinet;
+    __setTension?: typeof setTension;
+    __getLevel?: () => ReturnType<typeof world.get<typeof Level>>;
+    __fireGameOver?: () => void;
   }
+  const bridge = window as Window & Bridge;
+  bridge.__world = world;
+  bridge.__cabinet = cabinet;
+  bridge.__setTension = setTension;
+  bridge.__getLevel = () => world.get(Level);
+  bridge.__fireGameOver = () => {
+    window.dispatchEvent(new CustomEvent('gameOver'));
+  };
 
   // Teardown on page unload — Capacitor keeps this process alive, so we
   // clean up properly to avoid GPU resource leaks on swipe-home.

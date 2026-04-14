@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
+import wasm from 'vite-plugin-wasm';
 
 /**
  * Vitest browser mode — runs component tests in a real Chromium browser via
@@ -11,6 +12,7 @@ import { defineConfig } from 'vitest/config';
  * errors in CI's cold-cache first run.
  */
 export default defineConfig({
+  plugins: [wasm()],
   test: {
     include: [
       'src/**/*.browser.test.tsx',
@@ -42,8 +44,8 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
+    exclude: ['@dimforge/rapier3d'],
     include: [
-      '@dimforge/rapier3d-compat',
       'gsap',
       'gsap/CustomEase',
       'koota',

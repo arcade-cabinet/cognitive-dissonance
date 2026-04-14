@@ -20,15 +20,7 @@
  *  - Visible specular highlights from a key light
  */
 
-import {
-  Color,
-  Mesh,
-  MeshPhysicalMaterial,
-  type Scene,
-  SphereGeometry,
-  type Texture,
-  Vector3,
-} from 'three';
+import { Color, Mesh, MeshPhysicalMaterial, type Scene, SphereGeometry, type Texture, Vector3 } from 'three';
 
 export interface GlassSphereOptions {
   radius?: number;
@@ -110,4 +102,4 @@ export function createGlassSphere(scene: Scene, opts: GlassSphereOptions = {}): 
   };
 }
 
-export { CALM_COLOR, CRISIS_COLOR, CLEAR };
+export { CALM_COLOR, CLEAR, CRISIS_COLOR };
