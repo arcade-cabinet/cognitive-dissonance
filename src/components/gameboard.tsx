@@ -78,6 +78,8 @@ export default function GameBoard() {
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
 
+    const startPlaying = () => useGameStore.getState().setPhase('playing');
+
     if (reducedMotion) {
       setShowLoading(false);
       setLoadingOpacity(0);
@@ -86,7 +88,12 @@ export default function GameBoard() {
       timers.push(
         setTimeout(() => {
           setTitleOpacity(0);
-          timers.push(setTimeout(() => setShowTitle(false), 120));
+          timers.push(
+            setTimeout(() => {
+              setShowTitle(false);
+              startPlaying();
+            }, 120),
+          );
         }, 500),
       );
     } else {
@@ -102,7 +109,12 @@ export default function GameBoard() {
               timers.push(
                 setTimeout(() => {
                   setTitleOpacity(0);
-                  timers.push(setTimeout(() => setShowTitle(false), 900));
+                  timers.push(
+                    setTimeout(() => {
+                      setShowTitle(false);
+                      startPlaying();
+                    }, 900),
+                  );
                 }, 2400),
               );
             }, 600),

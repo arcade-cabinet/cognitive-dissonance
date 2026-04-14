@@ -35,6 +35,9 @@ Thumbs.db
 # Playwright MCP
 .playwright-mcp/
 
+# Vitest attachments (screenshot failures cached)
+.vitest-attachments/
+
 # Screenshots (local-only playtest/prototype captures)
 playtest-*.png
 prototype-*.png

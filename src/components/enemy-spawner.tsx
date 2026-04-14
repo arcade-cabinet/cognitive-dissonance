@@ -9,6 +9,7 @@ import { runFixedSteps, spawnIntervalSeconds } from '@/lib/fixed-step';
 import { generateFromSeed } from '@/lib/seed-factory';
 import { createCrystallineCubeMaterial } from '@/lib/shaders/crystalline-cube';
 import { createNeonRaymarcherMaterial } from '@/lib/shaders/neon-raymarcher';
+import { useGameStore } from '@/store/game-store';
 import { useLevelStore } from '@/store/level-store';
 import { useSeedStore } from '@/store/seed-store';
 
@@ -209,9 +210,10 @@ export default function EnemySpawner() {
     };
 
     scheduleWave();
-    spawnWave();
 
     const observer = scene.onBeforeRenderObservable.add(() => {
+      // Gate on playing phase — no spawning/tension during title/gameover
+      if (useGameStore.getState().phase !== 'playing') return;
       const dt = scene.getEngine().getDeltaTime() / 1000;
       runFixedSteps(fixedState, dt, fixedStep, tick);
     });

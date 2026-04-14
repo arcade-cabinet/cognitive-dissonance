@@ -38,19 +38,7 @@ function SceneContent({ coherence, reducedMotion }: { coherence: number; reduced
         diffuse={new BABYLON.Color3(0.9, 0.9, 1.0)}
       />
 
-      {/* Camera */}
-      <arcRotateCamera
-        name="camera"
-        alpha={Math.PI / 4}
-        beta={Math.PI / 3}
-        radius={8}
-        target={BABYLON.Vector3.Zero()}
-        lowerRadiusLimit={4}
-        upperRadiusLimit={18}
-        lowerBetaLimit={0.1}
-        upperBetaLimit={Math.PI / 2.2}
-        setActiveOnSceneIfNoneActive
-      />
+      {/* Camera is created procedurally in onSceneReady to ensure it's active before first render */}
 
       {/* Core 3D elements (created imperatively) */}
       <AISphere reducedMotion={reducedMotion} />
@@ -87,6 +75,30 @@ export default function GameScene({ coherence, reducedMotion }: GameSceneProps) 
       <Scene
         onSceneReady={(scene) => {
           scene.clearColor = new BABYLON.Color4(0.04, 0.04, 0.06, 1);
+
+          // Create camera procedurally so it's active before first render commit
+          const camera = new BABYLON.ArcRotateCamera(
+            'camera',
+            Math.PI / 4,
+            Math.PI / 3,
+            8,
+            BABYLON.Vector3.Zero(),
+            scene,
+          );
+          camera.lowerRadiusLimit = 4;
+          camera.upperRadiusLimit = 18;
+          camera.lowerBetaLimit = 0.1;
+          camera.upperBetaLimit = Math.PI / 2.2;
+          const canvas = scene.getEngine().getRenderingCanvas();
+          if (canvas) {
+            camera.attachControl(canvas, true);
+          }
+          scene.activeCamera = camera;
+
+          // Expose scene on window for E2E/browser test diagnostics
+          if (typeof window !== 'undefined') {
+            (window as unknown as { __scene: BABYLON.Scene }).__scene = scene;
+          }
         }}
       >
         <SceneContent coherence={coherence} reducedMotion={reducedMotion} />

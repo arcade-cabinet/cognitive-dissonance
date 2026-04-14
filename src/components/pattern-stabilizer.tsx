@@ -6,6 +6,7 @@ import { useScene } from 'reactylon';
 import { world } from '@/game/world';
 import { runFixedSteps, spawnIntervalSeconds } from '@/lib/fixed-step';
 import { KEYCAP_COLORS, KEYCAP_COUNT } from '@/lib/keycap-colors';
+import { useGameStore } from '@/store/game-store';
 import { useInputStore } from '@/store/input-store';
 import { useLevelStore } from '@/store/level-store';
 import { useSeedStore } from '@/store/seed-store';
@@ -137,6 +138,8 @@ export default function PatternStabilizer() {
     };
 
     const observer = scene.onBeforeRenderObservable.add(() => {
+      // Gate on playing phase — no patterns spawning during title/gameover
+      if (useGameStore.getState().phase !== 'playing') return;
       const dt = scene.getEngine().getDeltaTime() / 1000;
       runFixedSteps(fixedState, dt, fixedStep, tick);
     });
