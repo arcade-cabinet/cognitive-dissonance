@@ -7,29 +7,29 @@
  * this every frame to drive the per-control press travel.
  *
  * Mapping:
- *   - Digit keys 1..9,0,-,= → control indices 0..11 (first 12 slots)
- *     Extra Number keys map to higher indices if the schema is longer.
- *   - Pointer hits on control meshes → corresponding control index
- *     (raycast resolves the slot).
+ *   - Digit keys 1..9,0,-,= → control indices 0..11 (first 12 slots).
+ *     Extras map to q..p,[,] (indices 12..23) for longer schemas.
+ *   - Pointer / touch down on the canvas → raycast from camera through
+ *     cursor, find nearest intersected control mesh, press its index.
+ *     Tracks active pointers so you can multi-touch chords on mobile.
  *
  * No framework. Raw `addEventListener`. Returns an unmount fn that removes
  * every listener for clean Capacitor re-entry.
  */
 
 import type { World } from 'koota';
+import { type Camera, Raycaster, Vector2 } from 'three';
 import { Input, Level } from '@/sim/world';
+import type { EmergentControls } from '@/three/emergent-controls';
 
 export interface InputOptions {
   world: World;
   canvas: HTMLCanvasElement;
+  camera: Camera;
+  /** Accessor — the rig rebuilds on schema change, so don't hold a ref. */
+  getControls: () => EmergentControls;
 }
 
-/**
- * Keyboard ordinal → index mapping. We want natural keyboard order:
- *   Row 1: 1 2 3 4 5 6 7 8 9 0 - =
- * giving indices 0..11 for a standard 12-slot pattern schema.
- * Longer schemas overflow to q w e r t y u i o p [ ] (indices 12..23).
- */
 const KEY_ORDER = [
   'Digit1',
   'Digit2',
@@ -58,7 +58,12 @@ const KEY_ORDER = [
 ];
 
 export function mountInputListeners(opts: InputOptions): () => void {
-  const { world, canvas } = opts;
+  const { world, canvas, camera, getControls } = opts;
+
+  const raycaster = new Raycaster();
+  const ndc = new Vector2();
+  /** Maps pointerId → control index so release hits the right slot. */
+  const activePointers = new Map<number, number>();
 
   function press(index: number): void {
     world.set(Input, (prev) => {
@@ -75,6 +80,7 @@ export function mountInputListeners(opts: InputOptions): () => void {
     });
   }
 
+  // ── Keyboard ────────────────────────────────────────────────────────────
   function keyDown(ev: KeyboardEvent): void {
     if (ev.repeat) return;
     const i = KEY_ORDER.indexOf(ev.code);
@@ -90,21 +96,67 @@ export function mountInputListeners(opts: InputOptions): () => void {
     release(i);
   }
 
-  // Pointer hits on control meshes require a raycast from camera through
-  // the cursor position. The cabinet module owns the scene + camera + raycaster
-  // and reads `heldKeycaps` — but the raycast itself needs access to those.
-  // For Phase 1 we only wire keyboard; pointer + touch will land next.
+  // ── Pointer / touch raycast ─────────────────────────────────────────────
+  /** Convert a DOM event's client coords into Three NDC. */
+  function updateNDC(clientX: number, clientY: number): void {
+    const rect = canvas.getBoundingClientRect();
+    ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  }
 
+  /** Resolve the clicked control index from a canvas event, or null if none. */
+  function hitTest(clientX: number, clientY: number): number | null {
+    updateNDC(clientX, clientY);
+    raycaster.setFromCamera(ndc, camera);
+    const rig = getControls();
+    const hittable = rig.controls.map((c) => c.mesh);
+    const hits = raycaster.intersectObjects(hittable, false);
+    if (hits.length === 0) return null;
+    const hitMesh = hits[0].object;
+    const idx = rig.controls.findIndex((c) => c.mesh === hitMesh);
+    return idx >= 0 ? idx : null;
+  }
+
+  function pointerDown(ev: PointerEvent): void {
+    const idx = hitTest(ev.clientX, ev.clientY);
+    if (idx === null) return;
+    activePointers.set(ev.pointerId, idx);
+    press(idx);
+    canvas.setPointerCapture(ev.pointerId);
+  }
+
+  function pointerUp(ev: PointerEvent): void {
+    const idx = activePointers.get(ev.pointerId);
+    if (idx === undefined) return;
+    activePointers.delete(ev.pointerId);
+    release(idx);
+    if (canvas.hasPointerCapture(ev.pointerId)) {
+      canvas.releasePointerCapture(ev.pointerId);
+    }
+  }
+
+  function pointerCancel(ev: PointerEvent): void {
+    pointerUp(ev);
+  }
+
+  // ── Wire ────────────────────────────────────────────────────────────────
   window.addEventListener('keydown', keyDown);
   window.addEventListener('keyup', keyUp);
+  canvas.addEventListener('pointerdown', pointerDown);
+  canvas.addEventListener('pointerup', pointerUp);
+  canvas.addEventListener('pointercancel', pointerCancel);
 
-  // Prevent default pointer behavior on the canvas (no text-selection
-  // drag, no scroll) without blocking the raycast wiring to follow.
   canvas.style.touchAction = 'none';
   canvas.style.userSelect = 'none';
 
   return function unmount() {
     window.removeEventListener('keydown', keyDown);
     window.removeEventListener('keyup', keyUp);
+    canvas.removeEventListener('pointerdown', pointerDown);
+    canvas.removeEventListener('pointerup', pointerUp);
+    canvas.removeEventListener('pointercancel', pointerCancel);
+    // Release every held key on unmount so the next mount starts clean.
+    for (const idx of activePointers.values()) release(idx);
+    activePointers.clear();
   };
 }

@@ -145,11 +145,13 @@ export const Enemy = trait({
   kind: 'seek' as 'seek' | 'zigzag' | 'split' | 'wander',
 });
 
-/** Pattern progress (0..1 from center to rim) + speed + color index. */
+/** Pattern progress (0..1 from center to rim) + speed + color index + angle. */
 export const Pattern = trait({
   progress: 0,
   speed: 0.5,
   colorIndex: 0,
+  /** Radial angle (0..2π) — fixed at spawn, escape direction. */
+  angle: 0,
   /** Hex color, kept here so renderer doesn't need a separate trait. */
   color: '#ffffff',
 });

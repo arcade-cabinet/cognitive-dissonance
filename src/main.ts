@@ -9,9 +9,13 @@
  * post-process escalation) is diegetic — on the three.js scene.
  */
 
-import { setTension } from '@/sim/actions';
+import { setPhase, setTension } from '@/sim/actions';
+import { createPatternStabilizerState, tickPatternStabilizer } from '@/sim/systems/pattern-stabilizer';
+import { tickTensionDriver } from '@/sim/systems/tension-driver';
 import { Level, world } from '@/sim/world';
+import { createAudioEngine, mountFirstGestureAudio } from './boot/audio';
 import { mountBootOverlay } from './boot/boot-overlay';
+import { mountGameOverHandler } from './boot/game-over';
 import { mountInputListeners } from './boot/input';
 import { createCabinet } from './three/cabinet';
 import './styles.css';
@@ -42,8 +46,20 @@ async function mount(): Promise<void> {
     reducedMotion: prefersReducedMotion(),
   });
 
-  // ── Input
-  const unmountInput = mountInputListeners({ world, canvas });
+  // ── Input (keyboard + pointer-raycast)
+  const unmountInput = mountInputListeners({
+    world,
+    canvas,
+    camera: cabinet.camera,
+    getControls: cabinet.getEmergentControls,
+  });
+
+  // ── Audio (lazy-init on first gesture)
+  const audio = createAudioEngine(world);
+  const detachFirstGesture = mountFirstGestureAudio(audio);
+
+  // ── Game-over / restart handler
+  const unmountGameOver = mountGameOverHandler({ world });
 
   // ── Resize
   const ro =
@@ -59,12 +75,22 @@ async function mount(): Promise<void> {
     cabinet.resize(canvas.clientWidth, canvas.clientHeight);
   });
 
+  // ── Sim state
+  const stabilizer = createPatternStabilizerState();
+
+  // Transition to playing phase on first frame — the cabinet IS the menu,
+  // so there's no separate title state. Keycap emergence handles the
+  // "this is a new game" cue.
+  setPhase('playing');
+
   // ── Render loop
   let last = performance.now();
   let firstFrame = true;
   function frame(now: number): void {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
+    tickPatternStabilizer(world, stabilizer, dt);
+    tickTensionDriver(world, dt);
     cabinet.render(dt);
     if (firstFrame) {
       firstFrame = false;
@@ -97,6 +123,9 @@ async function mount(): Promise<void> {
   // Teardown on page unload — Capacitor keeps this process alive, so we
   // clean up properly to avoid GPU resource leaks on swipe-home.
   window.addEventListener('pagehide', () => {
+    detachFirstGesture();
+    unmountGameOver();
+    audio.dispose();
     unmountInput();
     ro?.disconnect();
     cabinet.dispose();

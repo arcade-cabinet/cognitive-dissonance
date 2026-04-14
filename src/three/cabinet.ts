@@ -30,10 +30,11 @@ import {
   WebGLRenderer,
 } from 'three';
 import { RoomEnvironment } from 'three-stdlib';
-import { Level } from '@/sim/world';
+import { Input, Level } from '@/sim/world';
 import { type AICore, createAICore } from './ai-core';
 import { createEmergentControls, type EmergentControls } from './emergent-controls';
 import { createIndustrialPlatter, type IndustrialPlatter } from './industrial-platter';
+import { createPatternTrails, type PatternTrails } from './pattern-trails';
 import { CorruptionEffect } from './post-process-corruption';
 import { createSkyRain, type SkyRain } from './sky-rain';
 
@@ -51,6 +52,7 @@ export interface Cabinet {
   platter: IndustrialPlatter;
   aiCore: AICore;
   skyRain: SkyRain;
+  patternTrails: PatternTrails;
   /**
    * Current emergent-controls rig. Accessor (not bare property) because the
    * internal reference is swapped when Level.inputSchema changes — callers
@@ -131,6 +133,7 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     position: new Vector3(0, 0.4, 0),
   });
   const skyRain = createSkyRain(scene, { count: 160 });
+  const patternTrails = createPatternTrails(scene, kootaWorld);
 
   const initialSchema = kootaWorld.get(Level)?.inputSchema ?? [];
   let emergentControls = createEmergentControls(scene, {
@@ -214,11 +217,21 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     // rapier bodies in a follow-up so the visual sim and physics sim agree).
     skyRain.update(dt, tension);
 
+    // Pattern trails — read Koota pattern entities and draw.
+    patternTrails.update();
+
     // Emergent controls staggered emerge.
     if (emergeFn) {
       const elapsed = tNow - emergeStart;
       const done = emergeFn(elapsed);
       if (done) emergeFn = null;
+    }
+
+    // Reflect Input.heldKeycaps on the control rig — pressed keycaps
+    // dip down + brighten, released ones return to rest.
+    const heldSet = kootaWorld.get(Input)?.heldKeycaps;
+    for (let i = 0; i < emergentControls.controls.length; i++) {
+      emergentControls.setPressed(i, heldSet?.has(i) ? 1 : 0);
     }
 
     // Advance corruption time uniform and render through composer.
@@ -234,6 +247,7 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
   }
 
   function dispose(): void {
+    patternTrails.dispose();
     emergentControls.dispose();
     skyRain.dispose();
     aiCore.dispose();
@@ -254,6 +268,7 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     platter,
     aiCore,
     skyRain,
+    patternTrails,
     getEmergentControls: () => emergentControls,
     corruption,
     render,
