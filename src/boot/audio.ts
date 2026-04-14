@@ -17,10 +17,15 @@
  *   calm      (0.0–0.3)  drone + pads, no glitch, full chimes
  *   warn      (0.3–0.6)  drone + pads hotter, chimes dropping
  *   danger    (0.6–0.85) drone + pads + glitch active, chimes chaotic
- *   collapse  (0.85–1.0) all layers max, glitch crescendo
+ *   collapse  (0.85–1.0) all layers max + dedicated collapse stem on top
  *
- * Collapse layer is reserved as task #42 — currently we just push glitch
- * to max intensity at crisis. The dedicated stem is follow-up polish.
+ * The collapse stem is two voices that gate in only above tension 0.85:
+ *   - subPulse: a low sine sub-bass that thumps at the drone's fundamental
+ *     octave, growing in volume as we approach 1.0
+ *   - hiSweep: a filtered noise sweep whose filter frequency tracks tension
+ *     in the 0.85–1.0 band, giving a "the cabinet is straining" wash
+ * Both are at zero gain below the threshold, ramped in linearly above it,
+ * and torn down on dispose.
  */
 
 import type { World } from 'koota';
@@ -44,7 +49,17 @@ export function createAudioEngine(world: World): AudioEngine {
   let glitchEnv: Tone.AmplitudeEnvelope | null = null;
   let chimes: Tone.PolySynth | null = null;
   let loop: Tone.Loop | null = null;
+  // Collapse stem (tension > 0.85) — sub-bass pulse + filtered noise sweep.
+  let collapseGain: Tone.Gain | null = null;
+  let subPulse: Tone.Oscillator | null = null;
+  let subTremolo: Tone.LFO | null = null;
+  let subTremoloGain: Tone.Gain | null = null;
+  let hiSweepFilter: Tone.Filter | null = null;
+  let hiSweepNoise: Tone.Noise | null = null;
   let frame: number | null = null;
+
+  // Threshold above which collapse layer becomes audible. Below = silent.
+  const COLLAPSE_THRESHOLD = 0.85;
 
   async function initialize(): Promise<void> {
     if (world.get(Audio)?.isInitialized) return;
@@ -101,6 +116,23 @@ export function createAudioEngine(world: World): AudioEngine {
     }, '4n');
     loop.start(0);
 
+    // Collapse stem — silent until tension crosses COLLAPSE_THRESHOLD,
+    // then ramped in by the per-frame tick. A dedicated gain node lets us
+    // mute the entire layer cheaply when tension drops back.
+    collapseGain = new Tone.Gain(0).connect(masterGain);
+    subPulse = new Tone.Oscillator({ frequency: 32, type: 'sine', volume: -8 });
+    // Slow tremolo on the sub so it pulses like a labored heartbeat.
+    subTremolo = new Tone.LFO({ frequency: 1.4, min: 0.4, max: 1.0 }).start();
+    subTremoloGain = new Tone.Gain(0).connect(collapseGain);
+    subTremolo.connect(subTremoloGain.gain);
+    subPulse.connect(subTremoloGain);
+    subPulse.start();
+
+    hiSweepFilter = new Tone.Filter({ frequency: 1200, type: 'bandpass', Q: 6 }).connect(collapseGain);
+    hiSweepNoise = new Tone.Noise({ type: 'white', volume: -16 });
+    hiSweepNoise.connect(hiSweepFilter);
+    hiSweepNoise.start();
+
     Tone.getTransport().start();
 
     // Per-frame parameter drive. Runs from rAF, not Tone's transport.
@@ -129,6 +161,16 @@ export function createAudioEngine(world: World): AudioEngine {
         masterGain.gain.rampTo(0.4 + tension * 0.4, 0.1);
       }
 
+      // Collapse stem — silent below threshold, ramps in 0→1 across the
+      // 0.85–1.0 band, drives the noise sweep filter higher as we approach 1.
+      if (collapseGain) {
+        const t = Math.max(0, (tension - COLLAPSE_THRESHOLD) / (1 - COLLAPSE_THRESHOLD));
+        collapseGain.gain.rampTo(t * 0.6, 0.1);
+        if (hiSweepFilter) {
+          hiSweepFilter.frequency.rampTo(800 + t * 4800, 0.15);
+        }
+      }
+
       frame = requestAnimationFrame(tick);
     }
     frame = requestAnimationFrame(tick);
@@ -146,6 +188,12 @@ export function createAudioEngine(world: World): AudioEngine {
     pads?.dispose();
     padFilter?.dispose();
     drone?.dispose();
+    hiSweepNoise?.dispose();
+    hiSweepFilter?.dispose();
+    subPulse?.dispose();
+    subTremolo?.dispose();
+    subTremoloGain?.dispose();
+    collapseGain?.dispose();
     masterGain?.dispose();
     try {
       Tone.getTransport().stop();
