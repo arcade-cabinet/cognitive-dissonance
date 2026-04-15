@@ -123,13 +123,64 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
+      - name: Upload Debug APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cognitive-dissonance-debug.apk
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 30
           if-no-files-found: error
+
+      # ── Release-signed build path ──
+      # Only fires when ANDROID_KEYSTORE_BASE64 secret is set. Until then,
+      # the steps are skipped so PRs and forks don't fail on missing secrets.
+      - name: Decode release keystore
+        id: keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          KS_PATH="$GITHUB_WORKSPACE/android/app/release.keystore"
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$KS_PATH"
+          # Sanity check — must be a non-trivial binary file.
+          if [ ! -s "$KS_PATH" ] || [ "$(stat -c %s "$KS_PATH")" -lt 256 ]; then
+            echo "Decoded keystore looks invalid (empty or too small)" >&2
+            exit 1
+          fi
+          echo "path=$KS_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Build Release APK (signed)
+        if: ${{ steps.keystore.outputs.path != '' }}
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.path }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Verify Release APK signature
+        if: ${{ steps.keystore.outputs.path != '' }}
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS_DIR=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n1)
+          APK=$(ls android/app/build/outputs/apk/release/*.apk | head -n1)
+          echo "Verifying $APK with $BUILD_TOOLS_DIR/apksigner"
+          "$BUILD_TOOLS_DIR/apksigner" verify --verbose "$APK"
+
+      - name: Upload Release APK
+        if: ${{ steps.keystore.outputs.path != '' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cognitive-dissonance-release.apk
+          path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Cleanup keystore
+        if: always() && steps.keystore.outputs.path != ''
+        run: rm -f "${{ steps.keystore.outputs.path }}"
 
   # ── Build iOS IPA via Capacitor ──
   build-ios:
