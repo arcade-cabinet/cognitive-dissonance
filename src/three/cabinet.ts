@@ -14,7 +14,7 @@
  * Framework-agnostic. Consumed by src/main.ts which owns the canvas.
  */
 
-import RAPIER from '@dimforge/rapier3d';
+import type RAPIER from '@dimforge/rapier3d';
 import type { World as KootaWorld } from 'koota';
 import { EffectComposer, EffectPass, RenderPass } from 'postprocessing';
 import {
@@ -35,6 +35,7 @@ import { type AICore, createAICore } from './ai-core';
 import { createEmergentControls, type EmergentControls } from './emergent-controls';
 import { createIndustrialPlatter, type IndustrialPlatter } from './industrial-platter';
 import { createPatternTrails, type PatternTrails } from './pattern-trails';
+import { type CabinetPhysics, createCabinetPhysics, SPHERE_Y } from './physics-setup';
 import { CorruptionEffect } from './post-process-corruption';
 import { createShatter, type Shatter } from './shatter';
 import { createSkyRain, type SkyRain } from './sky-rain';
@@ -126,16 +127,12 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
   scene.add(rimLight);
 
   // ── Rapier physics world ───────────────────────────────────────────────
-  const physics = new RAPIER.World(new RAPIER.Vector3(0, -9.81, 0));
-  physics.timestep = 1 / 60;
-  physics.numSolverIterations = 4;
-
-  // Platter-top surface collider. Sky rain lands on the disc and tumbles
-  // off; the sky rain cull check kicks in a half-meter below so particles
-  // that bounce off the edge have a grace zone before recycle.
-  const platterColliderY = -1.45; // matches IndustrialPlatter top-of-disc.
-  const floorBody = physics.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, platterColliderY, 0));
-  physics.createCollider(RAPIER.ColliderDesc.cylinder(0.16, 1.5).setRestitution(0.25).setFriction(0.6), floorBody);
+  // Owns the world, the static colliders (platter top + AI sphere with
+  // contact-event flag), the event queue, and the substep accumulator.
+  // step(dt) returns the number of impacts that hit the sphere this frame.
+  const physicsRig: CabinetPhysics = createCabinetPhysics();
+  const physics = physicsRig.world;
+  let pendingSphereImpacts = 0;
 
   // ── Cabinet pieces ─────────────────────────────────────────────────────
   const platter = createIndustrialPlatter(scene, {
@@ -143,26 +140,8 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
   });
   const aiCore = createAICore(scene, {
     outerRadius: 0.6,
-    position: new Vector3(0, 0.4, 0),
+    position: new Vector3(0, SPHERE_Y, 0),
   });
-  // AI sphere collider — kinematic (stays fixed in space) so rain bounces
-  // off it. We flag it as an active-event collider so contacts trigger
-  // callbacks the render loop reads.
-  const sphereBody = physics.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, 0.4, 0));
-  const sphereCollider = physics.createCollider(
-    RAPIER.ColliderDesc.ball(0.6)
-      .setRestitution(0.45)
-      .setFriction(0.3)
-      .setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS)
-      .setContactForceEventThreshold(1.0),
-    sphereBody,
-  );
-  const sphereColliderHandle = sphereCollider.handle;
-  // Rapier's event queue — drain each step and count contacts that hit the
-  // sphere collider above. We throttle the tension bump so a stream of
-  // rain doesn't saturate tension instantly; ~0.02/impact, capped.
-  const eventQueue = new RAPIER.EventQueue(true);
-  let pendingSphereImpacts = 0;
   const skyRain = createSkyRain(scene, physics, {
     count: 160,
     // Recycle particles that bounce/roll off the platter. Platter top sits
@@ -170,7 +149,7 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     floorY: -2.0,
   });
   const patternTrails = createPatternTrails(scene, kootaWorld);
-  const shatter = createShatter(scene, physics, { origin: new Vector3(0, 0.4, 0) });
+  const shatter = createShatter(scene, physics, { origin: new Vector3(0, SPHERE_Y, 0) });
 
   // Listen for the gameOver event (dispatched by the tension driver). When
   // coherence hits zero we detonate the shatter pool and hide the intact
@@ -209,7 +188,6 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
 
   // ── Change tracking ────────────────────────────────────────────────────
   let lastSchema: unknown = initialSchema;
-  let physicsAccumulator = 0;
 
   function applyTension(tension: number): void {
     platter.setTension(tension);
@@ -252,27 +230,9 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     platter.group.rotation.x = MathUtils.clamp(Math.sin(tNow * 1.7) * amp, -wobble.maxTiltRad, wobble.maxTiltRad);
     platter.group.rotation.z = MathUtils.clamp(Math.cos(tNow * 1.3) * amp, -wobble.maxTiltRad, wobble.maxTiltRad);
 
-    // Step physics at a fixed 60Hz regardless of render fps.
-    // dt from rAF fluctuates; accumulate it and fire discrete substeps.
-    physicsAccumulator += dt;
-    const maxSubsteps = 5;
-    let steps = 0;
-    while (physicsAccumulator >= physics.timestep && steps < maxSubsteps) {
-      physics.step(eventQueue);
-      // Drain contact-force events — anything touching the sphere collider
-      // counts as an impact for the tension bump downstream.
-      eventQueue.drainContactForceEvents((e) => {
-        if (e.collider1() === sphereColliderHandle || e.collider2() === sphereColliderHandle) {
-          pendingSphereImpacts++;
-        }
-      });
-      physicsAccumulator -= physics.timestep;
-      steps++;
-    }
-    if (physicsAccumulator > physics.timestep * maxSubsteps) {
-      // We're falling way behind; drop the backlog rather than spiral.
-      physicsAccumulator = 0;
-    }
+    // Step physics at a fixed 60Hz regardless of render fps. The rig owns
+    // the substep accumulator + event drain; we just collect the impact count.
+    pendingSphereImpacts += physicsRig.step(dt);
 
     // Apply accumulated sphere impacts. Each impact nudges tension up
     // slightly — watching a rain cube hit the glass should *feel* like it
@@ -349,7 +309,7 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     pmrem.dispose();
     renderer.dispose();
     scene.remove(hemi, keyLight, rimLight);
-    physics.free();
+    physicsRig.dispose();
   }
 
   return {
