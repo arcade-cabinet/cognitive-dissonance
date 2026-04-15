@@ -20,8 +20,12 @@ import { Game, Input, IsPattern, Level, Pattern, Position, Seed } from '../world
 
 const FIXED_STEP_S = 1 / 30;
 const PATTERN_PULL_RATE = 2.4; // progress/sec pulled back when the matching keycap is held
-const COHERENCE_REWARD = 3; // per stabilised pattern
+const COHERENCE_REWARD = 4; // per stabilised pattern (tuning pass 1: 3 → 4)
 const TENSION_PENALTY = 0.12; // per escaped pattern
+// Per-stabilise tension drop (tuning pass 1: 0.05 → 0.08). Gives skilled
+// play meaningful tension clawback so a 0.95-tension state isn't a one-way
+// death spiral.
+const TENSION_RELIEF_PER_STABILISE = 0.08;
 const MAX_TENSION = 1;
 const MIN_TENSION = 0;
 
@@ -105,7 +109,7 @@ function runOneStep(world: World, state: PatternStabilizerState, dt: number): vo
         ...prev,
         coherence: nextCoh,
         peakCoherence: Math.max(prev.peakCoherence, nextCoh),
-        tension: Math.max(MIN_TENSION, prev.tension - stabilisedCount * 0.05),
+        tension: Math.max(MIN_TENSION, prev.tension - stabilisedCount * TENSION_RELIEF_PER_STABILISE),
       };
     });
   }

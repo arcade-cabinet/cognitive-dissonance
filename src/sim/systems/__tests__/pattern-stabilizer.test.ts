@@ -79,7 +79,8 @@ describe('pattern-stabilizer', () => {
     tickPatternStabilizer(world, state, FIXED_STEP_S);
 
     expect(p.has(IsPattern)).toBe(false); // entity destroyed
-    expect(world.get(Level)?.coherence).toBeCloseTo(25 + 3, 5);
+    // COHERENCE_REWARD = 4 (tuning pass 1)
+    expect(world.get(Level)?.coherence).toBeCloseTo(25 + 4, 5);
   });
 
   it('penalises tension when a pattern escapes (progress >= 1)', () => {
