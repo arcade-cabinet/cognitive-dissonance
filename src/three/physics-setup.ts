@@ -17,9 +17,9 @@ import RAPIER from '@dimforge/rapier3d';
 
 /** Y position of the platter-top collider. Matches IndustrialPlatter geometry. */
 export const PLATTER_COLLIDER_Y = -1.45;
-/** Y position the AI sphere sits at. Matches createAICore default. */
+/** Y position the AI sphere sits at. Source of truth — `createAICore` imports this. */
 export const SPHERE_Y = 0.4;
-/** Sphere radius — matches createAICore outerRadius. */
+/** Sphere radius. Source of truth — `createAICore` imports this. */
 export const SPHERE_RADIUS = 0.6;
 
 const FIXED_STEP = 1 / 60;
