@@ -14,6 +14,7 @@
 import { Color, type Mesh, type Scene, Vector3 } from 'three';
 import { type CelestialNebula, createCelestialNebula } from './celestial-nebula';
 import { createGlassSphere, type GlassSphere } from './glass-sphere';
+import { SPHERE_RADIUS, SPHERE_Y } from './physics-setup';
 
 export interface AICoreOptions {
   position?: Vector3;
@@ -41,7 +42,7 @@ const CRISIS_COLOR1 = new Color('#1a0a18'); // smothered violet
 const CRISIS_COLOR2 = new Color('#ff4440'); // angry red
 
 export function createAICore(scene: Scene, opts: AICoreOptions = {}): AICore {
-  const { position = new Vector3(0, 0, 0), outerRadius = 0.6, tension = 0 } = opts;
+  const { position = new Vector3(0, SPHERE_Y, 0), outerRadius = SPHERE_RADIUS, tension = 0 } = opts;
 
   // Inner nebula first so it draws underneath the glass in render order.
   const nebula = createCelestialNebula(scene, outerRadius * 0.94 * 2, position);
