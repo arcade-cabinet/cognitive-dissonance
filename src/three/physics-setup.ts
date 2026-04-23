@@ -91,6 +91,7 @@ export function createCabinetPhysics(): CabinetPhysics {
   }
 
   function dispose(): void {
+    eventQueue.free();
     world.free();
   }
 

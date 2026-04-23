@@ -35,7 +35,7 @@ import { type AICore, createAICore } from './ai-core';
 import { createEmergentControls, type EmergentControls } from './emergent-controls';
 import { createIndustrialPlatter, type IndustrialPlatter } from './industrial-platter';
 import { createPatternTrails, type PatternTrails } from './pattern-trails';
-import { type CabinetPhysics, createCabinetPhysics, SPHERE_Y } from './physics-setup';
+import { type CabinetPhysics, createCabinetPhysics, SPHERE_RADIUS, SPHERE_Y } from './physics-setup';
 import { CorruptionEffect } from './post-process-corruption';
 import { createShatter, type Shatter } from './shatter';
 import { createSkyRain, type SkyRain } from './sky-rain';
@@ -139,7 +139,7 @@ export async function createCabinet(opts: CabinetOptions): Promise<Cabinet> {
     position: new Vector3(0, -1.6, 0),
   });
   const aiCore = createAICore(scene, {
-    outerRadius: 0.6,
+    outerRadius: SPHERE_RADIUS,
     position: new Vector3(0, SPHERE_Y, 0),
   });
   const skyRain = createSkyRain(scene, physics, {
